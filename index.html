@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Szintlépő angol</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: egy oszlopos "vizsgafüzet" – fent a CEFR-létra, alatta a feladatlap. Kiemelés: szövegkiemelő-sárga. */
+:root {
+  --paper: #f4f6fb;
+  --surface: #ffffff;
+  --ink: #161d3a;
+  --muted: #586079;
+  --line: #dce0ec;
+  --accent: #2c46d1;
+  --accent-ink: #ffffff;
+  --mark: #ffe066;
+  --mark-ink: #2a2300;
+  --good: #1d7f4f;
+  --good-bg: #e3f4ea;
+  --bad: #b93a33;
+  --bad-bg: #fbe7e5;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1120; --surface: #161a2d; --ink: #e7eaf6; --muted: #9ba3c2; --line: #2a3052;
+    --accent: #8fa1ff; --accent-ink: #0e1120; --mark: #e8c840; --mark-ink: #1c1700;
+    --good: #5fd39a; --good-bg: #143326; --bad: #ff8a80; --bad-bg: #3a1a1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1120; --surface: #161a2d; --ink: #e7eaf6; --muted: #9ba3c2; --line: #2a3052;
+  --accent: #8fa1ff; --accent-ink: #0e1120; --mark: #e8c840; --mark-ink: #1c1700;
+  --good: #5fd39a; --good-bg: #143326; --bad: #ff8a80; --bad-bg: #3a1a1a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 0;
+}
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 20px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.label {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+
+/* Fejléc */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; cursor: pointer; background: none; border: 0; color: inherit; padding: 0; }
+.brand h1 { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.brand h1 span { background: linear-gradient(transparent 58%, var(--mark) 58%, var(--mark) 92%, transparent 92%); padding: 0 2px; }
+.stats { display: flex; gap: 14px; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+.stats b { color: var(--ink); font-weight: 700; }
+
+/* CEFR-létra */
+.ladder { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; align-items: end; }
+.rung {
+  border-radius: 6px 6px 2px 2px; background: var(--line); color: var(--muted);
+  font-family: var(--font-mono); font-size: 13px; text-align: center; padding: 6px 0 4px;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.rung.done { background: color-mix(in srgb, var(--accent) 30%, var(--line)); color: var(--ink); }
+.rung.now { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.rung:nth-child(1) { height: 34px; } .rung:nth-child(2) { height: 44px; } .rung:nth-child(3) { height: 54px; }
+.rung:nth-child(4) { height: 64px; } .rung:nth-child(5) { height: 74px; } .rung:nth-child(6) { height: 84px; }
+
+/* Kártyák, gombok */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: grid; gap: 16px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn {
+  font: 700 16px/1 var(--font-body); border-radius: 10px; padding: 13px 18px; cursor: pointer;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.btn.small { padding: 9px 12px; font-size: 14px; }
+.btn:focus-visible, .opt:focus-visible, .chip:focus-visible, input:focus-visible, textarea:focus-visible, .brand:focus-visible {
+  outline: 3px solid var(--mark); outline-offset: 2px;
+}
+
+.hero { display: grid; gap: 10px; }
+.hero h2 { font-size: clamp(26px, 5vw, 34px); font-weight: 800; letter-spacing: -.02em; }
+.hero p { max-width: 60ch; color: var(--muted); }
+.levelbig { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.levelbig .code {
+  font-family: var(--font-display); font-weight: 800; font-size: 56px; line-height: 1;
+  background: var(--mark); color: var(--mark-ink); padding: 6px 14px 8px; border-radius: 10px;
+}
+.levelbig .txt { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; }
+.levelbig .txt h3 { font-size: 22px; }
+
+.meter { height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .4s ease; }
+.meter.goal i { background: var(--good); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.skills { display: grid; gap: 10px; }
+.skill { display: grid; grid-template-columns: 120px 1fr 48px; gap: 10px; align-items: center; font-size: 15px; }
+.skill .pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+.howto { display: grid; gap: 12px; }
+.howto li { margin: 0; }
+.howto ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+
+/* Feladatlap */
+.qhead { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; color: var(--muted); }
+.tag.lv { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.passage { border-left: 3px solid var(--mark); padding: 4px 0 4px 14px; font-size: 17px; max-width: 65ch; }
+.prompt { font-family: var(--font-body); font-size: 22px; font-weight: 700; line-height: 1.35; max-width: 60ch; }
+.prompt .blank { display: inline-block; min-width: 72px; border-bottom: 2.5px solid var(--accent); margin: 0 3px; transform: translateY(-3px); }
+.instr { font-size: 15px; color: var(--muted); }
+
+.opts { display: grid; gap: 8px; }
+.opt {
+  text-align: left; font: 400 18px/1.35 var(--font-body); color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer;
+  display: flex; gap: 12px; align-items: baseline;
+}
+.opt .k { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt.picked { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.opt.right { border-color: var(--good); background: var(--good-bg); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+.opt.gone { opacity: .3; }
+.opt:disabled { cursor: default; }
+
+input[type="text"], textarea {
+  width: 100%; font: 400 19px/1.4 var(--font-body); color: var(--ink); background: var(--paper);
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px;
+}
+textarea { min-height: 84px; resize: vertical; }
+input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+
+.built { min-height: 56px; border: 1.5px dashed var(--line); border-radius: 10px; padding: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+.bank { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 400 17px/1 var(--font-body); padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.chip:hover:not(:disabled) { border-color: var(--accent); }
+.built .chip { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.chip.used { visibility: hidden; }
+
+.fb { border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; }
+.fb.ok { background: var(--good-bg); }
+.fb.no { background: var(--bad-bg); }
+.fb strong { font-family: var(--font-display); font-size: 18px; }
+.fb.ok strong { color: var(--good); }
+.fb.no strong { color: var(--bad); }
+.fb .ans { font-weight: 700; }
+.fb .ans mark { background: var(--mark); color: var(--mark-ink); padding: 0 3px; border-radius: 3px; }
+
+.result-list { display: grid; gap: 6px; font-size: 15px; }
+.result-list div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.result-list div span:last-child { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 15px; z-index: 5; }
+
+@media (max-width: 480px) {
+  .panel { padding: 16px; }
+  .prompt { font-size: 20px; }
+  .skill { grid-template-columns: 96px 1fr 42px; font-size: 14px; }
+  .levelbig .code { font-size: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <button class="brand" id="home-btn" type="button" aria-label="Vissza a kezdőlapra"><h1><span>Szintlépő</span> angol</h1></button>
+    <div class="stats" id="stats"></div>
+  </header>
+  <main id="app"></main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// ---------- Feladatbank ----------
+// l: szint (0=A1 … 5=C2), s: készség, t: típus (mc | gap | tr | order), a: helyes válasz(ok), x: magyarázat
+const BANK = [
+  // A1
+  {l:0,s:"g",t:"mc",q:"She ___ a teacher.",o:["is","are","am","be"],a:0,x:"He/she/it után a „to be” alakja: is."},
+  {l:0,s:"v",t:"mc",q:"Melyik szó jelenti azt, hogy „kenyér”?",o:["bread","butter","bed","beard"],a:0,x:"bread = kenyér, butter = vaj, bed = ágy, beard = szakáll."},
+  {l:0,s:"g",t:"gap",q:"I ___ two brothers. (have)",a:["have"],x:"Az I után a „have” alapalakja áll."},
+  {l:0,s:"t",t:"tr",q:"Én magyar vagyok.",a:["I am Hungarian"],x:"A nemzetiséget nagy kezdőbetűvel írjuk: Hungarian."},
+  {l:0,s:"g",t:"mc",q:"There ___ three apples on the table.",o:["are","is","be","am"],a:0,x:"Többes számú főnév előtt: there are."},
+  {l:0,s:"g",t:"gap",q:"My sister ___ chocolate. (like)",a:["likes"],x:"Egyszerű jelen időben E/3-ban (he/she/it) -s végződés kell: likes."},
+  {l:0,s:"o",t:"order",a:"Where do you live?",x:"Kérdőszó + segédige (do) + alany + ige."},
+  {l:0,s:"v",t:"mc",q:"The opposite of „hot” is ___.",o:["cold","warm","big","wet"],a:0,x:"hot = forró, az ellentéte cold = hideg."},
+  {l:0,s:"t",t:"tr",q:"Hány éves vagy?",a:["How old are you"],x:"Az életkort angolul a „to be” igével kérdezzük: How old are you?"},
+  {l:0,s:"g",t:"mc",q:"___ is your name?",o:["What","Who","Where","How"],a:0,x:"A név után a What kérdőszóval kérdezünk."},
+  {l:0,s:"g",t:"gap",q:"We go to school ___ Monday.",a:["on"],x:"A hét napjai előtt az „on” elöljárószó áll."},
+  {l:0,s:"g",t:"mc",q:"I can't find ___ keys.",o:["my","me","I","mine"],a:0,x:"Főnév előtt birtokos névmás kell: my keys."},
+  {l:0,s:"t",t:"tr",q:"A macska az asztal alatt van.",a:["The cat is under the table"],x:"alatt = under. A „the” névelő mindkét főnév elé kell."},
+  {l:0,s:"r",t:"mc",p:"Tom gets up at seven o'clock. He has breakfast and then goes to work by bus.",q:"How does Tom go to work?",o:["By bus","By car","On foot","By train"],a:0,x:"A szöveg szerint: „goes to work by bus”."},
+
+  // A2
+  {l:1,s:"g",t:"mc",q:"Yesterday I ___ to the cinema.",o:["went","go","gone","have gone"],a:0,x:"A „yesterday” lezárt múltbeli időpont, ezért Past Simple: went."},
+  {l:1,s:"g",t:"gap",q:"She ___ coffee. (not / like)",a:["doesn't like"],x:"Tagadás E/3-ban: doesn't + az ige alapalakja (like, nem likes)."},
+  {l:1,s:"g",t:"mc",q:"This bag is ___ than that one.",o:["heavier","more heavy","heaviest","heavyer"],a:0,x:"Rövid melléknév középfoka: -er. Az -y végű szavaknál az y-ból i lesz: heavier."},
+  {l:1,s:"t",t:"tr",q:"Tegnap esett az eső.",a:["It rained yesterday","Yesterday it rained","It was raining yesterday"],x:"Az időjárásnál az „it” az alany: It rained."},
+  {l:1,s:"o",t:"order",a:"We are going to the beach tomorrow.",x:"Present Continuous jövőbeli tervre: alany + are + going + hely + idő."},
+  {l:1,s:"g",t:"mc",q:"How ___ milk do we need?",o:["much","many","lot","few"],a:0,x:"A milk megszámlálhatatlan főnév, ezért how much."},
+  {l:1,s:"g",t:"gap",q:"Look! The children ___ in the garden. (play)",a:["are playing"],x:"A „Look!” azt jelzi, hogy most történik: Present Continuous."},
+  {l:1,s:"v",t:"mc",q:"Melyik jelenti azt, hogy „kölcsönkérni (valakitől)”?",o:["borrow","lend","give","owe"],a:0,x:"borrow = kölcsönkér, lend = kölcsönad."},
+  {l:1,s:"t",t:"tr",q:"Soha nem voltam Londonban.",a:["I have never been to London","I have never been in London"],x:"Élettapasztalatra Present Perfect: have never been to…"},
+  {l:1,s:"g",t:"mc",q:"I'm interested ___ history.",o:["in","on","at","for"],a:0,x:"Állandó kapcsolat: interested in something."},
+  {l:1,s:"g",t:"gap",q:"There isn't ___ sugar left.",a:["any"],x:"Tagadó mondatban: any."},
+  {l:1,s:"g",t:"mc",q:"What were you doing when I ___ you?",o:["called","was calling","call","have called"],a:0,x:"A folyamatban lévő cselekvést (Past Continuous) egy rövid esemény szakítja meg, ez Past Simple: called."},
+  {l:1,s:"r",t:"mc",p:"Anna usually cycles to work, but today it is raining heavily, so she is taking the bus.",q:"Why is Anna taking the bus today?",o:["Because of the weather","Her bike is broken","She is late","She prefers buses"],a:0,x:"„it is raining heavily, so…”: az időjárás miatt."},
+  {l:1,s:"g",t:"mc",q:"You ___ wear a seatbelt in the car. It's the law.",o:["must","mustn't","can't","needn't"],a:0,x:"Kötelezettség (törvény): must."},
+
+  // B1
+  {l:2,s:"g",t:"mc",q:"I've lived here ___ 2015.",o:["since","for","from","ago"],a:0,x:"Kezdőpont előtt since, időtartam előtt for."},
+  {l:2,s:"g",t:"gap",q:"If it ___ tomorrow, we will stay at home. (rain)",a:["rains"],x:"Első feltételes mód: az if után egyszerű jelen idő áll, nem will."},
+  {l:2,s:"g",t:"mc",q:"The book ___ by millions of people.",o:["has been read","has read","is reading","was reading"],a:0,x:"Szenvedő szerkezet Present Perfectben: has been + 3. alak."},
+  {l:2,s:"t",t:"tr",q:"Már befejeztem a házi feladatomat.",a:["I have already finished my homework","I have finished my homework already","I already finished my homework"],x:"Az „already” jellemzően Present Perfecttel áll."},
+  {l:2,s:"o",t:"order",a:"Have you ever been abroad?",x:"Present Perfect kérdés: Have + alany + ever + 3. alak."},
+  {l:2,s:"g",t:"mc",q:"He asked me where ___.",o:["I lived","did I live","I live","do I live"],a:0,x:"Függő kérdésben egyenes szórend és időegyeztetés: where I lived."},
+  {l:2,s:"g",t:"gap",q:"I'm used to ___ up early. (get)",a:["getting"],x:"be used to + -ing: hozzá vagyok szokva valamihez."},
+  {l:2,s:"v",t:"mc",q:"Can you ___ after my dog while I'm away?",o:["look","take","care","see"],a:0,x:"look after = vigyáz valamire/valakire."},
+  {l:2,s:"t",t:"tr",q:"Ha lenne pénzem, vennék egy autót.",a:["If I had money I would buy a car","If I had the money I would buy a car","I would buy a car if I had money","I would buy a car if I had the money"],x:"Második feltételes mód: if + Past Simple, would + ige."},
+  {l:2,s:"g",t:"mc",q:"She's the woman ___ car was stolen.",o:["whose","who","which","that"],a:0,x:"Birtokviszonyt kifejező vonatkozó névmás: whose."},
+  {l:2,s:"g",t:"gap",q:"You'd better ___ an umbrella. (take)",a:["take"],x:"had better után az ige alapalakja jön (to nélkül)."},
+  {l:2,s:"g",t:"mc",q:"By the time we arrived, the film ___.",o:["had started","has started","started","was starting"],a:0,x:"Egy múltbeli pont előtt már megtörtént: Past Perfect."},
+  {l:2,s:"r",t:"mc",p:"The museum, which normally closes at 6 p.m., will stay open until 10 p.m. on Friday for a special event. Entry after 6 p.m. is free for students.",q:"What can students do on Friday evening?",o:["Enter for free after 6 p.m.","Visit until midnight","Get free entry all day","Join the event only before 6 p.m."],a:0,x:"„Entry after 6 p.m. is free for students.”"},
+  {l:2,s:"g",t:"mc",q:"I'm looking forward ___ you.",o:["to seeing","to see","seeing","for seeing"],a:0,x:"Itt a „to” elöljárószó, ezért -ing alak követi: look forward to seeing."},
+
+  // B2
+  {l:3,s:"g",t:"mc",q:"If I ___ harder, I would have passed the exam.",o:["had studied","studied","would study","have studied"],a:0,x:"Harmadik feltételes mód: if + Past Perfect, would have + 3. alak."},
+  {l:3,s:"g",t:"gap",q:"I wish I ___ the answer. (know)",a:["knew"],x:"Jelenre vonatkozó kívánság: wish + Past Simple."},
+  {l:3,s:"g",t:"mc",q:"She denied ___ the money.",o:["taking","to take","take","to have take"],a:0,x:"A deny után -ing alak áll."},
+  {l:3,s:"t",t:"tr",q:"Bárcsak ne mondtam volna el neki!",a:["I wish I hadn't told him","I wish I hadn't told her","If only I hadn't told him","If only I hadn't told her"],x:"Múltra vonatkozó megbánás: wish / if only + Past Perfect."},
+  {l:3,s:"o",t:"order",a:"The report must be finished by Friday.",x:"Szenvedő szerkezet módbeli segédigével: must be + 3. alak."},
+  {l:3,s:"v",t:"mc",q:"The meeting has been ___ until next week.",o:["put off","put out","put up","put away"],a:0,x:"put off = elhalaszt."},
+  {l:3,s:"g",t:"gap",q:"It's high time we ___. (leave)",a:["left"],x:"It's (high) time + Past Simple, pedig a jelenről szól."},
+  {l:3,s:"v",t:"mc",q:"The company had to ___ 200 workers because of the crisis.",o:["lay off","lay down","lay out","lay up"],a:0,x:"lay off = elbocsát (gazdasági okból)."},
+  {l:3,s:"t",t:"tr",q:"Nem kellett volna ennyit ennem.",a:["I shouldn't have eaten so much","I shouldn't have eaten this much","I shouldn't have eaten that much"],x:"Múltbeli hibára: shouldn't have + 3. alak."},
+  {l:3,s:"g",t:"mc",q:"___ the bad weather, the match went ahead.",o:["Despite","Although","In spite","However"],a:0,x:"A despite után főnév áll; az although után mellékmondat; az „in spite” után kell az „of”."},
+  {l:3,s:"g",t:"gap",q:"She made me ___ for an hour. (wait)",a:["wait"],x:"make somebody do something: to nélküli főnévi igenév."},
+  {l:3,s:"g",t:"mc",q:"You ___ have seen him yesterday. He's been in Spain for a month.",o:["can't","mustn't","shouldn't","needn't"],a:0,x:"Logikai kizárás a múltban: can't have + 3. alak."},
+  {l:3,s:"r",t:"mc",p:"Although remote work offers flexibility, many employees report that the boundary between their professional and personal lives has become blurred, often leading to longer working hours.",q:"What problem does the text mention?",o:["People end up working longer","Remote work is less flexible","Employees earn less","Offices are overcrowded"],a:0,x:"„…leading to longer working hours.”"},
+  {l:3,s:"g",t:"mc",q:"Hardly anyone came to the party, ___?",o:["did they","didn't they","did he","came they"],a:0,x:"A „hardly” tagadó jelentésű, ezért a question tag állító: did they?"},
+
+  // C1
+  {l:4,s:"o",t:"order",a:"No sooner had I arrived than the phone rang.",x:"A „No sooner” a mondat elején fordított szórendet kíván: had I arrived."},
+  {l:4,s:"g",t:"mc",q:"Not until the end of the film ___ who the killer was.",o:["did I realise","I realised","I did realise","had realised I"],a:0,x:"A „Not until…” után inverzió jön: did I realise."},
+  {l:4,s:"g",t:"gap",q:"Had I known about the problem, I ___ you. (help)",a:["would have helped"],x:"Inverziós harmadik feltételes mód: Had I known… = If I had known…"},
+  {l:4,s:"v",t:"mc",q:"The new policy has been met with widespread ___.",o:["criticism","critics","criticising","critical"],a:0,x:"Főnév kell: criticism = kritika, bírálat."},
+  {l:4,s:"t",t:"tr",q:"Akármennyire igyekszik, sosem elégedett.",a:["However hard he tries he is never satisfied","No matter how hard he tries he is never satisfied","However hard she tries she is never satisfied","No matter how hard she tries she is never satisfied","However hard he tries he is never happy","No matter how hard he tries he is never happy","However hard she tries she is never happy","No matter how hard she tries she is never happy"],x:"However hard / No matter how hard + mellékmondat."},
+  {l:4,s:"v",t:"mc",q:"The proposal was rejected on the ___ that it was too expensive.",o:["grounds","reasons","basis","causes"],a:0,x:"Állandó kifejezés: on the grounds that = azzal az indokkal, hogy."},
+  {l:4,s:"g",t:"gap",q:"It's essential that he ___ informed immediately. (be)",a:["be","should be"],x:"Kötőmód (subjunctive): essential that + az ige alapalakja (vagy should + ige)."},
+  {l:4,s:"g",t:"mc",q:"She is said ___ a fortune on her house.",o:["to have spent","having spent","to spend","that she spent"],a:0,x:"Múltbeli cselekvés ilyen szerkezetben: is said to have + 3. alak."},
+  {l:4,s:"t",t:"tr",q:"Nem csoda, hogy fáradt vagy.",a:["No wonder you are tired","It is no wonder you are tired","It is no wonder that you are tired","Small wonder you are tired"],x:"no wonder = nem csoda."},
+  {l:4,s:"v",t:"mc",q:"We need to ___ a balance between work and family.",o:["strike","hit","make","beat"],a:0,x:"Kollokáció: strike a balance = megtalálja az egyensúlyt."},
+  {l:4,s:"g",t:"gap",q:"Little ___ that her life was about to change. (she / know)",a:["did she know"],x:"A tagadó értelmű „Little” után inverzió jön: did she know."},
+  {l:4,s:"v",t:"mc",q:"The results were ___ disappointing.",o:["bitterly","highly","deeply","strongly"],a:0,x:"Kollokáció: bitterly disappointing = keservesen kiábrándító."},
+  {l:4,s:"r",t:"mc",p:"The minister's remarks, while ostensibly conciliatory, did little to allay fears among opposition parties, who saw them as a thinly veiled attempt to delay reform.",q:"How did the opposition interpret the remarks?",o:["As a disguised way to postpone reform","As a genuine compromise","As an apology","As support for reform"],a:0,x:"„a thinly veiled attempt to delay reform” = alig leplezett halogatás."},
+  {l:4,s:"g",t:"mc",q:"I'd rather you ___ smoke in here.",o:["didn't","don't","won't","not"],a:0,x:"would rather + más alany + Past Simple."},
+
+  // C2
+  {l:5,s:"v",t:"mc",q:"His argument doesn't hold ___.",o:["water","ground","air","fire"],a:0,x:"Idióma: not hold water = nem állja meg a helyét."},
+  {l:5,s:"g",t:"gap",q:"Were the government ___ taxes, there would be protests. (raise)",a:["to raise"],x:"Formális inverziós feltétel: Were + alany + to + ige."},
+  {l:5,s:"v",t:"mc",q:"Her ___ remarks offended almost everyone.",o:["disparaging","disparate","desperate","dispassionate"],a:0,x:"disparaging = becsmérlő. A disparate jelentése: eltérő."},
+  {l:5,s:"t",t:"tr",q:"Ha nem lett volna a segítséged, kudarcot vallottam volna.",a:["Had it not been for your help I would have failed","If it had not been for your help I would have failed","Without your help I would have failed","But for your help I would have failed"],x:"Had it not been for… = Ha nem lett volna…"},
+  {l:5,s:"g",t:"mc",q:"So ___ was the storm that all flights were cancelled.",o:["severe","severely","severity","a severe"],a:0,x:"So + melléknév + inverzió: So severe was the storm…"},
+  {l:5,s:"o",t:"order",a:"Under no circumstances should you open this door.",x:"Tagadó értelmű nyitó kifejezés után inverzió: should you open."},
+  {l:5,s:"v",t:"mc",q:"The negotiations reached an ___ and were suspended.",o:["impasse","impulse","impact","impetus"],a:0,x:"impasse = holtpont."},
+  {l:5,s:"g",t:"gap",q:"She'd sooner resign than ___ her principles. (compromise)",a:["compromise"],x:"would sooner … than + az ige alapalakja."},
+  {l:5,s:"v",t:"mc",q:"The CEO's resignation came as a bolt from the ___.",o:["blue","sky","sun","storm"],a:0,x:"Idióma: a bolt from the blue = derült égből villámcsapás."},
+  {l:5,s:"t",t:"tr",q:"Bármilyen meglepő is, igaza volt.",a:["Surprising as it may seem he was right","Surprising as it may seem she was right","Surprising though it may seem he was right","Surprising though it may seem she was right","However surprising it may seem he was right","However surprising it may seem she was right","Surprisingly he was right","Surprisingly she was right"],x:"Engedő szerkezet: Melléknév + as + it may seem…"},
+  {l:5,s:"v",t:"mc",q:"He was ___ to admit that he had made a mistake.",o:["loath","loathe","loathsome","loathing"],a:0,x:"loath (mn.) = vonakodó; loathe (ige) = utál."},
+  {l:5,s:"g",t:"gap",q:"Not only ___ her birthday, but he also forgot their anniversary. (he / forget)",a:["did he forget"],x:"A „Not only” után inverzió jön: did he forget."},
+  {l:5,s:"r",t:"mc",p:"Far from being a panacea, the new legislation has, in the eyes of its critics, merely papered over the cracks of a fundamentally flawed system.",q:"According to critics, the legislation…",o:["hides problems without solving them","completely fixes the system","deliberately makes things worse","is a temporary but effective cure"],a:0,x:"paper over the cracks = elkendi, eltakarja a problémákat."},
+  {l:5,s:"v",t:"mc",q:"The novel is ___ with references to classical mythology.",o:["replete","complete","depleted","filled up"],a:0,x:"replete with = bővelkedik valamiben."}
+];
+BANK.forEach((q, i) => q.id = i);
+
+const LEVELS = ["A1","A2","B1","B2","C1","C2"];
+const LNAME = ["Kezdő","Alapfok","Küszöbszint","Középfok","Haladó","Mesterfok"];
+const LDESC = [
+  "Bemutatkozol, egyszerű kérdéseket teszel fel, és ismered az alapszókincset.",
+  "Elboldogulsz mindennapi helyzetekben, és a múltról is tudsz beszélni.",
+  "Utazáskor önállóan boldogulsz, és egyszerűen elmondod a véleményedet.",
+  "Folyékonyan beszélgetsz, és bonyolultabb szövegeket is megértesz.",
+  "Árnyaltan és igényesen használod a nyelvet munkában és tanulásban.",
+  "Közel anyanyelvi szinten használod a nyelvet, az idiómákkal és a finom különbségekkel együtt."
+];
+const SKILL = {g:"Nyelvtan", v:"Szókincs", t:"Fordítás", r:"Olvasás", o:"Mondatépítés"};
+const TYPE_INSTR = {
+  mc: "Válaszd ki a helyes megoldást. (Billentyű: 1–4)",
+  gap: "Írd be a hiányzó szót vagy szavakat.",
+  tr: "Fordítsd le angolra.",
+  order: "Rakd helyes sorrendbe a szavakat. Kattints rájuk."
+};
+const PLACEMENT_LEN = 15, SESSION_LEN = 10, DAILY_GOAL = 20;
+
+// ---------- Mentés ----------
+const KEY = "szintlepo-angol-v1";
+const fresh = () => ({level:null, meter:30, xp:0, streak:0, lastDay:null, today:{d:null,n:0}, skills:{}, mistakes:{}, seen:{}});
+let S = fresh();
+try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+const dayStr = (d = new Date()) => d.toISOString().slice(0, 10);
+function touchDay() {
+  const t = dayStr();
+  if (S.today.d !== t) S.today = {d:t, n:0};
+  if (S.lastDay !== t) {
+    const y = dayStr(new Date(Date.now() - 864e5));
+    S.streak = S.lastDay === y ? S.streak + 1 : 1;
+    S.lastDay = t;
+  }
+}
+
+// ---------- Válaszellenőrzés ----------
+function variants(s) {
+  s = s.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
+  s = s.replace(/\bwon'?t\b/g, "will not").replace(/\b(can'?t|cannot)\b/g, "can not").replace(/\bshan't\b/g, "shall not")
+       .replace(/\b(do|does|did|is|are|was|were|have|has|had|should|would|could|must|need)nt\b/g, "$1 not")
+       .replace(/n't\b/g, " not").replace(/\bim\b/g, "i am").replace(/'m\b/g, " am").replace(/'re\b/g, " are")
+       .replace(/'ve\b/g, " have").replace(/'ll\b/g, " will")
+       .replace(/\b(that|what|there|who|where|how)'s\b/g, "$1 is");
+  let out = [s];
+  if (/\b(he|she|it)'s\b/.test(s)) out = out.flatMap(v => [v.replace(/\b(he|she|it)'s\b/g, "$1 is"), v.replace(/\b(he|she|it)'s\b/g, "$1 has")]);
+  if (/'d\b/.test(s)) out = out.flatMap(v => [v.replace(/'d\b/g, " would"), v.replace(/'d\b/g, " had")]);
+  return out;
+}
+function lev(a, b) {
+  const m = a.length, n = b.length, d = Array.from({length: m + 1}, (_, i) => [i]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+  {
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    if (i > 1 && j > 1 && a[i-1] === b[j-2] && a[i-2] === b[j-1]) d[i][j] = Math.min(d[i][j], d[i-2][j-2] + 1); // betűcsere
+  }
+  return d[m][n];
+}
+// Visszatér: "ok" | "typo" | "no"
+function checkText(input, answers, fuzzy) {
+  const ins = variants(input);
+  const ans = answers.flatMap(variants);
+  if (ins.some(v => ans.includes(v))) return "ok";
+  if (fuzzy) {
+    for (const v of ins) for (const a of ans) {
+      const tol = a.length >= 30 ? 2 : a.length >= 10 ? 1 : 0;
+      if (tol && lev(v, a) <= tol) return "typo";
+    }
+  }
+  return "no";
+}
+
+// ---------- Feladatválasztás ----------
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function pick(level, used) {
+  for (const dist of [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5]) {
+    const l = level + dist;
+    if (l < 0 || l > 5) continue;
+    const pool = BANK.filter(q => q.l === l && !used.has(q.id));
+    if (pool.length) {
+      // a legrégebben (vagy még soha) látott feladatok előnyben
+      pool.sort((a, b) => ((S.seen[a.id] || 0) - (S.seen[b.id] || 0)) || (Math.random() - .5));
+      return pool[Math.floor(Math.random() * Math.min(3, pool.length))];
+    }
+  }
+  return null;
+}
+
+// ---------- Munkamenet ----------
+let R = null; // aktuális kör
+
+function startPlacement() {
+  R = {mode:"placement", used:new Set(), i:0, total:PLACEMENT_LEN, theta:2, thetas:[], results:[]};
+  nextQuestion();
+}
+function startPractice() {
+  R = {mode:"practice", used:new Set(), i:0, total:SESSION_LEN, results:[], run:0, xp:0, startLevel:S.level, startMeter:S.meter};
+  nextQuestion();
+}
+function startReview() {
+  const ids = shuffle(Object.keys(S.mistakes).map(Number)).slice(0, SESSION_LEN);
+  if (!ids.length) return;
+  R = {mode:"review", queue:ids, used:new Set(), i:0, total:ids.length, results:[], xp:0, cleared:0};
+  nextQuestion();
+}
+
+function nextQuestion() {
+  if (R.i >= R.total) return finish();
+  let q;
+  if (R.mode === "placement") {
+    q = pick(clamp(Math.round(R.theta), 0, 5), R.used);
+  } else if (R.mode === "review") {
+    q = BANK[R.queue[R.i]];
+  } else {
+    const mistakeIds = Object.keys(S.mistakes).map(Number).filter(id => !R.used.has(id));
+    if (mistakeIds.length && Math.random() < 0.25) {
+      q = BANK[mistakeIds[Math.floor(Math.random() * mistakeIds.length)]];
+      q._review = true;
+    } else {
+      let lvl = S.level;
+      if (R.run >= 3) lvl += 1;            // jól megy: nehezebb
+      else if (R.run <= -2) lvl -= 1;      // nehezen megy: könnyebb
+      else if (Math.random() < 0.2) lvl += 1;
+      q = pick(clamp(lvl, 0, 5), R.used);
+    }
+  }
+  R.used.add(q.id);
+  R.q = q;
+  R.hint = false;
+  R.checked = false;
+  renderQuestion();
+}
+
+function record(correct, q) {
+  touchDay();
+  S.today.n++;
+  S.seen[q.id] = Date.now();
+  const sk = S.skills[q.s] || (S.skills[q.s] = {c:0, n:0});
+  sk.n++; if (correct) sk.c++;
+  R.results.push({q, correct});
+
+  if (R.mode === "placement") {
+    const step = R.i < 4 ? 1 : 0.5;
+    R.theta += correct ? step : -step;
+    R.thetas.push(R.theta);
+  } else {
+    let gain = 0;
+    if (correct) {
+      gain = 10 + Math.max(0, q.l - S.level) * 5;
+      if (R.hint) gain = Math.round(gain / 2);
+    }
+    S.xp += gain; R.xp += gain;
+
+    if (q._review || R.mode === "review") {
+      if (correct) {
+        const m = S.mistakes[q.id];
+        if (m) { m.box++; if (m.box >= 2) { delete S.mistakes[q.id]; R.cleared = (R.cleared || 0) + 1; } }
+      } else S.mistakes[q.id] = {box:0};
+    } else if (!correct) S.mistakes[q.id] = {box:0};
+
+    if (R.mode === "practice") {
+      R.run = correct ? Math.max(0, R.run) + 1 : Math.min(0, R.run) - 1;
+      const atLevel = q.l >= S.level;
+      let d = correct ? (atLevel ? 9 : 3) : (atLevel ? -6 : -9);
+      if (correct && R.hint) d = Math.round(d / 2);
+      S.meter += d;
+      if (S.meter >= 100 && S.level < 5) { S.level++; S.meter = 30; toast(`Szintlépés! Új szinted: ${LEVELS[S.level]}`); }
+      else if (S.meter >= 100) S.meter = 100;
+      else if (S.meter < 0 && S.level > 0) { S.level--; S.meter = 60; toast(`Visszaléptünk ide: ${LEVELS[S.level]}. Így jobban tudsz építkezni.`); }
+      else if (S.meter < 0) S.meter = 0;
+    }
+  }
+  delete q._review;
+  save();
+  renderStats();
+}
+
+function finish() {
+  if (R.mode === "placement") {
+    const last = R.thetas.slice(-5);
+    const est = clamp(Math.floor(last.reduce((a, b) => a + b, 0) / last.length), 0, 5);
+    S.level = est; S.meter = 30; save();
+  }
+  renderFinish();
+}
+
+// ---------- Megjelenítés ----------
+const app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function ladderHTML(level) {
+  return `<div class="ladder" aria-label="CEFR szintek">${LEVELS.map((L, i) =>
+    `<div class="rung ${level === i ? "now" : level != null && i < level ? "done" : ""}">${L}</div>`).join("")}</div>`;
+}
+function renderStats() {
+  const n = S.today.d === dayStr() ? S.today.n : 0;
+  document.getElementById("stats").innerHTML =
+    `<span>Szint <b>${S.level == null ? "–" : LEVELS[S.level]}</b></span>
+     <span><b>${S.streak}</b> napos sorozat</span>
+     <span><b>${S.xp}</b> XP</span>
+     <span>Ma <b>${n}/${DAILY_GOAL}</b></span>`;
+}
+
+function renderHome() {
+  R = null;
+  renderStats();
+  if (S.level == null) {
+    app.innerHTML = `
+      <section class="panel">
+        <div class="hero">
+          <span class="label">Írásos angolgyakorló · A1–C2</span>
+          <h2>Először nézzük meg, hol tartasz.</h2>
+          <p>A szintfelmérő ${PLACEMENT_LEN} kérdésből áll, és menet közben alkalmazkodik hozzád: ha jól válaszolsz, nehezebb kérdést kapsz, ha hibázol, könnyebbet. Körülbelül 5 perc.</p>
+        </div>
+        ${ladderHTML(null)}
+        <div class="row"><button class="btn primary" id="go-place" type="button">Szintfelmérő indítása</button>
+        <button class="btn" id="go-skip" type="button">Inkább kezdőként indulok</button></div>
+      </section>
+      <section class="panel howto">
+        <h3>Így működik</h3>
+        <ol>
+          <li>A felmérés besorol egy szintre (A1–C2).</li>
+          <li>Gyakorláskor a feladatok ehhez a szinthez igazodnak. Ha sorozatban jól válaszolsz, nehezebbet kapsz.</li>
+          <li>A szintmérő megtelik, ha a saját szinteden jól teljesítesz. Ha tele van, szintet lépsz.</li>
+          <li>A rontott feladatok a Hibafüzetbe kerülnek. Ha kétszer egymás után eltalálod, kikerülnek onnan.</li>
+        </ol>
+        <p class="muted">Feladattípusok: feleletválasztós, kiegészítés, fordítás magyarról angolra, mondatépítés és szövegértés. Minden feladat írásos, mikrofon nem kell.</p>
+      </section>`;
+    document.getElementById("go-place").onclick = startPlacement;
+    document.getElementById("go-skip").onclick = () => { S.level = 0; S.meter = 30; save(); renderHome(); };
+    return;
+  }
+  const mcount = Object.keys(S.mistakes).length;
+  const n = S.today.d === dayStr() ? S.today.n : 0;
+  const skillRows = Object.entries(SKILL).map(([k, name]) => {
+    const s = S.skills[k];
+    const pct = s && s.n ? Math.round(100 * s.c / s.n) : null;
+    return `<div class="skill"><span>${name}</span><div class="meter"><i style="width:${pct ?? 0}%"></i></div><span class="pct">${pct == null ? "–" : pct + "%"}</span></div>`;
+  }).join("");
+  app.innerHTML = `
+    <section class="panel">
+      <div class="levelbig">
+        <div class="code">${LEVELS[S.level]}</div>
+        <div class="txt"><span class="label">A jelenlegi szinted</span><h3>${LNAME[S.level]}</h3><p class="muted">${LDESC[S.level]}</p></div>
+      </div>
+      ${ladderHTML(S.level)}
+      <div style="display:grid;gap:6px">
+        <div class="row" style="justify-content:space-between"><span class="label">${S.level < 5 ? "Szintlépésig: " + LEVELS[S.level + 1] : "Legfelső szint"}</span><span class="label">${Math.round(clamp(S.meter,0,100))}%</span></div>
+        <div class="meter"><i style="width:${clamp(S.meter, 0, 100)}%"></i></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="go-prac" type="button">Gyakorlás (${SESSION_LEN} feladat)</button>
+        <button class="btn" id="go-rev" type="button" ${mcount ? "" : "disabled"}>Hibafüzet (${mcount})</button>
+      </div>
+    </section>
+    <div class="grid2">
+      <section class="panel">
+        <span class="label">Mai cél</span>
+        <h3>${n >= DAILY_GOAL ? "Teljesítve, szép munka!" : `Még ${DAILY_GOAL - n} feladat`}</h3>
+        <div class="meter goal"><i style="width:${Math.min(100, 100 * n / DAILY_GOAL)}%"></i></div>
+        <p class="muted">${S.streak > 1 ? `${S.streak} napja gyakorolsz egyfolytában.` : "Gyakorolj minden nap, és nő a sorozatod."}</p>
+      </section>
+      <section class="panel">
+        <span class="label">Készségek (helyes arány)</span>
+        <div class="skills">${skillRows}</div>
+      </section>
+    </div>
+    <div class="row">
+      <button class="btn small" id="go-replace" type="button">Új szintfelmérés</button>
+      <button class="btn small" id="go-reset" type="button">Előzmények törlése</button>
+    </div>`;
+  document.getElementById("go-prac").onclick = startPractice;
+  document.getElementById("go-rev").onclick = startReview;
+  document.getElementById("go-replace").onclick = startPlacement;
+  const reset = document.getElementById("go-reset");
+  reset.onclick = () => {
+    if (reset.dataset.armed) { S = fresh(); save(); renderHome(); toast("Előzmények törölve"); return; }
+    reset.dataset.armed = "1"; reset.textContent = "Biztosan? Kattints újra";
+    setTimeout(() => { if (reset.isConnected) { delete reset.dataset.armed; reset.textContent = "Előzmények törlése"; } }, 4000);
+  };
+}
+
+function promptHTML(q) {
+  if (q.t === "order") return "Építsd fel a mondatot:";
+  return esc(q.q).replace("___", '<span class="blank">&nbsp;</span>');
+}
+
+function renderQuestion() {
+  const q = R.q;
+  const modeName = {placement:"Szintfelmérő", practice:"Gyakorlás", review:"Hibafüzet"}[R.mode];
+  const pct = 100 * R.i / R.total;
+  let body = "";
+  if (q.t === "mc") {
+    R.order = shuffle(q.o.map((_, i) => i));
+    body = `<div class="opts" role="group" aria-label="Válaszlehetőségek">${R.order.map((oi, k) =>
+      `<button class="opt" type="button" data-oi="${oi}"><span class="k">${k + 1}</span><span>${esc(q.o[oi])}</span></button>`).join("")}</div>`;
+  } else if (q.t === "gap") {
+    body = `<input type="text" id="ans" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Hiányzó rész…" aria-label="Válasz">`;
+  } else if (q.t === "tr") {
+    body = `<textarea id="ans" autocomplete="off" spellcheck="false" placeholder="Írd ide az angol mondatot…" aria-label="Fordítás"></textarea>`;
+  } else if (q.t === "order") {
+    const words = q.a.replace(/[.?!]$/, "").split(" ").map(w => w === "I" ? w : w.toLowerCase());
+    let sh = shuffle(words.map((w, i) => i));
+    if (sh.every((v, i) => v === i)) sh = sh.reverse();
+    R.words = words; R.built = [];
+    body = `<div class="built" id="built" aria-label="A felépített mondat"></div>
+            <div class="bank" id="bank">${sh.map(i => `<button class="chip" type="button" data-w="${i}">${esc(words[i])}</button>`).join("")}</div>`;
+  }
+  const canHint = R.mode !== "placement";
+  app.innerHTML = `
+    <section class="panel" id="qcard">
+      <div class="qhead">
+        <div class="row"><span class="tag lv">${LEVELS[q.l]}</span><span class="tag">${SKILL[q.s]}</span></div>
+        <span class="label">${modeName} · ${R.i + 1} / ${R.total}</span>
+      </div>
+      <div class="meter"><i style="width:${pct}%"></i></div>
+      ${q.p ? `<p class="passage" lang="en">${esc(q.p)}</p>` : ""}
+      <p class="instr">${TYPE_INSTR[q.t]}</p>
+      <h2 class="prompt" ${q.t === "tr" ? 'lang="hu"' : 'lang="en"'}>${promptHTML(q)}</h2>
+      ${body}
+      <div id="fb"></div>
+      <div class="row" id="actions">
+        ${q.t !== "mc" ? `<button class="btn primary" id="check" type="button">Ellenőrzés</button>` : ""}
+        ${canHint ? `<button class="btn" id="hint" type="button">Segítség (fél XP)</button>` : ""}
+        <button class="btn small" id="quit" type="button" style="margin-left:auto">Kilépés</button>
+      </div>
+    </section>`;
+
+  if (q.t === "mc") {
+    app.querySelectorAll(".opt").forEach(b => b.onclick = () => answerMC(+b.dataset.oi, b));
+  } else if (q.t === "order") {
+    app.querySelector("#bank").onclick = e => {
+      const b = e.target.closest(".chip"); if (!b || R.checked || b.classList.contains("used")) return;
+      b.classList.add("used"); R.built.push(+b.dataset.w); renderBuilt();
+    };
+    app.querySelector("#built").onclick = e => {
+      const b = e.target.closest(".chip"); if (!b || R.checked) return;
+      const pos = +b.dataset.pos; const wi = R.built[pos];
+      R.built.splice(pos, 1);
+      app.querySelector(`#bank .chip[data-w="${wi}"]`).classList.remove("used");
+      renderBuilt();
+    };
+  } else {
+    const inp = document.getElementById("ans");
+    inp.focus();
+    inp.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); if (!R.checked) answerText(); } });
+  }
+  const chk = document.getElementById("check"); if (chk) chk.onclick = () => q.t === "order" ? answerOrder() : answerText();
+  const h = document.getElementById("hint"); if (h) h.onclick = giveHint;
+  document.getElementById("quit").onclick = renderHome;
+}
+
+function renderBuilt() {
+  document.getElementById("built").innerHTML = R.built.map((wi, pos) =>
+    `<button class="chip" type="button" data-pos="${pos}">${esc(R.words[wi])}</button>`).join("");
+}
+
+function giveHint() {
+  if (R.hint || R.checked) return;
+  R.hint = true;
+  const q = R.q;
+  document.getElementById("hint").disabled = true;
+  if (q.t === "mc") {
+    const wrong = shuffle(q.o.map((_, i) => i).filter(i => i !== q.a)).slice(0, 2);
+    wrong.forEach(i => { const b = app.querySelector(`.opt[data-oi="${i}"]`); b.disabled = true; b.classList.add("gone"); });
+  } else if (q.t === "order") {
+    const first = q.a.split(" ")[0];
+    showHintText(`Az első szó: „${first.toLowerCase() === "i" ? "I" : first.toLowerCase()}”`);
+  } else {
+    const a = q.a[0];
+    const pat = a.split(" ").map(w => w[0] + "·".repeat(Math.max(0, w.replace(/[^a-zA-Z']/g, "").length - 1))).join(" ");
+    showHintText(`Minta: ${pat}`);
+  }
+}
+function showHintText(t) {
+  document.getElementById("fb").innerHTML = `<p class="instr">${esc(t)}</p>`;
+}
+
+function answerMC(oi, btn) {
+  if (R.checked) return;
+  const q = R.q, ok = oi === q.a;
+  app.querySelectorAll(".opt").forEach(b => {
+    b.disabled = true;
+    if (+b.dataset.oi === q.a) b.classList.add("right");
+  });
+  if (!ok) btn.classList.add("wrong");
+  done(ok ? "ok" : "no", q.o[q.a]);
+}
+function answerText() {
+  const inp = document.getElementById("ans");
+  const v = inp.value.trim();
+  if (!v) { inp.focus(); return; }
+  const q = R.q;
+  const res = checkText(v, q.a, q.t === "tr");
+  inp.readOnly = true;
+  done(res, q.a[0], v);
+}
+function answerOrder() {
+  if (!R.built.length) return;
+  const sentence = R.built.map(i => R.words[i]).join(" ");
+  const res = checkText(sentence, [R.q.a], false);
+  done(res, R.q.a);
+}
+
+function done(res, correctText, given) {
+  R.checked = true;
+  const ok = res !== "no";
+  record(ok, R.q);
+  const q = R.q;
+  const head = res === "ok" ? "Helyes!" : res === "typo" ? "Majdnem tökéletes. Figyelj a helyesírásra!" : "Nem egészen.";
+  const showAns = res !== "ok" || (q.t === "tr" && q.a.length > 1);
+  const ansLabel = res === "ok" ? "Így is jó:" : "Helyes válasz:";
+  const altText = q.t === "tr" && res === "ok" ? q.a.find(a => !variants(a).some(v => variants(given || "").includes(v))) : correctText;
+  document.getElementById("fb").innerHTML = `
+    <div class="fb ${ok ? "ok" : "no"}" role="status">
+      <strong>${head}</strong>
+      ${showAns && altText ? `<p class="ans">${ansLabel} <mark lang="en">${esc(altText)}</mark></p>` : ""}
+      <p>${esc(q.x)}</p>
+    </div>`;
+  const last = R.i + 1 >= R.total;
+  document.getElementById("actions").innerHTML =
+    `<button class="btn primary" id="next" type="button">${last ? "Eredmény" : "Tovább"}</button>
+     <span class="instr">vagy nyomj Entert</span>`;
+  const nx = document.getElementById("next");
+  nx.onclick = () => { R.i++; nextQuestion(); };
+  nx.focus();
+}
+
+function renderFinish() {
+  renderStats();
+  const right = R.results.filter(r => r.correct).length;
+  if (R.mode === "placement") {
+    app.innerHTML = `
+      <section class="panel">
+        <span class="label">A szintfelmérés eredménye</span>
+        <div class="levelbig">
+          <div class="code">${LEVELS[S.level]}</div>
+          <div class="txt"><h3>${LNAME[S.level]}</h3><p class="muted">${LDESC[S.level]}</p></div>
+        </div>
+        ${ladderHTML(S.level)}
+        <p class="muted">${right} / ${R.total} helyes válasz. A gyakorló feladatok mostantól ehhez a szinthez igazodnak, és a szinted a teljesítményeddel együtt változik.</p>
+        <div class="row"><button class="btn primary" id="go-prac" type="button">Gyakorlás indítása</button><button class="btn" id="go-home" type="button">Kezdőlap</button></div>
+      </section>
+      ${breakdown()}`;
+  } else {
+    const lvlMsg = R.mode === "practice" && S.level !== R.startLevel
+      ? (S.level > R.startLevel ? `Szintet léptél: ${LEVELS[R.startLevel]} → ${LEVELS[S.level]}` : `A szinted most ${LEVELS[S.level]}. Itt erősítünk, aztán megyünk tovább.`)
+      : "";
+    app.innerHTML = `
+      <section class="panel">
+        <span class="label">${R.mode === "review" ? "Hibafüzet" : "Gyakorlás"} · kész</span>
+        <h2 style="font-size:30px">${right} / ${R.total} helyes</h2>
+        ${lvlMsg ? `<p class="fb ok"><strong>${lvlMsg}</strong></p>` : ""}
+        <div class="result-list">
+          <div><span>Szerzett XP</span><span>+${R.xp}</span></div>
+          ${R.mode === "review" ? `<div><span>Kijavított hibák</span><span>${R.cleared || 0}</span></div>` : `<div><span>Szintmérő</span><span>${Math.round(clamp(S.meter,0,100))}%</span></div>`}
+          <div><span>Hibafüzetben</span><span>${Object.keys(S.mistakes).length}</span></div>
+        </div>
+        <div class="row"><button class="btn primary" id="go-prac" type="button">Újabb kör</button><button class="btn" id="go-home" type="button">Kezdőlap</button></div>
+      </section>
+      ${breakdown()}`;
+  }
+  document.getElementById("go-prac").onclick = startPractice;
+  document.getElementById("go-home").onclick = renderHome;
+}
+function breakdown() {
+  const wrong = R.results.filter(r => !r.correct);
+  if (!wrong.length) return "";
+  return `<section class="panel"><span class="label">Ezeket érdemes átnézni</span>
+    <div class="result-list">${wrong.map(r => `<div><span lang="en">${esc(r.q.t === "order" ? r.q.a : r.q.q)}</span><span>${LEVELS[r.q.l]}</span></div>`).join("")}</div></section>`;
+}
+
+let toastT;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200);
+}
+
+document.addEventListener("keydown", e => {
+  if (!R) return;
+  if (R.checked && e.key === "Enter") { e.preventDefault(); document.getElementById("next")?.click(); return; }
+  if (!R.checked && R.q && R.q.t === "mc" && /^[1-4]$/.test(e.key)) {
+    const b = app.querySelectorAll(".opt")[+e.key - 1]; if (b && !b.disabled) b.click();
+  }
+});
+document.getElementById("home-btn").onclick = renderHome;
+
+renderHome();
+</script>
+</body>
+</html>
