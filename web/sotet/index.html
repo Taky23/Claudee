@@ -193,14 +193,14 @@ function perform(key) {
   r.energy = clamp(r.energy - a.energy);
   let msg = '';
   switch (key) {
-    case 'work': d(r, { sus: -6 }); r.worked = true; msg = R(['Precíz elemzés. A főnök elégedett.', 'Egész nap vérfoltokat elemeztél. A szakmád.', 'Megoldottál egy ügyet a kollégáknak. Hős vagy.']); break;
+    case 'work': d(r, { sus: -5 }); r.worked = true; msg = R(['Precíz elemzés. A főnök elégedett.', 'Egész nap vérfoltokat elemeztél. A szakmád.', 'Megoldottál egy ügyet a kollégáknak. Hős vagy.']); break;
     case 'run': d(r, { urge: -8 }); msg = 'Futás a parton. A Sötét Utas egy kicsit elcsendesedett.'; break;
     case 'lili': d(r, { love: 15, sus: -2 }); msg = R(['Moziztatok. Lili a válladra hajtotta a fejét.', 'Főztetek együtt. Majdnem normális voltál.', 'Sétáltatok a parton. Lili sokat nevetett.']); break;
     case 'rest': d(r, { energy: r.slot === 3 ? 50 : 30 }); msg = r.slot === 3 ? 'Végigaludtad az éjszakát.' : 'Lepihentél egy kicsit.'; break;
-    case 'clean': d(r, { sus: -10 }); r.cleanedToday = true; msg = 'Kitakarítottad a csomagtartót, eltüntettél minden apró nyomot.'; break;
+    case 'clean': d(r, { sus: -8 }); r.cleanedToday = true; msg = 'Kitakarítottad a csomagtartót, eltüntettél minden apró nyomot.'; break;
     case 'watch': {
       const t = r.target;
-      d(r, { sus: 3 });
+      d(r, { sus: 4 });
       // A Kód: néha kiderül, hogy a célpont mégsem bűnös.
       if (!t.innocentChecked && t.obs === 1 && chance(.15)) {
         r.target = newTarget(r.day);
@@ -244,7 +244,8 @@ function newDay() {
   const r = S.run;
   r.day++; r.slot = 0; r.worked = false; r.cleanedToday = false;
   r.log = [];
-  d(r, { urge: 8 + Math.floor(r.day / 3), love: -5, sus: -2 });
+  // Bakó egyre jobban szaglászik, a Sötét Utas egyre éhesebb – idővel minden nehezebb.
+  d(r, { urge: 10 + Math.floor(r.day / 3), love: -6, sus: 1 + Math.floor(r.day / 4) });
   r.story.unshift(`📅 ${r.day}. nap. ${R(MIAMI)}`);
   // Ha a Sötét Utas átveszi az irányítást: meggondolatlan éjszaka.
   if (r.urge >= 100) {
@@ -331,7 +332,7 @@ function cleanGame(total, seconds) {
     const r = S.run;
     r.log = [];
     r.kills++;
-    d(r, { urge: -60, sus: (r.worked ? 0 : 8) + left * 5, energy: -5 });
+    d(r, { urge: -60, sus: (r.worked ? 3 : 10) + left * 5 });
     const msg = left ? `${left} nyom maradt a helyszínen. ${r.worked ? '' : 'És ma nem is dolgoztál – nincs alibid.'}` : `Tökéletes munka. Egy újabb tárgylemez a gyűjteményben.${r.worked ? '' : ' (De ma nem dolgoztál – gyenge az alibid.)'}`;
     r.story.unshift(`🔪 ${r.target.name} ügye lezárva. ${msg}`);
     r.target = newTarget(r.day);
@@ -356,6 +357,8 @@ function why(key) {
   if (key === 'strike' && t.obs < t.need) return 'A Kód: előbb bizonyosodj meg!';
   if (key === 'strike' && !t.prep) return 'Előbb készülj elő';
   if (key === 'clean' && r.sus === 0) return 'Nincs mit eltüntetni';
+  if (key === 'clean' && r.cleanedToday) return 'Ma már takarítottál';
+  if (key === 'work' && r.worked) return 'Ma már dolgoztál';
   return '';
 }
 
