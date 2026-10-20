@@ -1,5 +1,5 @@
 // Offline gyorsítótár: az app hálózat nélkül is elindul.
-const CACHE = 'tarkov-v1';
+const CACHE = 'tarkov-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -12,9 +12,9 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 
-// Hálózat először (hogy a frissítések megérkezzenek), ha nincs net, a gyorsítótárból.
+// Csak a saját fájljainkat kezeljük; a tarkov.dev kérései közvetlenül mennek a hálózatra.
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
