@@ -52,7 +52,7 @@ button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 #act:active, #act.dn { transform: scale(.94); background: radial-gradient(circle at 40% 35%, #8a5ae6, #3a2270); }
 .screen { position: absolute; inset: 0; z-index: 5; background: rgba(9,5,18,.94); display: flex; flex-direction: column; align-items: center;
   overflow-y: auto; touch-action: pan-y; padding: calc(18px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-.screen[hidden] { display: none; }
+[hidden] { display: none !important; }
 .screen .in { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 12px; align-items: stretch; margin: auto 0; }
 .screen h1 { font-family: var(--display); font-size: 44px; line-height: 1; margin: 0; text-align: center; color: var(--glow); letter-spacing: .03em; text-shadow: 0 0 22px rgba(164,107,255,.6); text-wrap: balance; }
 .screen h2 { font-family: var(--display); font-size: 28px; margin: 0; text-align: center; color: var(--glow); text-wrap: balance; }
@@ -76,6 +76,22 @@ button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .how { background: var(--stone); border: 1px solid var(--stone-hi); border-radius: 12px; padding: 10px 14px; font-size: 14px; color: var(--ink); }
 .how b { font-family: var(--display); color: var(--glow); }
 .how ul { margin: 6px 0 0; padding-left: 18px; }
+#dlg { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; justify-content: flex-end; background: linear-gradient(rgba(9,5,18,0) 35%, rgba(9,5,18,.9));
+  padding: 0 max(12px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); cursor: pointer; }
+#dlg.tcard { background: rgba(9,5,18,.82); }
+#dlg .box { position: relative; display: flex; gap: 12px; background: var(--stone); border: 2px solid var(--violet); border-radius: 14px; padding: 12px; min-height: 140px; }
+#face { width: 68px; height: 68px; flex: none; border-radius: 12px; border: 1px solid var(--stone-hi); }
+#dlg .tx { flex: 1; min-width: 0; }
+#dName { font-family: var(--display); font-weight: 700; font-size: 18px; }
+#dText { font-size: 16px; line-height: 1.5; margin-top: 2px; }
+#dlg .more { font-size: 12px; color: var(--muted); margin-top: 6px; }
+#dSkip { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); background: var(--stone); border: 1px solid var(--stone-hi); border-radius: 10px; padding: 7px 12px; font-size: 14px; }
+#dTitle { position: absolute; left: 0; right: 0; top: 38%; text-align: center; font-family: var(--display); font-size: 30px; line-height: 1.2; color: var(--glow);
+  text-shadow: 0 0 22px rgba(164,107,255,.7); padding: 0 24px; text-wrap: balance; }
+#logBody { display: flex; flex-direction: column; gap: 6px; }
+#logBody h3 { font-family: var(--display); color: var(--glow); font-size: 19px; margin: 12px 0 2px; }
+#logBody p { text-align: left; color: var(--ink); }
+#logBody p i { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
 </style>
 </head>
@@ -98,10 +114,11 @@ button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
     <div class="in">
       <canvas id="portrait" width="420" height="520"></canvas>
       <h1>Árnytorony</h1>
-      <p>100 emelet, mindegyik tetején egy rejtvény és egy főellenség. Ha minden csillagszilánkot megtalálsz, a torony alatt még 50 szint nyílik meg.</p>
+      <p>Vira emlékei napról napra fogynak. Egy beszélő csillagszilánkkal, Szikrával indul fel a 100 emeletes Toronyba, hogy visszaszerezze őket. Minden emeleten rejtvény és főellenség vár, és ha minden szilánkot megtalál, a Torony alatt még 50 szint nyílik meg.</p>
       <div class="stats" id="titleStats"></div>
       <button class="btn" id="bContinue">Folytatás</button>
       <button class="btn sec" id="bMap">Térkép</button>
+      <button class="btn sec" id="bLog">Napló</button>
       <button class="btn sec" id="bHow">Hogyan kell játszani?</button>
     </div>
   </div>
@@ -133,6 +150,13 @@ button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
           <li>Minden 10. emeleten egy erősebb őr vár.</li>
         </ul>
       </div>
+      <div class="how">
+        <b>Történet</b>
+        <ul>
+          <li>Minden tíz emelet egy fejezet. A párbeszédeket koppintással lapozod, a Kihagyás gombbal átugorhatod őket.</li>
+          <li>A már látott jeleneteket a főmenü Napló pontjában újraolvashatod.</li>
+        </ul>
+      </div>
       <p>Billentyűzeten: nyilak vagy WASD, szóköz az ütés.</p>
       <button class="btn" data-back>Vissza</button>
     </div>
@@ -149,6 +173,23 @@ button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
       <p class="legend">Lila: teljesítve · arany keret: következő · piros szám: őr-emelet</p>
       <button class="btn" data-back>Vissza</button>
     </div>
+  </div>
+
+  <div class="screen" id="scLog" hidden>
+    <div class="in">
+      <h2>Napló</h2>
+      <div id="logBody"></div>
+      <button class="btn" data-back>Vissza</button>
+    </div>
+  </div>
+
+  <div id="dlg" hidden>
+    <div id="dTitle" hidden></div>
+    <div class="box">
+      <canvas id="face" width="136" height="136"></canvas>
+      <div class="tx"><div id="dName"></div><div id="dText"></div><div class="more">Koppints a folytatáshoz ▸</div></div>
+    </div>
+    <button id="dSkip">Kihagyás »</button>
   </div>
 
   <div class="screen" id="scInfo" hidden>
@@ -170,7 +211,7 @@ const pick = (r, a) => a[Math.floor(r() * a.length)];
 function shuffle(r, a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 const SAVE_KEY = 'arnytorony-v1';
-let save = { cleared: {}, shards: {}, sound: true };
+let save = { cleared: {}, shards: {}, sound: true, seen: {} };
 try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.cleared) save = Object.assign(save, s); } catch (e) {}
 function store() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 const shardCount = () => Object.keys(save.shards).filter(k => +k <= 100).length;
@@ -237,23 +278,129 @@ const RIDDLES = [
   ['Nálad van, ha nem tudod. Elveszíted, ha elmondod.', 'a rejtély', 'a kulcs', 'a pénz', 'a hang'],
   ['Egyszer egy percben, kétszer egy pillanatban, de egyszer sem száz év alatt.', 'a „p” betű', 'a szívverés', 'a villám', 'a pislogás'],
 ];
-const LORE = {
-  10: 'A torony aljánál azt mondták: aki felér, visszakapja, amit az árnyék elvett tőle.',
-  20: 'A falakba vésett nevek mind olyanoké, akik nem jutottak tovább. A tiédet még nem vésték be.',
-  30: 'Minden szilánk egy lehullott csillag darabja. Összerakva valami más lesz belőle.',
-  40: 'Az őrök nem gonoszak. Csak elfelejtették, mit őriznek.',
-  50: 'Félúton jársz. A torony most először néz vissza rád.',
-  60: 'A lépcsők itt már maguktól fordulnak. Csak a rejtvények mondanak igazat.',
-  70: 'Valaki lent a mélyben a nevedet suttogja.',
-  80: 'A szilánkok melegek, mintha szív dobogna bennük.',
-  90: 'A csúcs közel. A Torony Ura már tudja, hogy jössz.',
-  100: 'A Torony Ura: „Száz emelet. És mit hoztál magaddal?”',
-  110: 'A torony alatt nincs ég. Csak a szilánkok fénye vezet.',
-  120: 'Ez a mélység volt az első. A torony csak a fedele.',
-  130: 'A falak itt lélegeznek.',
-  140: 'Közel vagy a Szívhez. Hallod a dobbanást?',
-  150: 'A Mélység Szíve: „Te raktad össze a csillagot. Most mit kezdesz vele?”',
+// ---------- történet ----------
+// Szereplők: N = narrátor, V = Vira, S = Szikra (beszélő csillagszilánk), L = Lilla, M = Morvan, H = a Mélység Szíve, B = az aktuális főellenség, T = fejezetcím
+const WHO = {
+  N: { name: '', color: '#9a8bb8' }, V: { name: 'Vira', color: '#c9a8ff' }, S: { name: 'Szikra', color: '#ffd36b' },
+  L: { name: 'Lilla', color: '#ff9ad5' }, M: { name: 'Morvan', color: '#ff5c7a' }, H: { name: 'A Mélység Szíve', color: '#ff7a45' },
 };
+const PROLOGUE = [
+  ['T', 'Előhang'],
+  ['N', 'Egy éjjel lehullott egy csillag, és a helyén kinőtt a Torony.'],
+  ['N', 'Akik elindultak felfelé, nem jöttek vissza. Akik lent maradtak, lassan elfelejtették a saját nevüket.'],
+  ['V', 'Én is felejtek. Minden reggel egy kicsit kevesebb marad belőlem.'],
+  ['V', 'De a nevemre még emlékszem. Vira vagyok. És arra is, hogy fel kell mennem.'],
+  ['S', 'Hé! Itt lent! Igen, a fénylő kis kődarab. Én vagyok az.'],
+  ['V', '…Egy beszélő kavics. Remek. Már csak ez hiányzott.'],
+  ['S', 'Szikra vagyok, a lehullott csillag egyik szilánkja. A testvéreim szét vannak szórva a Toronyban, minden emeleten egy.'],
+  ['S', 'Ha összegyűjtöd mindet, talán együtt visszaszerezzük, amit a Torony elvett tőled.'],
+  ['V', 'És ha nem sikerül?'],
+  ['S', 'Akkor legalább lesz kivel beszélgetned útközben.'],
+];
+const CHAPTERS = [
+  { title: 'Az alsó csarnokok',
+    open: [['S', 'Minden emeleten van egy pecsét. Oldd meg a rejtvényt, és kinyílik az ajtó.'], ['V', 'És mi van az ajtó mögött?'], ['S', 'Valaki, aki nem akarja, hogy továbbmenj.']],
+    amb: [[['S', 'Érzem a testvérem közelségét. Nézz körül alaposan.']], [['V', 'Ki építette ezt a helyet?'], ['S', 'Senki. Magától nőtt, mint a gomba eső után.']], [['S', 'A falak néha hazudnak. Ha valamelyik repedt, üsd meg bátran.']], [['V', 'Hideg van itt.'], ['S', 'Feljebb még hidegebb lesz. Bocs.']]],
+    pre: [['B', 'Kilenc emelet. Eddig szoktak eljutni.'], ['V', 'Akkor ma szokatlan napod lesz.']],
+    post: [['B', 'A nevem… Ádám volt. Igen, Ádám. Évek óta nem jutott eszembe.'], ['S', 'Az őrök is egykori mászók, Vira. A Torony elvette tőlük a nevüket.'], ['V', 'Akkor visszaadjuk nekik. Egyenként, ha kell.']] },
+  { title: 'A suttogó lépcsők',
+    open: [['N', 'A lépcsők itt suttognak. Neveket mondanak, amelyeket már senki sem visel.'], ['V', 'Szikra, ezek mind olyanok voltak, mint én?'], ['S', 'Igen. És mind feljebb jutottak, mint gondolnád.']],
+    amb: [[['V', 'Az egyik név a falon… ismerős.']], [['S', 'Ne hallgass túl sokáig a lépcsőkre. Ragadós a hangjuk.']], [['V', 'Emlékszem egy kertre. Vagy csak kitaláltam?']], [['S', 'A rejtvények a Torony nyelve. Ha érted őket, a Tornyot is érted.']]],
+    pre: [['B', 'Ne menj tovább. Fent nincs semmi, amit vissza akarnál kapni.'], ['V', 'Ezt majd én eldöntöm.']],
+    post: [['B', 'Volt egy húgom… Köszönöm, hogy eszembe juttattad.'], ['V', 'Szikra, amikor legyőzzük őket, valami visszajön nekik.'], ['S', 'Neked is. Figyeld csak.'], ['V', '…Egy dallam. Anyám dúdolta esténként.']] },
+  { title: 'Csillagpor-termek',
+    open: [['N', 'A falakon csillagpor csillog, mintha valaki szétszórta volna az eget.'], ['S', 'Itt hullottunk le a legtöbben. Mindenfelé érzem a testvéreimet.']],
+    amb: [[['S', 'Egy szilánk egyedül csak kavics. Száz együtt már csillag.']], [['V', 'Miért pont én hallak téged?'], ['S', 'Mert te nem félsz a sötétben. A legtöbben igen.']], [['V', 'Már nem remeg a kezem, amikor ajtót nyitok.']], [['S', 'Ha egy emeleten nem találod a testvéremet, később visszajöhetsz érte. Ő megvár.']]],
+    pre: [['B', 'Csillagport gyűjtesz? Én is gyűjtöttem. Nézd, mi lett belőlem.'], ['V', 'Egy figyelmeztetés. Köszönöm, de megyek tovább.']],
+    post: [['B', 'A csillag… nem magától hullott le. Lelökték.'], ['S', 'Ezt… ezt én is elfelejtettem.'], ['V', 'Ki lökte le?'], ['S', 'Nem tudom. De fent valaki tudja.']] },
+  { title: 'Az elfeledett őrök',
+    open: [['N', 'A harmincadik emelet fölött az őrök már nem dühből harcolnak, inkább szomorúan.'], ['V', 'Mintha várnának valamire.'], ['S', 'Arra, hogy valaki végre legyőzze őket.']],
+    amb: [[['V', 'Ha egyszer én is őr leszek, ugye legyőzöl?'], ['S', 'Ne beszélj butaságot. …De igen.']], [['S', 'A csúcson a Torony Ura ül. Senki sem jött még le tőle.']], [['V', 'Egyre többre emlékszem. Egy házra, egy kék ajtóra.']], [['S', 'Ügyes vagy a rejtvényekben. Gyanúsan ügyes.']]],
+    pre: [['B', 'Őrzöm ezt az ajtót. Már nem tudom, miért.'], ['V', 'Akkor segítek elfelejteni az ajtót.']],
+    post: [['B', 'Szabad vagyok? …Szabad vagyok.'], ['S', 'Minden legyőzött őrrel gyengül a Torony szorítása.'], ['V', 'Akkor a Torony Ura is érzi, hogy jövünk.']] },
+  { title: 'Félúton',
+    open: [['N', 'A Torony közepén ablakok nyílnak. Kint nincs ég, csak lila köd.'], ['V', 'Szikra… hol van az ég?'], ['S', 'Mi voltunk az ég egy darabja. Amíg itt vagyunk, ott hiányzunk.']],
+    amb: [[['V', 'Félúton vagyunk. Mondhatnál valami biztatót.'], ['S', 'Negyven emelet már mögötted van. Ennyi elég biztatás?']], [['S', 'Valaki figyel minket a csúcsról. Érzem.']], [['V', 'A köd ugyanolyan színű, mint a szemem.']], [['S', 'Ne nézz ki túl sokáig az ablakon. A köd visszanéz.']]],
+    pre: [['B', 'Fél torony, fél emlék, fél ember. Ennyi maradt belőlem.'], ['V', 'A másik feledet majd együtt megkeressük.']],
+    post: [['B', 'A Torony Ura… ő is lentről jött. Mint te.'], ['V', 'Egy mászó? Aki felért?'], ['S', 'És aki fent maradt. Vajon miért?']] },
+  { title: 'A forduló lépcsők',
+    open: [['N', 'A lépcsők itt maguktól fordulnak. Ami fent volt, most lent van.'], ['S', 'Kapaszkodj. Csak a rejtvények maradnak a helyükön.']],
+    amb: [[['V', 'Szédülök.'], ['S', 'Én kő vagyok, én nem szédülök. De együttérzek.']], [['S', 'Emlékszel már a hangodra? Arra, ahogy régen nevettél?']], [['V', 'Álmodtam valakiről. Fekete kabátban volt, mint én.']], [['S', 'A Torony próbál összezavarni. Ez jó jel: fél tőled.']]],
+    pre: [['B', 'Fent is lent, lent is fent. Hová akarsz menni?'], ['V', 'Előre. Az nem fordul meg.']],
+    post: [['B', 'Morvan… így hívják a Torony Urát. Most már emlékszem.'], ['S', 'Morvan. Úgy hangzik, mint egy régi seb.'], ['V', 'Ismered?'], ['S', '…Talán.']] },
+  { title: 'Suttogás a mélyből',
+    open: [['N', 'A padló alól halk hang szól. Valaki a nevedet mondja.'], ['V', 'Szikra, hallod?'], ['S', 'Hallom. A Torony alatt is van valami. Mélyebben, mint ahonnan elindultunk.']],
+    amb: [[['V', 'Lent hív, fent vár. Mindenki akar tőlem valamit.']], [['S', 'Ha mind a száz testvérem meglesz, talán kinyílik az, ami lent van.']], [['V', 'Miért félsz a mélytől, Szikra?'], ['S', 'Mert onnan jöttem.']], [['S', 'Gyűjts össze mindenkit. Mindenkit, Vira. Ez fontos.']]],
+    pre: [['B', 'Ne figyelj a hangra. Aki lemegy, az nem jön fel.'], ['V', 'Aki fel sem megy, az le sem tud.']],
+    post: [['B', 'Lent van a csillag szíve. Morvan zárta oda.'], ['S', 'Akkor a csillagot… ő lökte le?'], ['V', 'Megkérdezzük tőle. Először udvariasan.']] },
+  { title: 'Meleg szilánkok',
+    open: [['N', 'A szilánkok itt melegek, mintha egy szív dobogna bennük.'], ['S', 'A testvéreim felébredtek. Érzik, hogy jössz.']],
+    amb: [[['V', 'Emlékszem a nővéremre. Lillának hívták. Ő is felment a Toronyba.']], [['S', 'Lilla… Ezt a nevet láttam a falakon.']], [['V', 'Ha Lilla itt van valahol, megtalálom.']], [['S', 'Már nem vagy az a lány, aki az első emeleten remegett.']]],
+    pre: [['B', 'Meleg a szíved, mászó. Idefent az ilyesmi gyorsan kihűl.'], ['V', 'Akkor sietek.']],
+    post: [['B', 'Járt itt régen egy lány. Lila szemű, mint te. Felért a csúcsra.'], ['V', 'Lilla.'], ['S', 'Vira… lehet, hogy nem fog tetszeni, amit fent találsz.']] },
+  { title: 'A csúcs árnyéka',
+    open: [['N', 'Már látszik a Torony csúcsa. Az árnyéka hosszabb, mint maga a Torony.'], ['S', 'Morvan tudja, hogy jössz. Minden ajtó nehezebb lesz.']],
+    amb: [[['V', 'Ha Lilla Morvan mellett van… vagy ha ő maga…'], ['S', 'Ne találgass. Mássz.']], [['S', 'Akármi lesz fent, én veled vagyok. Szó szerint, a zsebedben.']], [['V', 'Már szinte mindenre emlékszem. Csak a végére nem.']], [['S', 'A vége ott van fent. Gyere.']]],
+    pre: [['B', 'Az utolsó előtti ajtó. Morvan üzeni: fordulj vissza.'], ['V', 'Én meg azt üzenem neki: nem.']],
+    post: [['B', 'Nem gonosz. Csak fél egyedül maradni.'], ['V', 'Kicsoda?'], ['B', 'Morvan. És… Lilla is fent van.']] },
+  { title: 'A Torony Ura',
+    open: [['N', 'Az utolsó tíz emelet. A levegő úgy rezeg, mint egy megfeszített húr.'], ['S', 'Vira, ha a csúcson választanod kell… azt válaszd, amit az első emeleten választottál volna.']],
+    amb: [[['V', 'Az első emeleten csak haza akartam menni.'], ['S', 'Na ugye.']], [['S', 'Morvan hangja egyre hangosabb. Ne hallgass rá.']], [['V', 'Lilla, ha hallasz: jövök.']], [['S', 'Mindjárt a csúcs. Számold meg a testvéreimet, Vira.']]],
+    pre: [['M', 'Száz emelet. Lilla is ennyit mászott, mielőtt megállt mellettem.'], ['V', 'Hol van?'], ['M', 'Bennem. Mint mindenki, aki felért. Így nem vagyok egyedül.'], ['V', 'Akkor most elengeded őket.']],
+    post: [['M', 'Ennyi évig… csak társaságot akartam.'], ['L', 'Vira. Megnőttél.'], ['V', 'Lilla! Annyira…'], ['L', 'Tudom. Figyelj: a csillagot Morvan lökte le, hogy legyen fény idefent. De a szíve lent maradt, a mélyben, egyedül.']] },
+  { title: 'A Mélység kapuja',
+    open: [['N', 'A lépcső lefelé vezet, a Torony alá.'], ['S', 'Most már nem csak én beszélek. Hallod? Mind itt vagyunk.'], ['L', 'Menj, Vira. Én fent maradok, és vigyázok Morvanra. Valakinek kell.']],
+    amb: [[['S', 'Lent nincs ég, csak a mi fényünk. Szerencse, hogy most már sokan vagyunk.']], [['V', 'Mélységkövek… ezek mik?'], ['S', 'A csillag szívének darabjai. Ha mind megvan, a csillag hazamehet.']], [['V', 'Hiányzik Lilla.'], ['S', 'Fent van. Most már tudod, hol keresd.']], [['S', 'Óvatosan. Az itteni rejtvények még régebbiek.']]],
+    pre: [['B', 'Fentről jöttél? Onnan még senki sem jött le.'], ['V', 'Akkor én leszek az első.']],
+    post: [['B', 'A Szív ébred. Érzi a csillagot nálad.'], ['S', 'Ez a mi szívünk, Vira. Fél, egyedül van, és dühös.']] },
+  { title: 'Az első mélység',
+    open: [['N', 'Ez volt itt legelőször. A Torony csak később nőtt rá, mint egy fedő.'], ['V', 'Szóval a Torony csak egy kupak egy nagy, dühös csillagon.'], ['S', 'Ezt költőibben is mondhattad volna.']],
+    amb: [[['S', 'Érzem a szívverést. Lassú és fájdalmas.']], [['V', 'Ha a Szív megnyugszik, mi lesz a Toronnyal?'], ['S', 'Nem tudom. Talán végre elalszik.']], [['V', 'A kesztyűm már teljesen elkopott.'], ['S', 'Jól áll.']], [['S', 'Ne feledkezz meg a mélységkövekről. A Szívnek mind kell.']]],
+    pre: [['B', 'Itt minden régebbi nálad. Én is.'], ['V', 'Akkor tisztelettel győzlek le.']],
+    post: [['B', 'Régen fény volt itt. Emlékszem a fényre.'], ['V', 'Visszahozzuk.']] },
+  { title: 'Lélegző falak',
+    open: [['N', 'A falak itt lélegeznek. Ki, be. Ki, be.'], ['V', 'Ez undorító.'], ['S', 'Ez a csillag tüdeje. Egy kicsit több tiszteletet.']],
+    amb: [[['V', 'Mintha egy élőlény belsejében járnánk.'], ['S', 'Pontosan ez történik.']], [['S', 'Ha elfáradtál, pihenj. A Szív nem megy sehová.']], [['V', 'Mi lesz veled, ha a csillag hazamegy?'], ['S', 'Én is megyek. Ez az egész lényege.']], [['V', '…Hiányozni fogsz, te beszélő kavics.']]],
+    pre: [['B', 'A Szív nem akar hazamenni. Fél, hogy az ég már elfelejtette.'], ['V', 'Az ég nem felejt. Csak az emberek.']],
+    post: [['B', 'Lehet, hogy igazad van, mászó.'], ['S', 'Még húsz szint. Bírod?'], ['V', 'Bírom.']] },
+  { title: 'A dobbanás',
+    open: [['N', 'Minden lépésnél dobbanás. A Szív már egészen közel van.'], ['S', 'Vira, ha a Szívhez érsz, ne csak harcolj. Beszélj is hozzá.']],
+    amb: [[['V', 'Mit mondjak egy csillagnak?'], ['S', 'Azt, amit te is hallani szerettél volna az első emeleten.']], [['S', 'Minden dobbanásnál érzem, mennyire fáj neki.']], [['V', 'Lilla most biztos azt mondaná, hogy ne hadarjak.']], [['S', 'Már csak néhány szint, és ott vagyunk.']]],
+    pre: [['B', 'Én vagyok az utolsó őr a Szív előtt. Nem engedlek át.'], ['V', 'Nem is kell, hogy átengedj.']],
+    post: [['B', 'Mondd meg neki… hogy nem haragszunk rá.'], ['V', 'Megmondom.']] },
+  { title: 'A Mélység Szíve',
+    open: [['N', 'Az utolsó lépcsők. A sötétben egy hatalmas, lüktető fény vár.'], ['S', 'Itt vagyunk. Mind. Köszönöm, Vira.']],
+    amb: [[['V', 'Még ne köszönd. Még nem értünk oda.']], [['S', 'Hallod? A Szív már a nevedet mondja.']], [['V', 'Félek, Szikra.'], ['S', 'Én is. Együtt kevésbé.']], [['S', 'Az utolsó ajtók. Ne állj meg.']]],
+    pre: [['H', 'Lelöktek. Elfelejtettek. Bezártak. Miért jöttél?'], ['V', 'Hogy hazavigyelek.'], ['H', 'Az ég már nem vár rám.'], ['V', 'Akkor bebizonyítom, hogy igen.']],
+    post: [['H', '…Annyira sötét volt idelent.'], ['V', 'Már nem az.']] },
+];
+const TAUNTS = ['Újabb mászó. Újabb név a falon.', 'A pecsétet feltörted. Engem nem fogsz.', 'Fordulj vissza, amíg még emlékszel, merről jöttél.', 'Szép kabát. Kár lenne érte.',
+  'A Torony éhes. Én csak a kanala vagyok.', 'Ne nézz így rám, én is csak itt dolgozom.', 'Hallom a szilánkot a zsebedben. Add ide.', 'Egyszer én is fel akartam érni.',
+  'Rajtam még senki sem jutott át. Kivéve azokat, akik igen.', 'Gyere csak, ha mersz.', 'A rejtvény volt a könnyebbik rész.', 'Ma rossz napom van. Neked is az lesz.'];
+const REPLIES = ['Majd meglátjuk.', 'Félre az útból.', 'Nincs erre időm.', 'Ezt már hallottam.', 'Akkor kezdjük.', 'Szikra, fogd be a füled.'];
+const chOf = f => CHAPTERS[Math.min(14, Math.floor((f - 1) / 10))];
+const chNo = f => Math.min(14, Math.floor((f - 1) / 10)) + 1;
+function floorStory(f) {
+  const c = chOf(f), title = ['T', `${chNo(f)}. fejezet · ${c.title}`];
+  if (f === 1) return [...PROLOGUE, title, ...c.open];
+  if (f === 101) return [['N', 'A száz szilánk egyetlen csillaggá forrt Vira kezében, és a padló megnyílt.'], title, ...c.open];
+  if ((f - 1) % 10 === 0) return [title, ...c.open];
+  return c.amb[f % 4];
+}
+function bossStory(f, name) {
+  if (f % 10 === 0) return chOf(f).pre;
+  const r = rngOf(f * 131 + 3);
+  return [['B', pick(r, TAUNTS)], ['V', pick(r, REPLIES)]];
+}
+function endStory(f) {
+  if (f === 100) return deepOpen()
+    ? [['N', 'A száz szilánk egyetlen csillaggá forr össze Vira kezében.'], ['S', 'A padló… megnyílik. Vira, lent van a csillag szíve!'], ['V', 'Akkor még nincs vége.'], ['N', 'A Torony alatt megnyílt a Mélység. Még 50 szint vár.']]
+    : [['S', `Vira… a csillag nem teljes. Még ${100 - shardCount()} testvérem hiányzik.`], ['S', 'Amíg mind meg nincs, a Mélység ajtaja zárva marad. Nézd meg a térképen, melyik emeleten maradt még valaki.'], ['V', 'Visszamegyek értük. Mindenkiért.']];
+  if (f === 150) return deepCount() >= 50
+    ? [['N', 'Mind az ötven mélységkő felragyog. A csillag felemelkedik, át a Tornyon, át a ködön, egészen az égig.'], ['S', 'Viszlát, Vira. Nézz fel néha.'], ['V', 'Minden éjjel.'], ['N', 'A Torony csendesen összeomlik, és a köd alól előbukkan a reggel. Lilla és Morvan a romok szélén várnak.'], ['T', 'Igazi befejezés']]
+    : [['N', 'A Szív elcsendesül, de nincs elég ereje, hogy felszálljon.'], ['S', `Még ${50 - deepCount()} mélységkő hiányzik, Vira. Nélkülük a csillag nem jut haza.`], ['S', 'Keresd meg őket. Megvárlak.'], ['T', 'Vége… egyelőre']];
+  return [];
+}
 const TYPES = ['order', 'lights', 'riddle', 'push', 'dark'];
 function typeOf(f) {
   if (f === 1) return 'order';
@@ -439,7 +586,7 @@ function makeBoss(f) {
   const r = rngOf(f * 4243 + 9), big = f % 10 === 0;
   const fam = pick(r, Object.keys(FAM));
   let name = pick(r, PRE) + pick(r, FAM[fam]);
-  if (f === 100) name = 'A Torony Ura'; if (f === 150) name = 'A Mélység Szíve';
+  if (f === 100) name = 'Morvan, a Torony Ura'; if (f === 150) name = 'A Mélység Szíve';
   const avail = ['aimed', 'ring']; if (f > 5) avail.push('spiral'); if (f > 12) avail.push('rain'); if (f > 20) avail.push('fan'); if (f > 45) avail.push('homing');
   const n = Math.min(4, 1 + (f > 8) + (f > 35) + (big ? 1 : 0));
   const pats = shuffle(r, avail.slice()).slice(0, n);
@@ -463,6 +610,7 @@ function startFloor(f) {
   mode = 'room'; hideScreens(); updateHUD(); updateMsg();
   setAct('ÜTÉS');
   toast(floorName(f) + (f % 10 === 0 ? ' · őr-emelet' : ''));
+  if (!save.seen['f' + f]) { save.seen['f' + f] = 1; store(); playStory(floorStory(f), () => { mode = 'room'; }); }
 }
 
 function updateMsg() {
@@ -608,9 +756,7 @@ function updRoom(dt) {
 // ---------- harc logika ----------
 function enterBossIntro() {
   B = makeBoss(floor); mode = 'paused';
-  const lore = LORE[floor] ? `<p class="lore">${LORE[floor]}</p>` : '';
-  showInfo(`<h2>${B.name}</h2><p>${floorName(floor)}${B.big ? ' őre' : ' főellensége'}</p>${lore}<button class="btn" id="bFight">Harc!</button>`);
-  $('#bFight').onclick = startBoss;
+  playStory([['T', `${B.name}\n${floorName(floor)}${B.big ? ' őre' : ' főellensége'}`], ...bossStory(floor)], startBoss);
 }
 function startBoss() {
   B = makeBoss(floor); mode = 'boss'; hideScreens();
@@ -669,17 +815,16 @@ function updBoss(dt) {
 function floorCleared() {
   const f = floor, first = !save.cleared[f];
   save.cleared[f] = 1; store(); mode = 'paused';
+  const lines = [...(first && f % 10 === 0 ? chOf(f).post : []), ...endStory(f)];
+  playStory(lines, () => showResult(f, first));
+}
+function showResult(f, first) {
+  mode = 'paused';
   let extra = '';
-  if (f === 100) {
-    extra = deepOpen()
-      ? '<p class="lore">A száz szilánk egyetlen csillaggá forr össze a kezedben. A padló megnyílik: a torony alatt lépcső vezet a Mélységbe. Még 50 szint vár.</p>'
-      : `<p class="lore">Legyőzted a Torony Urát, de a csillag hiányos: még ${100 - shardCount()} szilánk hiányzik. Amíg nincs meg mind, a Mélység zárva marad. A térképen látod, melyik emeletről hiányzik.</p>`;
-  }
-  if (f === 150) {
-    extra = deepCount() >= 50
-      ? '<p class="lore">A Szív elcsendesül. Mind az 50 mélységkő világít: a csillag újra felszáll az égre, és vele együtt te is. Ez az igazi befejezés.</p>'
-      : `<p class="lore">A Szív elcsendesül, és a torony megnyugszik. De az igazi befejezéshez még ${50 - deepCount()} mélységkő hiányzik.</p>`;
-  }
+  if (f === 100) extra = deepOpen() ? '<p class="lore">A Mélység megnyílt: még 50 szint vár a Torony alatt.</p>'
+    : `<p class="lore">A Mélység zárva: még ${100 - shardCount()} csillagszilánk hiányzik. A térképen látod, melyik emeletről.</p>`;
+  if (f === 150) extra = deepCount() >= 50 ? '<p class="lore">Igazi befejezés: a csillag hazatért.</p>'
+    : `<p class="lore">Az igazi befejezéshez még ${50 - deepCount()} mélységkő hiányzik.</p>`;
   const got = R.shard.taken ? `<p style="color:var(--gold)">${f <= 100 ? '✦' : '◆'} A(z) ${shardWord(f)} nálad van.</p>` : `<p>A(z) ${shardWord(f)} ezen a szinten még rejtve maradt.</p>`;
   const nf = nextFloor();
   showInfo(`<h2>${floorName(f)} teljesítve</h2><p>${B.name} legyőzve${first ? '' : ' (újra)'}.</p>${got}${extra}
@@ -745,11 +890,11 @@ function text(s, x, y, size, color, maxW, weight = 700) {
   if (maxW) { const w = ctx.measureText(s).width; if (w > maxW) { size = size * maxW / w; ctx.font = `${weight} ${size}px "Pixelify Sans", "Trebuchet MS", sans-serif`; } }
   ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y);
 }
-function drawStar(x, y, r, a) {
-  ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.rotate(performance.now() / 900);
-  ctx.fillStyle = floor <= 100 ? '#ffd36b' : '#ff7aa8';
-  ctx.beginPath(); for (let i = 0; i < 8; i++) { const rr = i % 2 ? r * .4 : r; ctx.lineTo(Math.cos(i * Math.PI / 4) * rr, Math.sin(i * Math.PI / 4) * rr); } ctx.fill();
-  ctx.restore();
+function drawStar(x, y, r, a, c = ctx, col = floor <= 100 ? '#ffd36b' : '#ff7aa8', rot = performance.now() / 900) {
+  c.save(); c.globalAlpha = a; c.translate(x, y); c.rotate(rot);
+  c.fillStyle = col;
+  c.beginPath(); for (let i = 0; i < 8; i++) { const rr = i % 2 ? r * .4 : r; c.lineTo(Math.cos(i * Math.PI / 4) * rr, Math.sin(i * Math.PI / 4) * rr); } c.fill();
+  c.restore();
 }
 function drawRoom() {
   drawRoomBase(true);
@@ -823,10 +968,10 @@ function drawFight() {
 function drawParts() { for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = `hsl(${p.hue},90%,70%)`; ctx.fillRect(p.x * T - 2, p.y * T - 2, 4, 4); } ctx.globalAlpha = 1; }
 
 // A hősnő: rövid fekete-lila haj, lila szem, fekete bomberdzseki, fekete testhezálló ruha, ujjatlan kesztyű.
-function drawHero(c, x, y, s, fx, fy, walk, punch, sc) {
+function drawHero(c, x, y, s, fx, fy, walk, punch, sc, pal) {
   s *= sc;
   const back = fy < 0 && fx === 0, sw = Math.sin(walk) * s * .05;
-  const skin = '#f1d3c2', hair = '#1d1230', hairHi = '#5a3394', jacket = '#18141f', jacketHi = '#2c2538', suit = '#0f0c15', suitHi = '#2a2238', acc = '#a066ff', eyeC = '#b77dff';
+  const skin = '#f1d3c2', hair = pal ? pal.hair : '#1d1230', hairHi = pal ? pal.hairHi : '#5a3394', jacket = '#18141f', jacketHi = '#2c2538', suit = '#0f0c15', suitHi = '#2a2238', acc = '#a066ff', eyeC = pal ? pal.eye : '#b77dff';
   c.save(); c.translate(x, y);
   c.fillStyle = 'rgba(164,107,255,.28)'; c.beginPath(); c.ellipse(0, s * .42, s * .36, s * .1, 0, 0, 6.28); c.fill();
   // lábak
@@ -882,7 +1027,7 @@ function drawHero(c, x, y, s, fx, fy, walk, punch, sc) {
 function render() {
   const W = GW * T, H = GH * T;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
-  if (mode === 'boss' || (mode === 'paused' && B && B.t > 0)) drawFight();
+  if (mode === 'boss' || ((mode === 'paused' || mode === 'story') && B && B.t > 0)) drawFight();
   else if (R) drawRoom();
   drawParts();
 }
@@ -906,6 +1051,7 @@ act.addEventListener('pointerdown', e => { e.preventDefault(); actQ = true; act.
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => act.addEventListener(ev, () => act.classList.remove('dn')));
 addEventListener('keydown', e => {
   if (e.repeat && (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ')) return;
+  if (['Space', 'Enter', 'KeyJ'].includes(e.code) && mode === 'story') { advanceStory(); e.preventDefault(); return; }
   if (['Space', 'Enter', 'KeyJ'].includes(e.code)) { if (mode === 'room' || mode === 'boss') { actQ = true; e.preventDefault(); } return; }
   if (e.code === 'Escape' || e.code === 'KeyP') { if (mode === 'room' || mode === 'boss') pause(); return; }
   keys.add(e.code);
@@ -981,6 +1127,64 @@ function pause() {
 $('#pauseBtn').onclick = pause;
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
+// ---------- párbeszéd ----------
+const LILLA = { hair: '#4a1838', hairHi: '#b0508a', eye: '#e08aff' };
+let dq = [], dcb = null, di = 0, dShown = 0, dFull = '';
+const speaker = k => k === 'B' ? { name: B ? B.name : 'Őr', color: '#ff8fa8' } : WHO[k];
+function playStory(lines, cb) {
+  if (!lines || !lines.length) { if (cb) cb(); return; }
+  dq = lines; di = 0; dcb = cb; mode = 'story'; hideScreens(); $('#dlg').hidden = false; showLine();
+}
+function showLine() {
+  const [k, t] = dq[di], isT = k === 'T';
+  dFull = t; dShown = 0;
+  $('#dlg .box').hidden = isT; $('#dTitle').hidden = !isT; $('#dlg').classList.toggle('tcard', isT);
+  if (isT) { $('#dTitle').innerHTML = t.split('\n').map((x, i) => i ? `<div style="font-size:17px;color:var(--muted);margin-top:8px">${x}</div>` : x).join(''); dShown = t.length; sfx(220, .5, 'sine', .04, 1.5); return; }
+  const w = speaker(k);
+  $('#dName').textContent = w.name; $('#dName').style.color = w.color;
+  $('#dText').textContent = ''; $('#dText').style.fontStyle = k === 'N' ? 'italic' : '';
+  drawFace(k);
+}
+function advanceStory() {
+  if (dShown < dFull.length) { dShown = dFull.length; $('#dText').textContent = dFull; return; }
+  if (++di >= dq.length) finishStory(); else showLine();
+}
+function finishStory() { $('#dlg').hidden = true; mode = 'paused'; const cb = dcb; dcb = null; dq = []; if (cb) cb(); }
+$('#dlg').addEventListener('pointerdown', e => { if (e.target.closest('#dSkip')) return; e.preventDefault(); advanceStory(); });
+$('#dSkip').addEventListener('click', e => { e.stopPropagation(); finishStory(); });
+function drawFace(k) {
+  const c = $('#face').getContext('2d'), W = 136;
+  c.clearRect(0, 0, W, W); c.fillStyle = '#120b22'; c.fillRect(0, 0, W, W);
+  if (k === 'V' || k === 'L') drawHero(c, W / 2, W / 2 + .56 * 220, 220, 0, 1, 0, false, 1, k === 'L' ? LILLA : null);
+  else if (k === 'S') { const g = c.createRadialGradient(68, 68, 5, 68, 68, 68); g.addColorStop(0, 'rgba(255,211,107,.5)'); g.addColorStop(1, 'rgba(255,211,107,0)'); c.fillStyle = g; c.fillRect(0, 0, W, W); drawStar(68, 68, 44, 1, c, '#ffd36b', .3); c.fillStyle = '#3a2410'; c.fillRect(54, 62, 8, 8); c.fillRect(74, 62, 8, 8); }
+  else if (k === 'N') { c.fillStyle = '#2e2050'; c.fillRect(48, 40, 40, 80); c.fillRect(40, 28, 56, 16); c.fillStyle = '#a46bff'; c.fillRect(62, 96, 12, 24); drawStar(68, 70, 10, 1, c, '#ffd36b', 0); }
+  else {
+    const hue = k === 'B' && B ? B.hue : k === 'M' ? 350 : 20;
+    c.fillStyle = `hsl(${hue},55%,38%)`; c.beginPath(); c.arc(68, 76, 44, 0, 6.28); c.fill();
+    c.fillStyle = `hsl(${(hue + 180) % 360},100%,70%)`; c.fillRect(46, 66, 16, 10); c.fillRect(74, 66, 16, 10);
+    if (k === 'M' || (B && B.big)) { c.fillStyle = '#ffd36b'; for (const x of [44, 68, 92]) { c.beginPath(); c.moveTo(x - 9, 36); c.lineTo(x, 14); c.lineTo(x + 9, 36); c.fill(); } }
+  }
+}
+function showLog() {
+  mode = 'title'; showScreen('#scLog');
+  const line = ([k, t], bn) => {
+    if (k === 'T') return `<h3>${t}</h3>`;
+    const w = k === 'B' ? { name: bn, color: '#ff8fa8' } : WHO[k];
+    return `<p>${w.name ? `<b style="color:${w.color}">${w.name}:</b> ` : ''}${k === 'N' ? `<i>${t}</i>` : t}</p>`;
+  };
+  let h = '';
+  if (save.seen.f1) h += PROLOGUE.map(l => line(l)).join('');
+  CHAPTERS.forEach((c, i) => {
+    const f0 = i * 10 + 1, fb = i * 10 + 10;
+    if (!save.seen['f' + f0]) return;
+    const bn = makeBoss(fb).name;
+    h += `<h3>${i + 1}. fejezet · ${c.title}</h3>` + c.open.map(l => line(l, bn)).join('');
+    if (save.cleared[fb]) h += c.pre.concat(c.post).map(l => line(l, bn)).join('');
+  });
+  $('#logBody').innerHTML = h || '<p style="text-align:center;color:var(--muted)">Még nincs bejegyzés. Indulj el a Toronyba!</p>';
+}
+$('#bLog').onclick = showLog;
+
 // ---------- méretezés, ciklus ----------
 function resize() {
   const st = $('#stage'), w = st.clientWidth - 8, h = st.clientHeight - 4;
@@ -996,6 +1200,7 @@ function loop(now) {
   if (mode === 'room') updRoom(dt);
   else if (mode === 'boss') updBoss(dt);
   else actQ = false;
+  if (mode === 'story' && dShown < dFull.length) { dShown = Math.min(dFull.length, dShown + dt * 55); $('#dText').textContent = dFull.slice(0, Math.floor(dShown)); }
   updParts(dt);
   render();
   requestAnimationFrame(loop);
