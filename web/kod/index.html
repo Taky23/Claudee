@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120c0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="A Kód">
+<title>A Kód</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #120c0d;
+  --card: #1e1517;
+  --card-2: #281c1f;
+  --text: #f1e6e3;
+  --muted: #a8918c;
+  --blood: #d23a3a;
+  --blood-2: #ff6b5e;
+  --ok: #4cc08a;
+  --warn: #e8b24a;
+  --line: #3a2a2d;
+  --shadow: 0 8px 26px rgba(0, 0, 0, .45);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: radial-gradient(120% 60% at 50% -10%, #2a1114 0%, var(--bg) 60%) fixed, var(--bg);
+  color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) 0 calc(24px + env(safe-area-inset-bottom));
+}
+main { max-width: 560px; margin: 0 auto; padding: 0 16px; }
+.hud {
+  position: sticky; top: 0; z-index: 5; background: rgba(18, 12, 13, .92); backdrop-filter: blur(8px);
+  padding: 10px 16px 10px; margin: 0 -16px; border-bottom: 1px solid var(--line);
+}
+.hud-row { display: flex; justify-content: space-between; align-items: center; font-weight: 750; }
+.hud-row .day { font-size: 18px; }
+.meter { height: 12px; background: var(--card-2); border-radius: 99px; overflow: hidden; margin-top: 8px; border: 1px solid var(--line); }
+.meter i { display: block; height: 100%; border-radius: 99px; transition: width .5s, background .5s; }
+.meter-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  padding: 16px; box-shadow: var(--shadow); margin: 12px 0;
+}
+h1 { font-size: 34px; margin: 28px 0 4px; letter-spacing: .02em; }
+h2 { font-size: 17px; margin: 18px 0 4px; display: flex; justify-content: space-between; align-items: baseline; }
+h3 { margin: 0 0 6px; font-size: 20px; }
+.small { font-size: 13px; color: var(--muted); }
+.tag { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--blood-2); font-weight: 800; }
+.btn {
+  display: block; width: 100%; border: 1px solid var(--line); background: var(--card-2); color: var(--text);
+  border-radius: 14px; padding: 13px 14px; font-size: 16px; font-weight: 650; cursor: pointer; margin-top: 10px;
+  font-family: inherit;
+}
+.btn.red { background: linear-gradient(135deg, #a3242a, var(--blood)); border-color: transparent; color: #fff; font-size: 18px; padding: 16px; box-shadow: 0 8px 24px rgba(210, 58, 58, .3); }
+.btn:disabled { opacity: .4; }
+.btn .cost { font-weight: 500; font-size: 13px; opacity: .85; }
+.suspects { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.sus {
+  position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 10px; cursor: pointer; transition: opacity .2s, transform .1s;
+}
+.sus:active { transform: scale(.98); }
+.sus .face { font-size: 28px; }
+.sus b { display: block; }
+.sus .job { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.sus .attrs { font-size: 13px; line-height: 1.6; }
+.sus.out { opacity: .35; }
+.sus.out::after { content: "✕"; position: absolute; right: 10px; top: 4px; font-size: 26px; color: var(--blood); font-weight: 800; }
+.clue { padding: 11px 0; border-bottom: 1px dashed var(--line); }
+.clue:last-child { border-bottom: 0; }
+.clue .src { font-size: 12px; color: var(--muted); }
+.clue .fact { font-weight: 700; margin-top: 2px; }
+.clue.locked { color: var(--muted); font-style: italic; }
+.slot {
+  display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 16px; padding: 12px; margin-top: 10px;
+}
+.slot .time { font-size: 20px; font-weight: 800; min-width: 62px; }
+.slot .where { flex: 1; }
+.slot .status { font-size: 13px; }
+.slot.bad { opacity: .5; }
+.slot.good { border-color: var(--ok); }
+.slot button { width: auto; margin: 0; padding: 9px 12px; font-size: 14px; }
+.intel { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
+.intel:last-child { border-bottom: 0; }
+.center { text-align: center; }
+.big-emoji { font-size: 60px; }
+.board { width: 100%; border-collapse: collapse; font-size: 15px; }
+.board td { padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.board td:first-child { width: 34px; color: var(--muted); font-weight: 700; }
+.board td.num { text-align: right; font-weight: 800; white-space: nowrap; }
+.board tr.me td { color: var(--blood-2); }
+input[type=text] {
+  width: 100%; padding: 13px 14px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--card-2); color: var(--text); font: inherit; font-size: 17px; margin-top: 10px;
+}
+.log { font-size: 14px; color: var(--muted); }
+.log p { margin: 4px 0; }
+.delta-up { color: var(--blood-2); font-weight: 700; }
+.delta-down { color: var(--ok); font-weight: 700; }
+.drops { font-size: 18px; letter-spacing: 2px; word-break: break-all; line-height: 1.6; }
+.fade { animation: fade .3s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+.modal-bg.show { display: flex; }
+.modal { background: var(--card); width: 100%; max-width: 560px; border-radius: 22px 22px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); animation: up .25s ease; max-height: 85dvh; overflow: auto; }
+@keyframes up { from { transform: translateY(100%); } to { transform: none; } }
+.pick { display: flex; align-items: center; gap: 10px; text-align: left; }
+.pick .face { font-size: 24px; }
+.rules li { margin: 6px 0; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+
+<script>
+// ---------- Véletlen ----------
+function hashStr(s) {
+  let h = 1779033703 ^ s.length;
+  for (let i = 0; i < s.length; i++) { h = Math.imul(h ^ s.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return h >>> 0;
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
+function shuffle(rng, arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+// ---------- Tartalom ----------
+const CATS = {
+  auto:  { ico: '🚗', label: 'autója', vals: ['piros kombi', 'fekete terepjáró', 'fehér kisbusz', 'ezüst szedán', 'kék furgon'] },
+  kabat: { ico: '🧥', label: 'kabátja', vals: ['bőrdzseki', 'esőkabát', 'szövetkabát', 'kapucnis pulóver', 'katonai dzseki'] },
+  illat: { ico: '👃', label: 'illata', vals: ['dohány', 'benzin', 'olcsó kölni', 'fertőtlenítő', 'kávé'] },
+  cipo:  { ico: '👞', label: 'cipője', vals: ['bakancs', 'tornacipő', 'lakkcipő', 'gumicsizma', 'mokaszin'] },
+};
+const SOURCES_POS = [
+  'Egy szemtanú vallomása, amit a nyomozók figyelmen kívül hagytak:',
+  'A helyszínelési jegyzőkönyv egy apró részlete:',
+  'Egy szemcsés térfigyelő felvétel, amit csak te néztél meg alaposan:',
+  'A vérfolt-elemzésed – amit senkinek sem mutattál meg:',
+  'Egy névtelen bejelentés a régi aktában:',
+];
+const SOURCES_NEG = [
+  'Egy kizárt nyom, amit a labor megerősített:',
+  'A kamerafelvételek alapján egy biztos:',
+  'A szemtanúk ebben az egyben egyetértenek:',
+  'A saját éjszakai megfigyelésed szerint:',
+];
+const ALIBIS = [
+  'a bűncselekmény idején egy kórházi ügyeleten dolgozott – a beosztás igazolja',
+  'aznap éjjel külföldön volt, a repülőjegy és a határátlépés is megvan',
+  'egy kocsmai verekedés miatt épp a fogdában ült',
+  'egy esküvőn volt tanú, ötven fotón szerepel',
+  'a kamera végig a lakása előtt rögzítette',
+];
+const CRIMES = [
+  'cserbenhagyásos gázolás után elhajtott, és sosem állt bíróság elé',
+  'idős embereket csapott be, és az összes megtakarításukat elvitte',
+  'felgyújtott egy lakóházat a biztosítási pénzért',
+  'évekig zsarolt egy egész utcát, de a tanúk mindig visszaléptek',
+  'mérgezett ételt adott el, és a vizsgálat „elakadt”',
+  'egy eljárási hiba miatt szabadult, pedig mindenki tudta, hogy bűnös',
+  'eltüntetett egy fiatal lányt, de a holttest sosem került elő',
+  'drogot árult az iskolák előtt, és mindig megúszta',
+];
+const PEOPLE = [
+  ['Ferenc', '🧔', 'autókereskedő'], ['Gizella', '👩‍🦳', 'ingatlanos'], ['Norbert', '🧑‍🔧', 'autószerelő'],
+  ['Viktor', '🕴️', 'éjszakai klubtulajdonos'], ['Anita', '💅', 'szépségszalon-tulaj'], ['Zoltán', '🧑‍🍳', 'gyorsétterem-vezető'],
+  ['Erika', '👩‍💼', 'könyvelő'], ['Roland', '🏋️', 'személyi edző'], ['Henrik', '🎩', 'befektető'],
+  ['Csilla', '🧑‍⚕️', 'gyógyszertári asszisztens'], ['Dénes', '🚕', 'taxis'], ['Mónika', '📸', 'fotós'],
+  ['Barnabás', '🛠️', 'gondnok'], ['Kitti', '🎧', 'DJ'], ['Szilárd', '🧑‍💻', 'rendszergazda'],
+  ['Judit', '🏫', 'iskolatitkár'], ['Attila', '🚚', 'kamionsofőr'], ['Hajnalka', '🍷', 'borászlány'],
+];
+const TIMES = ['19:00', '21:00', '23:00', '01:00', '03:00'];
+const PLACES = [
+  'az elhagyott kikötői raktárnál', 'a parkolóház legfelső szintjén', 'a lakása mögötti sikátorban',
+  'a zárt edzőterem öltözőjében', 'a város szélén, a benzinkútnál', 'az építkezési területen',
+  'a régi csónakháznál', 'a hűtőházban', 'a temető melletti földúton', 'a mosoda hátsó bejáratánál',
+];
+const RISKS = [
+  'egy kutyasétáltató minden este pont arra jár', 'térfigyelő kamera veszi az egész helyet',
+  'egy szomszéd a teraszon cigarettázik, mindenre rálát', 'a kollégáid épp ott helyszínelnek egy másik ügyben',
+  'a célpont barátokkal van, egyedül nem lesz', 'járőrkocsi parkol a sarkon',
+  'egy hajléktalan alszik ott, és mindent lát', 'aznap este ott fogyasztják a vacsorájukat a munkások',
+];
+const BAKO = [
+  'Bakó őrmester furcsán néz rád a kávéautomatánál.',
+  'Bakó őrmester megkérdezi, hol voltál tegnap éjjel. Mosolyogsz.',
+  'Bakó őrmester a parkolóban a kocsid csomagtartóját nézegeti.',
+  'Bakó őrmester hangosan megjegyzi, hogy „túl tiszta vagy”.',
+  'Bakó őrmester kikérte a régi aktáidat.',
+  'Bakó őrmester követett hazáig. Vagy csak képzelődsz?',
+];
+const CALM = [
+  'Csendes nap a kapitányságon. Fánkot hoztál mindenkinek.',
+  'A főnököd megdicsérte a vérfolt-elemzésedet.',
+  'Senki sem kérdez semmit. Túl jól megy?',
+  'Egy kolléga meghívott vacsorára. Elfogadtad – álcának jó.',
+];
+
+// ---------- Generátorok ----------
+function generateCase(rng, n) {
+  const people = shuffle(rng, PEOPLE).slice(0, n);
+  const catKeys = Object.keys(CATS);
+  for (let attempt = 0; attempt < 800; attempt++) {
+    const suspects = people.map(p => {
+      const s = { name: p[0], face: p[1], job: p[2] };
+      for (const c of catKeys) s[c] = pick(rng, CATS[c].vals);
+      return s;
+    });
+    const culprit = Math.floor(rng() * n);
+    const C = suspects[culprit];
+    const pool = [];
+    for (const c of catKeys) {
+      pool.push({ type: 'pos', cat: c, val: C[c], elim: suspects.map((s, i) => s[c] !== C[c] ? i : -1).filter(i => i >= 0) });
+      for (const v of CATS[c].vals) {
+        if (v === C[c]) continue;
+        const elim = suspects.map((s, i) => s[c] === v ? i : -1).filter(i => i >= 0);
+        if (elim.length) pool.push({ type: 'neg', cat: c, val: v, elim });
+      }
+    }
+    suspects.forEach((s, i) => { if (i !== culprit) pool.push({ type: 'alibi', who: i, elim: [i] }); });
+
+    const remaining = new Set(suspects.map((_, i) => i));
+    const chosen = [];
+    const posCats = new Set();
+    let alibiUsed = false;
+    for (const clue of shuffle(rng, pool)) {
+      if (clue.type === 'alibi' && (alibiUsed || chosen.length < 2)) continue;
+      if (clue.type !== 'alibi' && posCats.has(clue.cat)) continue;
+      const hit = clue.elim.filter(i => remaining.has(i));
+      if (!hit.length) continue;
+      if (chosen.length < 2 && (remaining.size - hit.length <= 1 || hit.length > 2)) continue;
+      chosen.push(clue);
+      hit.forEach(i => remaining.delete(i));
+      if (clue.type === 'pos') posCats.add(clue.cat);
+      if (clue.type === 'alibi') alibiUsed = true;
+      if (remaining.size === 1) break;
+    }
+    if (remaining.size !== 1 || chosen.length < 3 || chosen.length > 7) continue;
+    const clues = chosen.map(cl => {
+      if (cl.type === 'alibi') {
+        return { ...cl, src: 'Ellenőrzött alibi:', fact: `${suspects[cl.who].name} ${pick(rng, ALIBIS)}.` };
+      }
+      const cat = CATS[cl.cat];
+      return {
+        ...cl,
+        src: pick(rng, cl.type === 'pos' ? SOURCES_POS : SOURCES_NEG),
+        fact: `A tettes ${cat.label}: ${cl.type === 'neg' ? 'NEM ' : ''}${cat.ico} ${cl.val}`,
+      };
+    });
+    return { suspects, culprit, clues, crime: pick(rng, CRIMES) };
+  }
+  return generateCase(rng, n);
+}
+
+// Pontosan egy biztonságos időpont van; a többinél van valami kockázat.
+function generatePlan(rng, nSlots, hidden) {
+  const start = Math.floor(rng() * (TIMES.length - nSlots + 1));
+  const places = shuffle(rng, PLACES);
+  const risks = shuffle(rng, RISKS);
+  const safe = Math.floor(rng() * nSlots);
+  const slots = [];
+  for (let i = 0; i < nSlots; i++) {
+    slots.push({ time: TIMES[start + i], place: places[i], risk: i === safe ? null : risks[i] });
+  }
+  const unsafe = shuffle(rng, slots.map((s, i) => i).filter(i => i !== safe));
+  const known = unsafe.slice(hidden);
+  return { slots, safe, intel: known };
+}
+
+// ---------- Nehézség ----------
+const diff = day => ({
+  suspects: day < 8 ? 5 : 6,
+  slots: day < 5 ? 4 : 5,
+  hiddenRisks: day < 4 ? 1 : 2,
+  clueCost: 7 + Math.floor(day / 6) * 2,
+  scoutCost: 6 + Math.floor(day / 6) * 2,
+  snoop: Math.min(14, 3 + Math.floor(day / 3)),
+});
+const FREE_CLUES = 2;
+const WITNESS_COST = 30;
+const CLEAN_RELIEF = 15;
+const HIDE_RELIEF = 25;
+const HIDE_COOLDOWN = 3;
+
+// ---------- Állapot ----------
+const STORE = 'a-kod-v1';
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.board) return s; } catch (e) {}
+  return { board: [], run: null, name: '' };
+}
+let S = load();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
+
+function newRun() {
+  S.run = { seed: Date.now() + '-' + Math.random(), day: 1, kills: 0, sus: 0, lastHide: -99, phase: 'case', log: [], over: null };
+  startDay();
+}
+function startDay() {
+  const r = S.run;
+  r.phase = 'case';
+  r.opened = FREE_CLUES;
+  r.crossed = [];
+  r.scouted = [];
+  r.target = null;
+  r.dayLog = [];
+  save();
+  render();
+}
+function today() {
+  const r = S.run;
+  const d = diff(r.day);
+  const rng = mulberry32(hashStr(r.seed + '/' + r.day));
+  const kase = generateCase(rng, d.suspects);
+  const plan = generatePlan(rng, d.slots, d.hiddenRisks);
+  return { d, kase, plan, rng };
+}
+
+function addSus(n, why) {
+  const r = S.run;
+  r.sus = Math.max(0, Math.min(100, r.sus + n));
+  r.dayLog.push({ n, why });
+  if (r.sus >= 100) { gameOver('busted'); return false; }
+  return true;
+}
+function gameOver(cause) {
+  const r = S.run;
+  r.over = cause;
+  r.phase = 'over';
+  save();
+  render();
+  if (cause !== 'busted') document.getElementById('app').classList.add('shake');
+}
+
+// ---------- Megjelenítés ----------
+const app = document.getElementById('app');
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function hud() {
+  const r = S.run;
+  const color = r.sus < 40 ? 'var(--ok)' : r.sus < 70 ? 'var(--warn)' : 'var(--blood)';
+  return `
+    <div class="hud">
+      <div class="hud-row"><span class="day">📅 ${r.day}. nap</span><span>🩸 ${r.kills}</span></div>
+      <div class="meter"><i style="width:${r.sus}%;background:${color}"></i></div>
+      <div class="meter-label"><span>🕵️ Bakó őrmester gyanúja</span><span>${r.sus}%</span></div>
+    </div>`;
+}
+
+function render() {
+  app.classList.remove('shake');
+  const r = S.run;
+  if (!r || r.phase === 'menu') return renderMenu();
+  if (r.phase === 'over') return renderOver();
+  const t = today();
+  if (r.phase === 'case') return renderCase(t);
+  if (r.phase === 'plan') return renderPlan(t);
+  if (r.phase === 'night') return renderNight(t);
+}
+
+function boardHtml(highlight) {
+  if (!S.board.length) return '<p class="small">Még nincs eredmény. Légy te az első!</p>';
+  return `<table class="board">${S.board.map((b, i) => `
+    <tr class="${b.id === highlight ? 'me' : ''}">
+      <td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</td>
+      <td><b>${esc(b.name)}</b><br><span class="small">${b.date} · 🩸 ${b.kills} · ${b.cause === 'busted' ? 'lebukott' : 'megszegte a Kódot'}</span></td>
+      <td class="num">${b.days} nap</td>
+    </tr>`).join('')}</table>`;
+}
+
+function renderMenu() {
+  const r = S.run;
+  const canResume = r && !r.over && r.phase !== 'menu';
+  app.innerHTML = `
+    <div class="fade">
+      <h1>🩸 A Kód</h1>
+      <p class="small">Nappal vérfolt-elemző vagy a rendőrségen. Éjjel azokat kapod el, akik kicsúsztak az igazságszolgáltatás kezei közül.</p>
+      ${canResume ? `<button class="btn red" id="resume">▶️ Folytatás – ${r.day}. nap</button>` : ''}
+      <button class="btn ${canResume ? '' : 'red'}" id="new">🔪 Új játék</button>
+      <h2>🏆 Ranglista <span class="small">legtöbb túlélt nap</span></h2>
+      <div class="card">${boardHtml()}</div>
+      <h2>A Kód szabályai</h2>
+      <div class="card rules">
+        <ol style="padding-left:18px;margin:0">
+          <li><b>Csak bűnöst.</b> Minden nap egy akta: a nyomokból találd ki, ki a valódi tettes. Ha ártatlant választasz, a játék véget ér.</li>
+          <li><b>Ne hagyj tanút.</b> Válaszd ki a biztonságos időpontot és helyet. Ha tanú lát, nő a gyanú.</li>
+          <li><b>Ne kelts feltűnést.</b> Minden extra nyom és felderítés gyanús. Ha Bakó őrmester gyanúja eléri a 100%-ot, lebuktál.</li>
+        </ol>
+        <p class="small">Tisztán végrehajtott nap után csökken a gyanú. Néha lapulhatsz is egy napot. Bármennyi menetet játszhatsz; a túlélt napjaid kerülnek a ranglistára.</p>
+      </div>
+    </div>`;
+  if (canResume) document.getElementById('resume').onclick = () => { r.phase = r.resumePhase || 'case'; save(); render(); };
+  document.getElementById('new').onclick = () => {
+    if (canResume && !confirm('Feladod a mostani játékot? Nem kerül a ranglistára.')) return;
+    newRun();
+  };
+}
+
+function renderCase({ d, kase }) {
+  const r = S.run;
+  const crossed = new Set(r.crossed);
+  const canHide = r.day - r.lastHide >= HIDE_COOLDOWN && r.sus > 0;
+  app.innerHTML = hud() + `
+    <div class="fade">
+      <div class="card">
+        <div class="tag">Akta · ${r.day}. nap</div>
+        <h3>Valaki ${kase.crime}.</h3>
+        <p class="small">${kase.suspects.length} lehetséges tettes. A Kód szerint csak akkor léphetsz, ha biztos vagy benne.</p>
+      </div>
+
+      <h2>Gyanúsítottak <span class="small">koppints az áthúzáshoz</span></h2>
+      <div class="suspects">
+        ${kase.suspects.map((s, i) => `
+          <div class="sus ${crossed.has(i) ? 'out' : ''}" data-i="${i}">
+            <div class="face">${s.face}</div>
+            <b>${s.name}</b>
+            <div class="job">${s.job}</div>
+            <div class="attrs">🚗 ${s.auto}<br>🧥 ${s.kabat}<br>👃 ${s.illat}<br>👞 ${s.cipo}</div>
+          </div>`).join('')}
+      </div>
+
+      <h2>Nyomok <span class="small">${Math.min(r.opened, kase.clues.length)} / ${kase.clues.length}</span></h2>
+      <div class="card">
+        ${kase.clues.map((c, i) => i < r.opened ? `
+          <div class="clue"><div class="src">${i + 1}. ${c.src}</div><div class="fact">${c.fact}</div></div>` : `
+          <div class="clue locked">${i + 1}. 🔒 Még nem nyomoztál utána</div>`).join('')}
+        ${r.opened < kase.clues.length ? `<button class="btn" id="more">🔍 Nyomozz tovább <span class="cost">(+${d.clueCost}% gyanú)</span></button>` : ''}
+      </div>
+
+      <button class="btn red" id="choose">🎯 Megvan a célpont</button>
+      <button class="btn" id="hide" ${canHide ? '' : 'disabled'}>🛋️ Lapulok ma <span class="cost">(−${HIDE_RELIEF}% gyanú${canHide ? '' : ` · ${r.sus === 0 ? 'nincs rá szükség' : `${HIDE_COOLDOWN - (r.day - r.lastHide)} nap múlva`}`})</span></button>
+      <button class="btn" id="menu">☰ Menü</button>
+    </div>`;
+
+  app.querySelectorAll('.sus').forEach(el => el.onclick = () => {
+    const i = +el.dataset.i;
+    r.crossed = crossed.has(i) ? r.crossed.filter(x => x !== i) : [...r.crossed, i];
+    save(); render();
+  });
+  const more = document.getElementById('more');
+  if (more) more.onclick = () => {
+    r.opened++;
+    if (addSus(d.clueCost, 'Kérdezősködtél')) { save(); render(); }
+  };
+  document.getElementById('choose').onclick = () => openPick(kase);
+  document.getElementById('hide').onclick = () => {
+    if (!confirm('Ma nem csapsz le, csak a munkádra figyelsz. A nap eltelik, a gyanú csökken.')) return;
+    r.lastHide = r.day;
+    r.dayLog.push({ n: -HIDE_RELIEF, why: 'Lapultál egy napot' });
+    r.sus = Math.max(0, r.sus - HIDE_RELIEF);
+    r.hid = true;
+    r.phase = 'night';
+    save(); render();
+  };
+  document.getElementById('menu').onclick = () => { r.resumePhase = r.phase; r.phase = 'menu'; save(); render(); };
+}
+
+function openPick(kase) {
+  const r = S.run;
+  const crossed = new Set(r.crossed);
+  const modal = document.getElementById('modal');
+  modal.innerHTML = `
+    <h3>Ki a tettes?</h3>
+    <p class="small">Ha ártatlant választasz, megszeged a Kódot – vége a játéknak.</p>
+    ${kase.suspects.map((s, i) => `
+      <button class="btn pick" data-i="${i}" style="${crossed.has(i) ? 'opacity:.4' : ''}">
+        <span class="face">${s.face}</span><span><b>${s.name}</b><br><span class="small">${s.job}</span></span>
+      </button>`).join('')}
+    <button class="btn" id="cancel">Mégsem</button>`;
+  document.getElementById('modalBg').classList.add('show');
+  modal.querySelector('#cancel').onclick = closeModal;
+  modal.querySelectorAll('.pick').forEach(b => b.onclick = () => {
+    const g = +b.dataset.i;
+    if (!confirm(`Biztos vagy benne, hogy ${kase.suspects[g].name} a tettes?`)) return;
+    closeModal();
+    r.target = g;
+    if (g !== kase.culprit) { gameOver('code'); return; }
+    r.phase = 'plan';
+    save(); render(); window.scrollTo(0, 0);
+  });
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+document.getElementById('modalBg').onclick = e => { if (e.target.id === 'modalBg') closeModal(); };
+
+function renderPlan({ d, kase, plan }) {
+  const r = S.run;
+  const T = kase.suspects[kase.culprit];
+  const known = new Set([...plan.intel, ...r.scouted]);
+  app.innerHTML = hud() + `
+    <div class="fade">
+      <div class="card">
+        <div class="tag">Terv · ${r.day}. nap</div>
+        <h3>${T.face} ${T.name} a célpont.</h3>
+        <p class="small">Követted egy ideig, és tudod, merre jár ma este. Csak egy időpont teljesen tiszta – a többinél tanú lehet.</p>
+      </div>
+      <h2>Amit már tudsz</h2>
+      <div class="card">
+        ${plan.intel.length ? plan.intel.map(i => `<div class="intel">⚠️ <b>${plan.slots[i].time}</b>, ${plan.slots[i].place}: ${plan.slots[i].risk}.</div>`).join('') : '<p class="small">Semmit.</p>'}
+      </div>
+      <h2>A célpont estéje</h2>
+      ${plan.slots.map((s, i) => {
+        const isKnown = known.has(i);
+        const cls = isKnown ? (s.risk ? 'bad' : 'good') : '';
+        const status = isKnown ? (s.risk ? `⚠️ ${s.risk}` : '✅ Tiszta terep') : '❔ Ismeretlen';
+        return `
+        <div class="slot ${cls}">
+          <div class="time">${s.time}</div>
+          <div class="where">${s.place}<div class="status small">${status}</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${isKnown ? '' : `<button class="btn" data-scout="${i}">🔦 +${d.scoutCost}%</button>`}
+            <button class="btn red" data-go="${i}" style="font-size:14px;padding:9px 12px">🔪 Itt</button>
+          </div>
+        </div>`;
+      }).join('')}
+      <p class="small center">🔦 Felderítés: megnézed előre a helyet (gyanús lehet). 🔪 Itt: lecsapsz.</p>
+    </div>`;
+  app.querySelectorAll('[data-scout]').forEach(b => b.onclick = () => {
+    r.scouted.push(+b.dataset.scout);
+    if (addSus(d.scoutCost, 'Felderítés')) { save(); render(); }
+  });
+  app.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.go;
+    const s = plan.slots[i];
+    if (!confirm(`${s.time}, ${s.place}. Indulsz?`)) return;
+    r.kills++;
+    r.hid = false;
+    r.witness = s.risk;
+    if (s.risk) {
+      if (!addSus(WITNESS_COST, 'Szemtanú látott valamit')) return;
+    } else {
+      r.dayLog.push({ n: -CLEAN_RELIEF, why: 'Tiszta munka' });
+      r.sus = Math.max(0, r.sus - CLEAN_RELIEF);
+    }
+    r.phase = 'night';
+    save(); render(); window.scrollTo(0, 0);
+  });
+}
+
+function renderNight({ kase }) {
+  const r = S.run;
+  const T = kase.suspects[kase.culprit];
+  const flavor = r.sus >= 50 ? BAKO[Math.floor(Math.random() * BAKO.length)] : CALM[Math.floor(Math.random() * CALM.length)];
+  app.innerHTML = hud() + `
+    <div class="fade">
+      <div class="card center">
+        <div class="big-emoji">${r.hid ? '🛋️' : r.witness ? '😰' : '🩸'}</div>
+        <h3>${r.hid ? 'Csendes nap' : r.witness ? 'Meglett, de…' : 'Az ügy lezárva.'}</h3>
+        <p>${r.hid ? 'Egész nap a laborban ültél, este tévét néztél. Senkinek nem tűnt fel semmi.' :
+          r.witness ? `${T.name} többé nem árt senkinek. De ${r.witness} – valaki látott valamit.` :
+          `${T.name} többé nem árt senkinek. Egy újabb tárgylemez került a dobozodba.`}</p>
+      </div>
+      <div class="card log">
+        ${r.dayLog.map(l => `<p>${l.why}: <span class="${l.n > 0 ? 'delta-up' : 'delta-down'}">${l.n > 0 ? '+' : ''}${l.n}%</span></p>`).join('') || '<p>Ma nem változott a gyanú.</p>'}
+        <p>Bakó őrmester szaglászik: <span class="delta-up">+${diff(r.day + 1).snoop}%</span> (holnap reggel)</p>
+        <p style="margin-top:10px;color:var(--text)">${flavor}</p>
+      </div>
+      ${r.kills ? `<div class="card"><div class="small">A dobozod</div><div class="drops">${'🩸'.repeat(r.kills)}</div></div>` : ''}
+      <button class="btn red" id="next">🌅 Következő nap</button>
+    </div>`;
+  document.getElementById('next').onclick = () => {
+    r.day++;
+    r.dayLog = [];
+    if (!addSus(diff(r.day).snoop, 'Bakó őrmester szaglászik')) return;
+    startDay();
+    window.scrollTo(0, 0);
+  };
+}
+
+function renderOver() {
+  const r = S.run;
+  const busted = r.over === 'busted';
+  const t = today();
+  const T = t.kase.suspects[t.kase.culprit];
+  // A lebukás vagy a hiba napja már nem számít túlélt napnak.
+  const days = r.day - 1;
+  app.innerHTML = `
+    <div class="fade">
+      <div class="card center" style="margin-top:24px">
+        <div class="big-emoji">${busted ? '🚔' : '⚖️'}</div>
+        <h3>${busted ? 'Lebuktál!' : 'Megszegted a Kódot.'}</h3>
+        <p>${busted ? 'Bakó őrmester bilincset kattint a csuklódon: „Tudtam, hogy te vagy az.”' :
+          `Ártatlant választottál. A valódi tettes ${T.face} ${T.name} volt. A Kód nélkül csak egy gyilkos vagy – ennek itt vége.`}</p>
+        <p style="font-size:22px;font-weight:800;margin:10px 0">📅 ${days} túlélt nap · 🩸 ${r.kills}</p>
+      </div>
+      ${r.saved ? '' : `
+        <div class="card">
+          <b>Írd fel magad a ranglistára</b>
+          <input type="text" id="name" maxlength="18" placeholder="A neved" value="${esc(S.name || '')}">
+          <button class="btn red" id="saveScore">🏆 Mentés</button>
+        </div>`}
+      <h2>🏆 Ranglista</h2>
+      <div class="card">${boardHtml(r.saved)}</div>
+      <button class="btn red" id="again">🔪 Új játék</button>
+      <button class="btn" id="toMenu">☰ Menü</button>
+    </div>`;
+  const sv = document.getElementById('saveScore');
+  if (sv) sv.onclick = () => {
+    const name = document.getElementById('name').value.trim() || 'Névtelen';
+    S.name = name;
+    const id = Date.now();
+    const d = new Date();
+    S.board.push({
+      id, name, days, kills: r.kills, cause: r.over,
+      date: d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0'),
+    });
+    S.board.sort((a, b) => b.days - a.days || b.kills - a.kills || a.id - b.id);
+    S.board = S.board.slice(0, 10);
+    r.saved = id;
+    save(); render();
+  };
+  document.getElementById('again').onclick = newRun;
+  document.getElementById('toMenu').onclick = () => { S.run = null; save(); render(); };
+}
+
+render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
