@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Árnytorony</title>
+<meta name="theme-color" content="#0d0818">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap">
+<style>
+/* Egy képernyős játék: felül HUD, középen a terem vászna, alatta üzenetsáv, legalul a vezérlők. */
+:root {
+  --void: #0d0818; --stone: #1c1330; --stone-hi: #2e2050; --violet: #a46bff; --glow: #e4c9ff;
+  --ink: #efe6ff; --muted: #9a8bb8; --danger: #ff5c7a; --gold: #ffd36b;
+  --display: "Pixelify Sans", "Trebuchet MS", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--void); color: var(--ink); font: 15px/1.45 var(--body);
+  overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+#app { position: relative; height: 100%; display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+#hud { display: flex; align-items: center; gap: 10px; padding: 8px 12px; font-family: var(--display); font-size: 16px; }
+#hud .fl { font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+#hearts { flex: 1; text-align: center; color: var(--danger); letter-spacing: 1px; font-size: 15px; white-space: nowrap; overflow: hidden; }
+#hearts i { font-style: normal; color: #4a3550; }
+#sh { color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ib { background: var(--stone); border: 1px solid var(--stone-hi); border-radius: 10px; width: 38px; height: 34px; padding: 0; font-family: var(--display); }
+#stage { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; }
+#cv { display: block; image-rendering: pixelated; }
+#toast { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: rgba(13,8,24,.88); border: 1px solid var(--violet);
+  padding: 6px 14px; border-radius: 10px; font-family: var(--display); font-size: 15px; pointer-events: none; opacity: 0; transition: opacity .25s; max-width: 90%; text-align: center; }
+#toast.on { opacity: 1; }
+#msg { margin: 0 10px; padding: 8px 12px; background: var(--stone); border: 1px solid var(--stone-hi); border-radius: 12px;
+  max-height: 27vh; overflow-y: auto; font-size: 14px; touch-action: pan-y; }
+#msg b { font-family: var(--display); font-weight: 600; font-size: 15px; color: var(--glow); }
+#msg .hint { color: var(--muted); font-style: italic; display: block; margin-top: 4px; }
+#msg .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; margin-top: 6px; }
+#msg .opts span { color: var(--ink); }
+#msg .opts span.bad { color: #6b5470; text-decoration: line-through; }
+#msg .opts em { font-style: normal; font-family: var(--display); color: var(--gold); margin-right: 4px; }
+#pad { height: 148px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; }
+#stick { width: 124px; height: 124px; border-radius: 50%; background: radial-gradient(circle, #23183c 0%, #150e26 70%); border: 2px solid var(--stone-hi); position: relative; touch-action: none; }
+#knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: #3a2766; border: 2px solid var(--violet); }
+#act { width: 100px; height: 100px; border-radius: 50%; border: 2px solid var(--violet); background: radial-gradient(circle at 40% 35%, #6b3fc4, #2b1856);
+  font-family: var(--display); font-size: 19px; font-weight: 700; touch-action: none; box-shadow: 0 0 18px rgba(164,107,255,.35); }
+#act:active, #act.dn { transform: scale(.94); background: radial-gradient(circle at 40% 35%, #8a5ae6, #3a2270); }
+.screen { position: absolute; inset: 0; z-index: 5; background: rgba(9,5,18,.94); display: flex; flex-direction: column; align-items: center;
+  overflow-y: auto; touch-action: pan-y; padding: calc(18px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.screen[hidden] { display: none; }
+.screen .in { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 12px; align-items: stretch; margin: auto 0; }
+.screen h1 { font-family: var(--display); font-size: 44px; line-height: 1; margin: 0; text-align: center; color: var(--glow); letter-spacing: .03em; text-shadow: 0 0 22px rgba(164,107,255,.6); text-wrap: balance; }
+.screen h2 { font-family: var(--display); font-size: 28px; margin: 0; text-align: center; color: var(--glow); text-wrap: balance; }
+.screen p { margin: 0; color: var(--muted); text-align: center; }
+.screen p.lore { color: var(--ink); font-style: italic; }
+.btn { background: linear-gradient(#5a33a8, #3a2172); border: 1px solid var(--violet); border-radius: 14px; padding: 13px 16px; font-family: var(--display); font-size: 19px; font-weight: 600; }
+.btn.sec { background: var(--stone); border-color: var(--stone-hi); font-size: 17px; }
+.btn:disabled { opacity: .4; }
+#portrait { display: block; margin: 0 auto; width: 210px; height: 260px; }
+.stats { display: flex; justify-content: center; gap: 18px; font-family: var(--display); color: var(--gold); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+.grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.cell { aspect-ratio: 1; max-width: 100%; border-radius: 6px; border: 1px solid var(--stone-hi); background: var(--stone); font-family: var(--display); font-size: 12px; padding: 0; position: relative; font-variant-numeric: tabular-nums; }
+.cell.done { background: #3a2470; border-color: var(--violet); }
+.cell.lock { opacity: .3; }
+.cell.next { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.cell.big { font-weight: 700; color: var(--danger); }
+.cell .s { position: absolute; top: -1px; right: 1px; font-size: 9px; color: var(--gold); }
+.sect { font-family: var(--display); font-size: 18px; color: var(--glow); margin: 6px 0 0; display: flex; justify-content: space-between; align-items: baseline; }
+.sect small { font-family: var(--body); font-size: 13px; color: var(--muted); }
+.legend { font-size: 12px; color: var(--muted); text-align: center; }
+.how { background: var(--stone); border: 1px solid var(--stone-hi); border-radius: 12px; padding: 10px 14px; font-size: 14px; color: var(--ink); }
+.how b { font-family: var(--display); color: var(--glow); }
+.how ul { margin: 6px 0 0; padding-left: 18px; }
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <span class="fl" id="flname">1. emelet</span>
+    <span id="hearts"></span>
+    <span id="sh">✦ 0/100</span>
+    <button class="ib" id="pauseBtn" aria-label="Szünet">II</button>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas><div id="toast"></div></div>
+  <div id="msg"></div>
+  <div id="pad">
+    <div id="stick" aria-label="Mozgás"><div id="knob"></div></div>
+    <button id="act">ÜTÉS</button>
+  </div>
+
+  <div class="screen" id="scTitle">
+    <div class="in">
+      <canvas id="portrait" width="420" height="520"></canvas>
+      <h1>Árnytorony</h1>
+      <p>100 emelet, mindegyik tetején egy rejtvény és egy főellenség. Ha minden csillagszilánkot megtalálsz, a torony alatt még 50 szint nyílik meg.</p>
+      <div class="stats" id="titleStats"></div>
+      <button class="btn" id="bContinue">Folytatás</button>
+      <button class="btn sec" id="bMap">Térkép</button>
+      <button class="btn sec" id="bHow">Hogyan kell játszani?</button>
+    </div>
+  </div>
+
+  <div class="screen" id="scHow" hidden>
+    <div class="in">
+      <h2>Hogyan kell játszani?</h2>
+      <div class="how">
+        <b>Rejtvényterem</b>
+        <ul>
+          <li>Bal oldalt a botkormánnyal lépsz, jobb oldalt az <b>ÜTÉS</b> gombbal cselekszel (oszlop megütése, rúna aktiválása, válasz kiválasztása, fal betörése).</li>
+          <li>A terem alján lévő üzenet mondja meg, mit kell tenni. Ha a pecsét megtört, az északi ajtón át jutsz a főellenséghez.</li>
+          <li>A <b>↺</b> rúnán ütve újrakezded a rejtvényt.</li>
+        </ul>
+      </div>
+      <div class="how">
+        <b>Csillagszilánkok</b>
+        <ul>
+          <li>Minden emeleten el van rejtve egy szilánk: vagy a padlón (csak közelről csillan meg), vagy egy repedt fal mögött (üsd meg).</li>
+          <li>A suttogás az üzenetben elárul valamit a helyéről. Minél feljebb jársz, annál kevesebbet.</li>
+          <li>Minden 20 szilánk +1 szívet, minden 50 szilánk +1 sebzést ad.</li>
+          <li>Mind a 100 kell ahhoz, hogy a 100. emelet után megnyíljon a Mélység 50 szintje.</li>
+        </ul>
+      </div>
+      <div class="how">
+        <b>Főellenség</b>
+        <ul>
+          <li>Automatikusan lősz. Mozogj, kerüld a lövedékeket, az <b>ÜTÉS</b> gomb itt kitérés (rövid ideig sebezhetetlen vagy).</li>
+          <li>Minden 10. emeleten egy erősebb őr vár.</li>
+        </ul>
+      </div>
+      <p>Billentyűzeten: nyilak vagy WASD, szóköz az ütés.</p>
+      <button class="btn" data-back>Vissza</button>
+    </div>
+  </div>
+
+  <div class="screen" id="scMap" hidden>
+    <div class="in">
+      <h2>A torony</h2>
+      <div class="stats" id="mapStats"></div>
+      <div class="sect">Emeletek <small>✦ = megvan a szilánk</small></div>
+      <div class="grid" id="gridTower"></div>
+      <div class="sect">A torony alatt <small id="deepNote"></small></div>
+      <div class="grid" id="gridDeep"></div>
+      <p class="legend">Lila: teljesítve · arany keret: következő · piros szám: őr-emelet</p>
+      <button class="btn" data-back>Vissza</button>
+    </div>
+  </div>
+
+  <div class="screen" id="scInfo" hidden>
+    <div class="in" id="infoIn"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const GW = 9, GH = 13;
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let T = 32, DPR = 1;
+
+// ---------- véletlen, mentés ----------
+function rngOf(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const ri = (r, a, b) => a + Math.floor(r() * (b - a + 1));
+const pick = (r, a) => a[Math.floor(r() * a.length)];
+function shuffle(r, a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+const SAVE_KEY = 'arnytorony-v1';
+let save = { cleared: {}, shards: {}, sound: true };
+try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.cleared) save = Object.assign(save, s); } catch (e) {}
+function store() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+const shardCount = () => Object.keys(save.shards).filter(k => +k <= 100).length;
+const deepCount = () => Object.keys(save.shards).filter(k => +k > 100).length;
+const deepOpen = () => !!save.cleared[100] && shardCount() >= 100;
+const maxHearts = () => Math.min(10, 5 + Math.floor(shardCount() / 20));
+const dmg = () => 1 + Math.floor(shardCount() / 50);
+const floorName = f => f <= 100 ? `${f}. emelet` : `Mélység ${f - 100}`;
+const floorShort = f => f <= 100 ? String(f) : 'M' + (f - 100);
+const shardWord = f => f <= 100 ? 'csillagszilánk' : 'mélységkő';
+function canPlay(f) {
+  if (f === 1) return true;
+  if (f > 100 && !deepOpen()) return false;
+  return !!save.cleared[f - 1];
+}
+function nextFloor() { for (let f = 1; f <= 150; f++) if (!save.cleared[f] && canPlay(f)) return f; return 0; }
+
+// ---------- hang ----------
+let AC = null;
+function sfx(freq, dur = .1, type = 'square', vol = .04, slide = 0) {
+  if (!save.sound) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain(), t0 = AC.currentTime;
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t0 + dur);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    o.connect(g).connect(AC.destination); o.start(); o.stop(t0 + dur);
+  } catch (e) {}
+}
+
+// ---------- tartalom ----------
+const RIDDLES = [
+  ['Minél többet veszel el belőle, annál nagyobb lesz.', 'gödör', 'hegy', 'árnyék', 'fal'],
+  ['Mindig előtted van, mégsem láthatod.', 'a jövő', 'az orrod', 'a tükör', 'a fal'],
+  ['Ha kimondod a nevem, már nem is létezem.', 'a csend', 'a titok', 'az árny', 'a név'],
+  ['Van szeme, de nem lát.', 'a krumpli', 'a vakond', 'a kő', 'a felhő'],
+  ['Fogai vannak, de sosem harap.', 'a fésű', 'a kutya', 'a kés', 'a kalap'],
+  ['Minél jobban szárít, annál vizesebb lesz.', 'a törölköző', 'az eső', 'a folyó', 'a só'],
+  ['Felmegy, de soha nem jön le.', 'az életkor', 'az eső', 'a labda', 'a lift'],
+  ['Ajtaja nincs, ablaka nincs, mégis lakik benne valaki.', 'a tojás', 'a kő', 'a felhő', 'a harang'],
+  ['Ha megosztod, többé nincs.', 'a titok', 'a kenyér', 'a pénz', 'a mosoly'],
+  ['Mindenhová követ, de ha nincs fény, eltűnik.', 'az árnyék', 'a kutya', 'a visszhang', 'az emlék'],
+  ['Beszél száj nélkül, felel fül nélkül.', 'a visszhang', 'a kő', 'a levél', 'a tükör'],
+  ['A tiéd, mégis mások használják többet.', 'a neved', 'a hangod', 'a kezed', 'az árnyékod'],
+  ['Hány hónapnak van 28 napja?', 'mindnek', 'egynek', 'négynek', 'hétnek'],
+  ['Egy apának öt lánya van, és mindegyiknek van egy bátyja. Hány gyereke van?', '6', '10', '11', '5'],
+  ['Reggel négy lábon, délben kettőn, este hármon jár.', 'az ember', 'a macska', 'a sárkány', 'a pók'],
+  ['Minél több van belőle, annál kevesebbet látsz.', 'a sötétség', 'a fény', 'a pénz', 'a víz'],
+  ['Csupa lyuk, mégis megtartja a vizet.', 'a szivacs', 'a vödör', 'a háló', 'a szita'],
+  ['Mindig jön, de soha nem érkezik meg.', 'a holnap', 'a vonat', 'a posta', 'a tavasz'],
+  ['Fut, de nincs lába. Ágya van, de sosem alszik.', 'a folyó', 'a szél', 'az óra', 'a kígyó'],
+  ['Szárnya nincs, mégis repül. Szeme nincs, mégis sír.', 'a felhő', 'a madár', 'a sárkány', 'a szél'],
+  ['Minél tovább él, annál rövidebb lesz.', 'a gyertya', 'a kígyó', 'a nap', 'a fa'],
+  ['Ha egyszer kiengedted, többé nem hívhatod vissza.', 'a kimondott szó', 'a madár', 'a kutya', 'a lufi'],
+  ['Sötét szobába lépsz. Van benne egy gyertya, egy lámpás és egy kandalló, de csak egy gyufád. Mit gyújtasz meg először?', 'a gyufát', 'a gyertyát', 'a lámpást', 'a kandallót'],
+  ['Mi a nehezebb: egy kiló toll vagy egy kiló vas?', 'egyformák', 'a vas', 'a toll', 'attól függ'],
+  ['Melyik szót írják mindig rosszul a szótárban?', 'rosszul', 'hiba', 'szótár', 'helyesen'],
+  ['Felmegy és lemegy, mégsem mozdul.', 'a lépcső', 'a lift', 'a hinta', 'a labda'],
+  ['Gyűrűi vannak, de ujja nincs.', 'a fa', 'a menyasszony', 'a kesztyű', 'a kígyó'],
+  ['Minél többet adsz belőle, annál több marad.', 'a mosoly', 'a pénz', 'a kenyér', 'az idő'],
+  ['Én vagyok a kezdet vége és a vég kezdete. Mi vagyok?', 'a „g” betű', 'az éjfél', 'a hajnal', 'a szív'],
+  ['Kétszer annyi idős vagyok, mint te voltál, amikor annyi voltam, amennyi te most vagy. Most 30 vagyok. Hány éves vagy?', '22,5', '15', '20', '25'],
+  ['Nálad van, ha nem tudod. Elveszíted, ha elmondod.', 'a rejtély', 'a kulcs', 'a pénz', 'a hang'],
+  ['Egyszer egy percben, kétszer egy pillanatban, de egyszer sem száz év alatt.', 'a „p” betű', 'a szívverés', 'a villám', 'a pislogás'],
+];
+const LORE = {
+  10: 'A torony aljánál azt mondták: aki felér, visszakapja, amit az árnyék elvett tőle.',
+  20: 'A falakba vésett nevek mind olyanoké, akik nem jutottak tovább. A tiédet még nem vésték be.',
+  30: 'Minden szilánk egy lehullott csillag darabja. Összerakva valami más lesz belőle.',
+  40: 'Az őrök nem gonoszak. Csak elfelejtették, mit őriznek.',
+  50: 'Félúton jársz. A torony most először néz vissza rád.',
+  60: 'A lépcsők itt már maguktól fordulnak. Csak a rejtvények mondanak igazat.',
+  70: 'Valaki lent a mélyben a nevedet suttogja.',
+  80: 'A szilánkok melegek, mintha szív dobogna bennük.',
+  90: 'A csúcs közel. A Torony Ura már tudja, hogy jössz.',
+  100: 'A Torony Ura: „Száz emelet. És mit hoztál magaddal?”',
+  110: 'A torony alatt nincs ég. Csak a szilánkok fénye vezet.',
+  120: 'Ez a mélység volt az első. A torony csak a fedele.',
+  130: 'A falak itt lélegeznek.',
+  140: 'Közel vagy a Szívhez. Hallod a dobbanást?',
+  150: 'A Mélység Szíve: „Te raktad össze a csillagot. Most mit kezdesz vele?”',
+};
+const TYPES = ['order', 'lights', 'riddle', 'push', 'dark'];
+function typeOf(f) {
+  if (f === 1) return 'order';
+  const block = Math.floor((f - 1) / 5);
+  return shuffle(rngOf(block * 31 + 7), TYPES.slice())[(f - 1) % 5];
+}
+
+function genExpr(r, f) {
+  const t = f < 15 ? 0 : f < 40 ? 1 : f < 80 ? 2 : 3;
+  let a, b, d, s, v;
+  if (t === 0) {
+    a = ri(r, 1, 12); b = ri(r, 1, 9);
+    if (r() < .5) { s = `${a}+${b}`; v = a + b; } else { if (a < b) [a, b] = [b, a]; s = `${a}−${b}`; v = a - b; }
+  } else if (t === 1) {
+    const o = ri(r, 0, 2);
+    if (o === 0) { a = ri(r, 2, 9); b = ri(r, 2, 9); s = `${a}×${b}`; v = a * b; }
+    else if (o === 1) { a = ri(r, 10, 40); b = ri(r, 5, 30); s = `${a}+${b}`; v = a + b; }
+    else { a = ri(r, 20, 60); b = ri(r, 3, 19); s = `${a}−${b}`; v = a - b; }
+  } else if (t === 2) {
+    const o = ri(r, 0, 2); a = ri(r, 2, 9); b = ri(r, 2, 9); d = ri(r, 1, 15);
+    if (o === 0) { s = `${a}×${b}+${d}`; v = a * b + d; }
+    else if (o === 1) { s = `(${a}+${d})×${b}`; v = (a + d) * b; }
+    else { a = ri(r, 3, 12); s = `${a}²`; v = a * a; }
+  } else {
+    const o = ri(r, 0, 3); a = ri(r, 2, 12); b = ri(r, 2, 9); d = ri(r, 2, 30);
+    if (o === 0) { s = `${a}²−${d}`; v = a * a - d; }
+    else if (o === 1) { s = `${b}−${d}`; v = b - d; }
+    else if (o === 2) { const q = ri(r, 2, 12); s = `${q * b}÷${b}`; v = q; }
+    else { s = `(${b}−${a})×${d % 9 + 2}`; v = (b - a) * (d % 9 + 2); }
+  }
+  return { s, v };
+}
+
+function genSeq(r, f) {
+  const kinds = f < 30 ? ['arith', 'geo'] : f < 70 ? ['arith', 'geo', 'sq', 'tri'] : ['geo', 'sq', 'tri', 'fib', 'alt'];
+  const k = pick(r, kinds);
+  let t = [], ans;
+  if (k === 'arith') { const a = ri(r, 1, 20), d = ri(r, 2, 9 + Math.floor(f / 10)); for (let i = 0; i < 5; i++) t.push(a + d * i); }
+  else if (k === 'geo') { const a = ri(r, 1, 5), q = ri(r, 2, 3); for (let i = 0; i < 5; i++) t.push(a * q ** i); }
+  else if (k === 'sq') { const s = ri(r, 1, 6); for (let i = 0; i < 5; i++) t.push((s + i) ** 2); }
+  else if (k === 'tri') { let a = ri(r, 1, 9); const d0 = ri(r, 1, 4); for (let i = 0; i < 5; i++) { t.push(a); a += d0 + i; } }
+  else if (k === 'fib') { let a = ri(r, 1, 4), b = ri(r, 2, 6); for (let i = 0; i < 5; i++) { t.push(a); [a, b] = [b, a + b]; } }
+  else { const a = ri(r, 10, 40), d = ri(r, 2, 7); for (let i = 0; i < 5; i++) t.push(i % 2 ? t[i - 1] - d : (i ? t[i - 1] + d * 3 : a)); }
+  ans = t.pop();
+  const wrong = new Set();
+  for (const w of [ans + 1, ans - 2, ans + (t[3] - t[2]) || ans + 3, ans * 2, ans + 5, ans - 1]) if (w !== ans && wrong.size < 3) wrong.add(w);
+  return { q: `Mi jön a sorban? ${t.join(', ')}, ?`, a: String(ans), wrong: [...wrong].map(String) };
+}
+
+// ---------- terem generálás ----------
+const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const RESERVED = [[4, 11], [7, 11], [4, 1], [1, 11]];
+const isRes = (x, y) => RESERVED.some(([a, b]) => a === x && b === y);
+const inL = (L, x, y) => L && x >= L.x0 && y >= L.y0 && x < L.x0 + L.n && y < L.y0 + L.n;
+function baseGrid() {
+  const g = [];
+  for (let y = 0; y < GH; y++) { const row = []; for (let x = 0; x < GW; x++) row.push(x === 0 || y === 0 || x === GW - 1 || y === GH - 1 ? 1 : 0); g.push(row); }
+  g[0][4] = 3; return g;
+}
+function toggleL(L, cx, cy) {
+  for (const [dx, dy] of [[0, 0], ...DIRS]) { const x = cx + dx, y = cy + dy; if (x >= 0 && y >= 0 && x < L.n && y < L.n) L.on[y * L.n + x] = !L.on[y * L.n + x]; }
+}
+function bfs(R, sx, sy, solidFn) {
+  const seen = new Set([sx + ',' + sy]), q = [[sx, sy]];
+  while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy, k = nx + ',' + ny; if (nx < 1 || ny < 1 || nx > GW - 2 || ny > GH - 2 || seen.has(k) || solidFn(nx, ny)) continue; seen.add(k); q.push([nx, ny]); } }
+  return seen;
+}
+
+function tryRoom(f, att) {
+  const r = rngOf(f * 7919 + att * 104729 + 17);
+  const type = typeOf(f);
+  const R = { f, type, g: baseGrid(), blocks: [], plates: [], pillars: [], lights: null, answers: [], tablet: null, keys: [], shard: null,
+    reset: (type === 'lights' || type === 'push') ? { x: 7, y: 11 } : null, solved: false, prog: 0, need: [], mode: '', riddle: null, dark: false, flash: 0 };
+  const occ = (x, y) => R.g[y][x] !== 0 || R.blocks.some(b => b.x === x && b.y === y) || R.plates.some(p => p.x === x && p.y === y) ||
+    R.pillars.some(p => p.x === x && p.y === y) || R.answers.some(p => p.x === x && p.y === y) || (R.tablet && R.tablet.x === x && R.tablet.y === y) ||
+    R.keys.some(k => k.x === x && k.y === y) || inL(R.lights, x, y) || isRes(x, y);
+  const freeCells = (y0 = 1, y1 = GH - 2) => { const a = []; for (let y = y0; y <= y1; y++) for (let x = 1; x < GW - 1; x++) if (!occ(x, y)) a.push([x, y]); return a; };
+
+  if (type === 'order') {
+    const k = Math.min(6, 3 + Math.floor(f / 25));
+    const spots = shuffle(r, [[2, 4], [4, 4], [6, 4], [2, 7], [4, 7], [6, 7]]).slice(0, k);
+    const vals = new Set();
+    for (const [x, y] of spots) { let e, n = 0; do { e = genExpr(r, f); } while (vals.has(e.v) && ++n < 50); if (vals.has(e.v)) return null; vals.add(e.v); R.pillars.push({ x, y, label: e.s, v: e.v, lit: false }); }
+    let mode = 'asc';
+    if (f > 20 && r() < .4) mode = 'desc';
+    const ev = R.pillars.filter(p => p.v % 2 === 0).length;
+    if (f > 55 && r() < .45 && ev >= 2 && ev < k) mode = 'even';
+    let idx = R.pillars.map((p, i) => i);
+    if (mode === 'even') idx = idx.filter(i => R.pillars[i].v % 2 === 0);
+    idx.sort((a, b) => R.pillars[a].v - R.pillars[b].v);
+    if (mode === 'desc') idx.reverse();
+    R.need = idx; R.mode = mode;
+  } else if (type === 'lights') {
+    const n = f < 20 ? 3 : f < 60 ? 4 : 5, x0 = Math.floor((GW - n) / 2), y0 = 3;
+    const L = { x0, y0, n, on: [] };
+    let tries = 0;
+    do {
+      L.on = Array(n * n).fill(true);
+      shuffle(r, [...Array(n * n).keys()]).slice(0, Math.min(n * n - 1, 2 + Math.floor(f / 12))).forEach(i => toggleL(L, i % n, Math.floor(i / n)));
+    } while (L.on.every(Boolean) && ++tries < 30);
+    if (L.on.every(Boolean)) return null;
+    L.init = L.on.slice(); R.lights = L;
+  } else if (type === 'riddle') {
+    let q;
+    if (f > 100 || r() < .35) q = genSeq(r, f);
+    else { const it = RIDDLES[(f * 7 + att) % RIDDLES.length]; q = { q: it[0], a: it[1], wrong: it.slice(2) }; }
+    const opts = shuffle(r, [q.a, ...q.wrong.slice(0, 3)]);
+    R.riddle = { q: q.q, opts, ans: opts.indexOf(q.a) };
+    [1, 3, 5, 7].forEach((x, i) => R.answers.push({ x, y: 8, i, bad: false }));
+    R.tablet = { x: 4, y: 4 };
+  } else if (type === 'push') {
+    const nb = Math.min(4, 1 + Math.floor(f / 30));
+    const nObs = f > 8 ? ri(r, 1, Math.min(5, 1 + Math.floor(f / 20))) : 0;
+    for (let i = 0; i < nObs; i++) { const c = pick(r, freeCells(2, 10)); R.g[c[1]][c[0]] = 4; }
+    for (let i = 0; i < nb; i++) { const c = freeCells(3, 9).filter(([x]) => x >= 2 && x <= 6); if (!c.length) return null; const [x, y] = pick(r, c); R.plates.push({ x, y }); }
+    R.blocks = R.plates.map(p => ({ x: p.x, y: p.y }));
+    const blockAt = (x, y) => R.blocks.find(b => b.x === x && b.y === y);
+    const cand = freeCells(1, 10); if (!cand.length) return null;
+    let [px, py] = pick(r, cand);
+    for (let s = 0; s < 600; s++) {
+      const [dx, dy] = pick(r, DIRS), nx = px + dx, ny = py + dy;
+      if (nx < 1 || nx > GW - 2 || ny < 1 || ny > 10 || R.g[ny][nx] !== 0 || blockAt(nx, ny)) continue;
+      const b = blockAt(px - dx, py - dy);
+      if (b && r() < .6) { b.x = px; b.y = py; }
+      px = nx; py = ny;
+    }
+    if (R.blocks.some(b => R.plates.some(p => p.x === b.x && p.y === b.y) || isRes(b.x, b.y))) return null;
+    const reach = bfs(R, 4, 11, (x, y) => R.g[y][x] !== 0 || !!blockAt(x, y));
+    if (!reach.has(px + ',' + py)) return null;
+    R.blocks.forEach(b => { b.ix = b.x; b.iy = b.y; });
+  } else if (type === 'dark') {
+    R.dark = true;
+    const nObs = ri(r, 8, 14);
+    for (let i = 0; i < nObs; i++) { const c = pick(r, freeCells(1, 10)); R.g[c[1]][c[0]] = 4; }
+    const reach = bfs(R, 4, 11, (x, y) => R.g[y][x] !== 0);
+    for (let y = 1; y < GH - 1; y++) for (let x = 1; x < GW - 1; x++) if (R.g[y][x] === 0 && !reach.has(x + ',' + y)) return null;
+    const k = Math.min(6, 3 + Math.floor(f / 30));
+    const c = shuffle(r, freeCells().filter(([x, y]) => Math.abs(x - 4) + Math.abs(y - 11) >= 4));
+    if (c.length < k + 2) return null;
+    for (let i = 0; i < k; i++) R.keys.push({ x: c[i][0], y: c[i][1], got: false });
+  }
+
+  // csillagszilánk
+  const taken = !!save.shards[f];
+  let mode = r() < .5 ? 'wall' : 'floor', sx, sy;
+  if (mode === 'wall') {
+    const walls = [];
+    for (let x = 1; x < GW - 1; x++) { if (x !== 4) walls.push([x, 0, x, 1]); walls.push([x, GH - 1, x, GH - 2]); }
+    for (let y = 1; y < GH - 1; y++) { walls.push([0, y, 1, y]); walls.push([GW - 1, y, GW - 2, y]); }
+    const ok = walls.filter(([, , nx, ny]) => R.g[ny][nx] === 0 && !R.pillars.some(p => p.x === nx && p.y === ny) && !(R.tablet && R.tablet.x === nx && R.tablet.y === ny));
+    if (!ok.length) mode = 'floor'; else { const w = pick(r, ok); sx = w[0]; sy = w[1]; if (!taken) R.g[sy][sx] = 2; }
+  }
+  if (mode === 'floor') { const c = freeCells(); if (!c.length) return null; [sx, sy] = pick(r, c); }
+  R.shard = { x: sx, y: sy, mode, taken, revealed: mode === 'floor' };
+  return R;
+}
+function genRoom(f) { for (let a = 0; a < 200; a++) { const R = tryRoom(f, a); if (R) return R; } throw new Error('Nem sikerült termet generálni: ' + f); }
+
+function dirAdj(x, y) {
+  const v = y < 4 ? 'észak' : y > 8 ? 'dél' : '', h = x < 3 ? 'nyugat' : x > 5 ? 'kelet' : '';
+  if (!v && !h) return 'középső';
+  return (v + h) + 'i';
+}
+function shardHint(R) {
+  const S = R.shard, f = R.f, w = shardWord(f);
+  if (S.taken) return `A(z) ${w} erről a szintről már nálad van.`;
+  const adj = dirAdj(S.x, S.y), up = adj[0].toUpperCase() + adj.slice(1);
+  if (S.mode === 'wall') {
+    if (f <= 30) return `Suttogás: „A(z) ${adj} fal megrepedt. Mögötte egy ${w} alszik.”`;
+    if (f <= 70 || f > 100 && f <= 125) return `Suttogás: „Ahol a(z) ${adj} kő enged, ott vár.”`;
+    return 'Suttogás: „Nem minden fal igazi.”';
+  }
+  if (f <= 30) return `Suttogás: „A terem ${adj} részén, a padlón csillan valami, de csak közelről látszik.”`;
+  if (f <= 70 || f > 100 && f <= 125) return `Suttogás: „${up} irányban a sötétség csillog.”`;
+  return 'Suttogás: „Ami rejtve van, csak közelről mutatkozik.”';
+}
+
+// ---------- főellenség ----------
+const PRE = ['Árny', 'Hamu', 'Kristály', 'Vas', 'Köd', 'Üveg', 'Éjfél', 'Rozsda', 'Csont', 'Vihar', 'Méreg', 'Ezüst', 'Holdfény', 'Szilánk', 'Átok', 'Tövis', 'Lidérc', 'Parázs'];
+const FAM = { golem: ['gólem', 'kőóriás', 'őrző'], spider: ['pók', 'szövő', 'hálóanya'], eye: ['szem', 'figyelő', 'látó'], witch: ['boszorka', 'banya', 'varázsló'], knight: ['lovag', 'hóhér', 'bajnok'], serpent: ['kígyó', 'hidra', 'sárkány'] };
+const PATS = ['aimed', 'ring', 'spiral', 'rain', 'fan', 'homing'];
+function makeBoss(f) {
+  const r = rngOf(f * 4243 + 9), big = f % 10 === 0;
+  const fam = pick(r, Object.keys(FAM));
+  let name = pick(r, PRE) + pick(r, FAM[fam]);
+  if (f === 100) name = 'A Torony Ura'; if (f === 150) name = 'A Mélység Szíve';
+  const avail = ['aimed', 'ring']; if (f > 5) avail.push('spiral'); if (f > 12) avail.push('rain'); if (f > 20) avail.push('fan'); if (f > 45) avail.push('homing');
+  const n = Math.min(4, 1 + (f > 8) + (f > 35) + (big ? 1 : 0));
+  const pats = shuffle(r, avail.slice()).slice(0, n);
+  const hp = Math.round((30 + f * 2.4) * (f === 150 ? 2.5 : f === 100 ? 2.1 : big ? 1.6 : 1));
+  const hue = f <= 100 ? (260 + f * 7) % 360 : (330 + f * 3) % 360;
+  return { f, name, fam, big, pats, pi: 0, patT: 0, fireT: 1.2, hp, max: hp, x: 4.5, y: 2.6, r: big ? 1.15 : .85, t: 0, rot: 0, spd: .6 + r() * .5,
+    hue, dead: 0, hitT: 0, bs: Math.min(5.6, 2.4 + f * .024) };
+}
+
+// ---------- játékállapot ----------
+let mode = 'title'; // title | room | boss | paused
+let R = null, B = null, floor = 1, hearts = 5;
+const P = { x: 4, y: 11, px: 4, py: 11, fx: 0, fy: -1, moving: false, mt: 0, sx: 0, sy: 0, punch: 0, walk: 0,
+  bx: 4.5, by: 10.5, inv: 0, dashT: 0, dashCd: 0, ddx: 0, ddy: -1, fireT: 0 };
+let shots = [], bullets = [], parts = [], winT = 0, loseT = 0;
+
+function startFloor(f) {
+  floor = f; R = genRoom(f); B = null; hearts = maxHearts();
+  Object.assign(P, { x: 4, y: 11, px: 4, py: 11, fx: 0, fy: -1, moving: false, punch: 0 });
+  shots = []; bullets = []; parts = []; winT = 0; loseT = 0;
+  mode = 'room'; hideScreens(); updateHUD(); updateMsg();
+  setAct('ÜTÉS');
+  toast(floorName(f) + (f % 10 === 0 ? ' · őr-emelet' : ''));
+}
+
+function updateMsg() {
+  const el = $('#msg');
+  if (mode === 'boss') { el.innerHTML = `<b>${B.name}</b>${B.big ? ' · őr' : ''}<span class="hint">Kerüld a lövedékeket. Az ÜTÉS gomb most kitérés.</span>`; return; }
+  if (!R) { el.innerHTML = ''; return; }
+  let h = '';
+  if (R.solved) h = '<b>A pecsét megtört.</b> Az északi ajtó nyitva áll, mögötte vár a főellenség.';
+  else if (R.type === 'order') {
+    const t = R.mode === 'desc' ? 'a legnagyobb értékűtől a legkisebbig' : 'a legkisebb értékűtől a legnagyobbig';
+    h = R.mode === 'even' ? '<b>Páros pecsét.</b> Csak a páros értékű oszlopokat üsd meg, a legkisebbtől a legnagyobbig. Egy páratlan visszaállít mindent.'
+      : `<b>Számoszlopok.</b> Állj egy oszlop mellé, nézz rá, és üsd meg őket ${t}.`;
+    h += ` <span style="color:var(--gold)">${R.prog}/${R.need.length}</span>`;
+  } else if (R.type === 'lights') {
+    h = `<b>Rúnamező.</b> Állj egy rúnára és üss: a rúna és a szomszédai átfordulnak. Gyújtsd meg mind a ${R.lights.n * R.lights.n}-at. A ↺ rúnán újrakezded.`;
+  } else if (R.type === 'riddle') {
+    h = `<b>A kőtábla kérdez:</b> ${R.riddle.q}<div class="opts">${R.riddle.opts.map((o, i) => `<span class="${R.answers[i].bad ? 'bad' : ''}"><em>${'ABCD'[i]}</em>${o}</span>`).join('')}</div>` +
+      '<span class="hint" style="font-style:normal">Állj a helyes betűre és üss. A rossz válasz egy szívbe kerül.</span>';
+  } else if (R.type === 'push') {
+    h = `<b>Nyomólapok.</b> Told a köveket a lapokra (${R.plates.filter(p => R.blocks.some(b => b.x === p.x && b.y === p.y)).length}/${R.plates.length}). Ha beszorult, üss a ↺ rúnán.`;
+  } else if (R.type === 'dark') {
+    h = `<b>Sötét terem.</b> Keresd meg a kulcsokat: ${R.keys.filter(k => k.got).length}/${R.keys.length}.`;
+  }
+  h += `<span class="hint">${shardHint(R)}</span>`;
+  el.innerHTML = h;
+}
+
+function updateHUD() {
+  $('#flname').textContent = floorName(floor);
+  const m = maxHearts(); let s = '';
+  for (let i = 0; i < m; i++) s += i < hearts ? '♥' : '<i>♥</i>';
+  $('#hearts').innerHTML = s; $('#hearts').style.fontSize = m > 7 ? '12px' : '';
+  $('#sh').textContent = floor > 100 ? `◆ ${deepCount()}/50` : `✦ ${shardCount()}/100`;
+}
+let toastT = 0;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 1800); }
+function setAct(t) { $('#act').textContent = t; }
+
+// ---------- terem logika ----------
+const blockAt = (x, y) => R.blocks.find(b => b.x === x && b.y === y);
+function solidAt(x, y) {
+  if (x < 0 || y < 0 || x >= GW || y >= GH) return true;
+  const g = R.g[y][x];
+  if (g === 1 || g === 2 || g === 4) return true;
+  if (g === 3) return !R.solved;
+  if (R.pillars.some(p => p.x === x && p.y === y)) return true;
+  if (R.tablet && R.tablet.x === x && R.tablet.y === y) return true;
+  return false;
+}
+function tryStep(dx, dy) {
+  const nx = P.x + dx, ny = P.y + dy;
+  if (R.g[ny] && R.g[ny][nx] === 3) {
+    if (R.solved) { enterBossIntro(); return; }
+    toast('Az ajtó le van pecsételve.'); return;
+  }
+  if (solidAt(nx, ny)) return;
+  const b = blockAt(nx, ny);
+  if (b) {
+    const bx = nx + dx, by = ny + dy;
+    if (solidAt(bx, by) || blockAt(bx, by) || R.g[by][bx] === 3) return;
+    b.x = bx; b.y = by; sfx(110, .08, 'triangle', .06);
+    checkPush();
+  }
+  P.sx = P.x; P.sy = P.y; P.x = nx; P.y = ny; P.moving = true; P.mt = 0;
+}
+function onArrive() {
+  const S = R.shard;
+  if (!S.taken && S.revealed && S.x === P.x && S.y === P.y) {
+    S.taken = true; save.shards[R.f] = 1; store();
+    sfx(880, .15, 'sine', .06); setTimeout(() => sfx(1320, .25, 'sine', .05), 90);
+    burst(S.x + .5, S.y + .5, 45, 30);
+    toast(R.f <= 100 ? `✦ Csillagszilánk! (${shardCount()}/100)` : `◆ Mélységkő! (${deepCount()}/50)`);
+    updateHUD(); updateMsg();
+  }
+  for (const k of R.keys) if (!k.got && k.x === P.x && k.y === P.y) {
+    k.got = true; sfx(660, .12, 'sine', .05); burst(k.x + .5, k.y + .5, 50, 14);
+    if (R.keys.every(k => k.got)) solve(); else updateMsg();
+  }
+}
+function solve() {
+  if (R.solved) return;
+  R.solved = true; sfx(523, .12, 'sine', .06); setTimeout(() => sfx(784, .3, 'sine', .06), 120);
+  burst(4.5, .5, 280, 30); toast('A pecsét megtört!'); updateMsg();
+}
+function checkPush() { if (R.plates.every(p => blockAt(p.x, p.y))) solve(); updateMsg(); }
+function resetPuzzle() {
+  if (R.solved) return;
+  if (R.lights) R.lights.on = R.lights.init.slice();
+  R.blocks.forEach(b => { b.x = b.ix; b.y = b.iy; });
+  if (R.blocks.some(b => b.x === P.x && b.y === P.y)) { P.x = 4; P.y = 11; P.px = 4; P.py = 11; }
+  sfx(300, .2, 'sawtooth', .03, .5); toast('Rejtvény visszaállítva'); updateMsg();
+}
+function doAction() {
+  P.punch = .18;
+  const fx = P.x + P.fx, fy = P.y + P.fy;
+  if (R.reset && P.x === R.reset.x && P.y === R.reset.y) { resetPuzzle(); return; }
+  if (R.lights && inL(R.lights, P.x, P.y) && !R.solved) {
+    toggleL(R.lights, P.x - R.lights.x0, P.y - R.lights.y0); sfx(440 + R.lights.on.filter(Boolean).length * 20, .08, 'triangle', .05);
+    if (R.lights.on.every(Boolean)) solve(); return;
+  }
+  const ans = R.answers.find(a => a.x === P.x && a.y === P.y);
+  if (ans && !R.solved) {
+    if (ans.bad) { toast('Ezt már próbáltad.'); return; }
+    if (ans.i === R.riddle.ans) solve();
+    else { ans.bad = true; hurt(); toast('Rossz válasz!'); updateMsg(); }
+    return;
+  }
+  if (R.g[fy] && R.g[fy][fx] === 2) {
+    R.g[fy][fx] = 0; R.shard.revealed = true; sfx(90, .25, 'sawtooth', .07, .4); burst(fx + .5, fy + .5, 270, 22); toast('A fal beomlott!'); return;
+  }
+  const pi = R.pillars.findIndex(p => p.x === fx && p.y === fy);
+  if (pi >= 0 && !R.solved) {
+    const p = R.pillars[pi];
+    if (p.lit) return;
+    if (R.need[R.prog] === pi) { p.lit = true; R.prog++; sfx(500 + R.prog * 90, .12, 'sine', .06); if (R.prog === R.need.length) solve(); }
+    else { R.pillars.forEach(q => q.lit = false); R.prog = 0; R.flash = .4; sfx(140, .25, 'sawtooth', .05, .6); toast('Rossz sorrend, a pecsét visszaállt.'); }
+    updateMsg(); return;
+  }
+  sfx(180, .05, 'square', .02);
+}
+function hurt() {
+  hearts--; updateHUD(); sfx(160, .2, 'sawtooth', .07, .5);
+  if (navigator.vibrate) try { navigator.vibrate(60); } catch (e) {}
+  if (hearts <= 0) { loseT = .01; }
+}
+
+function updRoom(dt) {
+  if (P.punch > 0) P.punch -= dt;
+  if (R.flash > 0) R.flash -= dt;
+  if (P.moving) {
+    P.mt += dt / .13; P.walk += dt * 9;
+    if (P.mt >= 1) { P.moving = false; P.px = P.x; P.py = P.y; onArrive(); }
+    else { P.px = P.sx + (P.x - P.sx) * P.mt; P.py = P.sy + (P.y - P.sy) * P.mt; }
+  }
+  if (!P.moving && mode === 'room') {
+    const d = dirInput();
+    if (d) { P.fx = d[0]; P.fy = d[1]; tryStep(d[0], d[1]); }
+  }
+  if (actQ) { actQ = false; if (mode === 'room') doAction(); }
+  if (loseT > 0) { loseT = 0; showLose(false); }
+}
+
+// ---------- harc logika ----------
+function enterBossIntro() {
+  B = makeBoss(floor); mode = 'paused';
+  const lore = LORE[floor] ? `<p class="lore">${LORE[floor]}</p>` : '';
+  showInfo(`<h2>${B.name}</h2><p>${floorName(floor)}${B.big ? ' őre' : ' főellensége'}</p>${lore}<button class="btn" id="bFight">Harc!</button>`);
+  $('#bFight').onclick = startBoss;
+}
+function startBoss() {
+  B = makeBoss(floor); mode = 'boss'; hideScreens();
+  Object.assign(P, { bx: 4.5, by: 10.5, inv: 1, dashT: 0, dashCd: 0, fireT: 0 });
+  shots = []; bullets = []; winT = 0; loseT = 0;
+  setAct('KITÉR'); updateMsg(); updateHUD(); sfx(200, .4, 'sawtooth', .05, 2);
+}
+function fire(type) {
+  const b = B, bs = b.bs, ang = Math.atan2(P.by - b.y, P.bx - b.x), f = b.f;
+  const add = (a, sp, r = .16, home = 0) => { if (bullets.length < 320) bullets.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r, home }); };
+  if (type === 'aimed') { const n = Math.min(5, 1 + Math.floor(f / 25)); for (let i = 0; i < n; i++) add(ang + (i - (n - 1) / 2) * .2, bs * 1.1); return .95 - Math.min(.45, f * .004); }
+  if (type === 'ring') { const n = Math.min(22, 8 + Math.floor(f / 12)); b.rot += .3; for (let i = 0; i < n; i++) add(b.rot + i * Math.PI * 2 / n, bs * .8, .18); return 1.5 - Math.min(.6, f * .005); }
+  if (type === 'spiral') { const arms = Math.min(4, 1 + Math.floor(f / 40)); b.rot += .37; for (let i = 0; i < arms; i++) add(b.rot + i * Math.PI * 2 / arms, bs * .75, .14); return .13; }
+  if (type === 'rain') { const n = 1 + Math.floor(f / 50); for (let i = 0; i < n; i++) if (bullets.length < 320) bullets.push({ x: 1 + Math.random() * (GW - 2), y: 1, vx: 0, vy: bs * .85, r: .15, home: 0 }); return .3; }
+  if (type === 'fan') { for (let i = 0; i < 7; i++) add(Math.PI / 2 + (i - 3) * .22 + Math.sin(b.t * 2) * .4, bs * .9, .16); return 1.15; }
+  if (type === 'homing') { add(ang + .6, bs * .6, .2, 1.4); add(ang - .6, bs * .6, .2, 1.4); return 1.6; }
+  return 1;
+}
+function updBoss(dt) {
+  const b = B;
+  if (actQ) { actQ = false; if (P.dashCd <= 0) { const [jx, jy] = joyVec(); const m = Math.hypot(jx, jy); P.ddx = m > .2 ? jx / m : 0; P.ddy = m > .2 ? jy / m : -1; P.dashT = .17; P.dashCd = .75; P.inv = Math.max(P.inv, .3); sfx(600, .08, 'sine', .03, .5); } }
+  P.inv -= dt; P.dashCd -= dt; P.punch -= dt;
+  const [jx, jy] = joyVec();
+  if (P.dashT > 0) { P.dashT -= dt; P.bx += P.ddx * 13 * dt; P.by += P.ddy * 13 * dt; }
+  else { P.bx += jx * 4.8 * dt; P.by += jy * 4.8 * dt; if (Math.hypot(jx, jy) > .15) { P.walk += dt * 9; if (Math.abs(jx) > Math.abs(jy)) { P.fx = Math.sign(jx); P.fy = 0; } else { P.fx = 0; P.fy = Math.sign(jy); } } }
+  P.bx = Math.max(1.3, Math.min(GW - 1.3, P.bx)); P.by = Math.max(1.4, Math.min(GH - 1.3, P.by));
+
+  if (b.dead) {
+    b.dead += dt; if (b.dead > 1.4 && !winT) { winT = 1; floorCleared(); }
+  } else {
+    b.t += dt; b.hitT -= dt;
+    b.x = 4.5 + Math.sin(b.t * b.spd) * 2.5; b.y = 2.7 + Math.sin(b.t * .9) * .5;
+    b.patT += dt; if (b.patT > 4.2) { b.patT = 0; b.pi = (b.pi + 1) % b.pats.length; b.fireT = .5; }
+    b.fireT -= dt;
+    if (b.fireT <= 0) b.fireT = fire(b.pats[b.pi]) * (b.hp < b.max / 2 ? .75 : 1);
+    P.fireT -= dt;
+    if (P.fireT <= 0) { P.fireT = .15; const a = Math.atan2(b.y - P.by, b.x - P.bx); shots.push({ x: P.bx, y: P.by - .3, vx: Math.cos(a) * 13, vy: Math.sin(a) * 13 }); }
+  }
+  for (const s of shots) {
+    s.x += s.vx * dt; s.y += s.vy * dt;
+    if (!b.dead && Math.hypot(s.x - b.x, s.y - b.y) < b.r) {
+      s.dead = 1; b.hp -= dmg(); b.hitT = .04;
+      if (b.hp <= 0) { b.hp = 0; b.dead = .01; bullets = []; burst(b.x, b.y, b.hue, 70); sfx(70, .8, 'sawtooth', .08, .3); }
+    }
+  }
+  shots = shots.filter(s => !s.dead && s.y > -1 && s.y < GH + 1 && s.x > -1 && s.x < GW + 1);
+  for (const u of bullets) {
+    if (u.home > 0) { u.home -= dt; const a = Math.atan2(P.by - u.y, P.bx - u.x), sp = Math.hypot(u.vx, u.vy), ca = Math.atan2(u.vy, u.vx); let d = a - ca; d = Math.atan2(Math.sin(d), Math.cos(d)); const na = ca + Math.max(-2.2 * dt, Math.min(2.2 * dt, d)); u.vx = Math.cos(na) * sp; u.vy = Math.sin(na) * sp; }
+    u.x += u.vx * dt; u.y += u.vy * dt;
+    if (P.inv <= 0 && Math.hypot(u.x - P.bx, u.y - P.by) < u.r + .2) { u.dead = 1; P.inv = 1.1; hurt(); burst(P.bx, P.by, 340, 12); }
+  }
+  bullets = bullets.filter(u => !u.dead && u.y > .3 && u.y < GH - .3 && u.x > .3 && u.x < GW - .3);
+  if (loseT > 0) { loseT = 0; showLose(true); }
+}
+
+function floorCleared() {
+  const f = floor, first = !save.cleared[f];
+  save.cleared[f] = 1; store(); mode = 'paused';
+  let extra = '';
+  if (f === 100) {
+    extra = deepOpen()
+      ? '<p class="lore">A száz szilánk egyetlen csillaggá forr össze a kezedben. A padló megnyílik: a torony alatt lépcső vezet a Mélységbe. Még 50 szint vár.</p>'
+      : `<p class="lore">Legyőzted a Torony Urát, de a csillag hiányos: még ${100 - shardCount()} szilánk hiányzik. Amíg nincs meg mind, a Mélység zárva marad. A térképen látod, melyik emeletről hiányzik.</p>`;
+  }
+  if (f === 150) {
+    extra = deepCount() >= 50
+      ? '<p class="lore">A Szív elcsendesül. Mind az 50 mélységkő világít: a csillag újra felszáll az égre, és vele együtt te is. Ez az igazi befejezés.</p>'
+      : `<p class="lore">A Szív elcsendesül, és a torony megnyugszik. De az igazi befejezéshez még ${50 - deepCount()} mélységkő hiányzik.</p>`;
+  }
+  const got = R.shard.taken ? `<p style="color:var(--gold)">${f <= 100 ? '✦' : '◆'} A(z) ${shardWord(f)} nálad van.</p>` : `<p>A(z) ${shardWord(f)} ezen a szinten még rejtve maradt.</p>`;
+  const nf = nextFloor();
+  showInfo(`<h2>${floorName(f)} teljesítve</h2><p>${B.name} legyőzve${first ? '' : ' (újra)'}.</p>${got}${extra}
+    ${nf ? `<button class="btn" id="bNext">Tovább: ${floorName(nf)}</button>` : ''}
+    <button class="btn sec" id="bReplay">Szint újrajátszása</button>
+    <button class="btn sec" id="bToMap">Térkép</button>`);
+  if (nf) $('#bNext').onclick = () => startFloor(nf);
+  $('#bReplay').onclick = () => startFloor(f);
+  $('#bToMap').onclick = showMap;
+}
+function showLose(inBoss) {
+  mode = 'paused';
+  showInfo(`<h2>Elestél</h2><p>${inBoss ? B.name + ' most erősebb volt.' : 'Elfogytak a szíveid.'} A megtalált szilánkok megmaradnak.</p>
+    ${inBoss ? '<button class="btn" id="bRetryB">Újra a főellenség ellen</button>' : ''}
+    <button class="btn ${inBoss ? 'sec' : ''}" id="bRetry">Szint újrakezdése</button>
+    <button class="btn sec" id="bToMap">Térkép</button>`);
+  if (inBoss) $('#bRetryB').onclick = () => { hearts = maxHearts(); startBoss(); };
+  $('#bRetry').onclick = () => startFloor(floor);
+  $('#bToMap').onclick = showMap;
+}
+
+// ---------- részecskék ----------
+function burst(x, y, hue, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 4; parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .5 + Math.random() * .5, hue }); } }
+function updParts(dt) { for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; p.life -= dt; } parts = parts.filter(p => p.life > 0); }
+
+// ---------- rajzolás ----------
+function roomHue() { return floor <= 100 ? 258 + (floor % 20) * 2 : 345; }
+function drawRoomBase(withPuzzle) {
+  const h = roomHue(), t = performance.now() / 1000;
+  ctx.fillStyle = `hsl(${h},35%,6%)`; ctx.fillRect(0, 0, GW * T, GH * T);
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const g = withPuzzle ? R.g[y][x] : (x === 0 || y === 0 || x === GW - 1 || y === GH - 1 ? (x === 4 && y === 0 ? 3 : 1) : 0);
+    const X = x * T, Y = y * T;
+    if (g === 0 || (g === 3 && (!withPuzzle || R.solved))) {
+      ctx.fillStyle = (x + y) % 2 ? `hsl(${h},28%,13%)` : `hsl(${h},28%,15%)`; ctx.fillRect(X, Y, T, T);
+      ctx.fillStyle = `hsla(${h},40%,30%,.25)`; ctx.fillRect(X, Y, T, 1);
+      if (g === 3) { const gr = ctx.createLinearGradient(0, Y, 0, Y + T); gr.addColorStop(0, `hsla(${h},90%,75%,.9)`); gr.addColorStop(1, `hsla(${h},90%,60%,0)`); ctx.fillStyle = gr; ctx.fillRect(X + 2, Y, T - 4, T); }
+    } else if (g === 1 || g === 2 || g === 3) {
+      ctx.fillStyle = `hsl(${h},30%,9%)`; ctx.fillRect(X, Y, T, T);
+      ctx.fillStyle = `hsl(${h},28%,20%)`; ctx.fillRect(X + 1, Y + 1, T - 2, T * .3);
+      ctx.fillStyle = `hsl(${h},25%,14%)`; ctx.fillRect(X + 1, Y + T * .3 + 1, T - 2, T * .7 - 2);
+      if (g === 2) {
+        const a = floor > 70 && floor <= 100 || floor > 125 ? .35 : .7;
+        ctx.strokeStyle = `rgba(10,5,18,${a})`; ctx.lineWidth = Math.max(1, T / 22); ctx.beginPath();
+        ctx.moveTo(X + T * .3, Y + T * .15); ctx.lineTo(X + T * .45, Y + T * .45); ctx.lineTo(X + T * .35, Y + T * .65); ctx.lineTo(X + T * .55, Y + T * .9);
+        ctx.moveTo(X + T * .45, Y + T * .45); ctx.lineTo(X + T * .7, Y + T * .5); ctx.stroke();
+      }
+      if (g === 3) {
+        ctx.fillStyle = `hsl(${h},40%,8%)`; ctx.fillRect(X + T * .12, Y + T * .1, T * .76, T * .9);
+        ctx.strokeStyle = `hsla(${h},90%,70%,${.5 + Math.sin(t * 3) * .2})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(X + T / 2, Y + T * .55, T * .22, 0, 6.28); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(X + T / 2, Y + T * .33); ctx.lineTo(X + T / 2, Y + T * .77); ctx.moveTo(X + T * .28, Y + T * .55); ctx.lineTo(X + T * .72, Y + T * .55); ctx.stroke();
+      }
+    } else if (g === 4) {
+      ctx.fillStyle = (x + y) % 2 ? `hsl(${h},28%,13%)` : `hsl(${h},28%,15%)`; ctx.fillRect(X, Y, T, T);
+      ctx.fillStyle = `hsl(${h},20%,24%)`; ctx.fillRect(X + T * .12, Y + T * .08, T * .76, T * .3);
+      ctx.fillStyle = `hsl(${h},20%,16%)`; ctx.fillRect(X + T * .12, Y + T * .38, T * .76, T * .55);
+    }
+  }
+}
+function text(s, x, y, size, color, maxW, weight = 700) {
+  ctx.font = `${weight} ${size}px "Pixelify Sans", "Trebuchet MS", sans-serif`;
+  if (maxW) { const w = ctx.measureText(s).width; if (w > maxW) { size = size * maxW / w; ctx.font = `${weight} ${size}px "Pixelify Sans", "Trebuchet MS", sans-serif`; } }
+  ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y);
+}
+function drawStar(x, y, r, a) {
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.rotate(performance.now() / 900);
+  ctx.fillStyle = floor <= 100 ? '#ffd36b' : '#ff7aa8';
+  ctx.beginPath(); for (let i = 0; i < 8; i++) { const rr = i % 2 ? r * .4 : r; ctx.lineTo(Math.cos(i * Math.PI / 4) * rr, Math.sin(i * Math.PI / 4) * rr); } ctx.fill();
+  ctx.restore();
+}
+function drawRoom() {
+  drawRoomBase(true);
+  const t = performance.now() / 1000, h = roomHue();
+  if (R.lights) {
+    const L = R.lights;
+    for (let j = 0; j < L.n; j++) for (let i = 0; i < L.n; i++) {
+      const X = (L.x0 + i) * T, Y = (L.y0 + j) * T, on = L.on[j * L.n + i];
+      ctx.fillStyle = on ? `hsla(${h + 20},90%,65%,.55)` : 'rgba(0,0,0,.35)'; ctx.fillRect(X + 3, Y + 3, T - 6, T - 6);
+      ctx.strokeStyle = on ? '#f2dcff' : `hsl(${h},30%,32%)`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X + T / 2, Y + T / 2, T * .25, 0, 6.28); ctx.moveTo(X + T / 2, Y + T * .25); ctx.lineTo(X + T / 2, Y + T * .75); ctx.stroke();
+    }
+  }
+  for (const p of R.plates) { const X = p.x * T, Y = p.y * T; ctx.strokeStyle = blockAt(p.x, p.y) ? '#ffd36b' : `hsla(${h + 20},90%,70%,${.6 + Math.sin(t * 4) * .3})`; ctx.lineWidth = 2; ctx.strokeRect(X + 5, Y + 5, T - 10, T - 10); }
+  if (R.reset) { const X = R.reset.x * T, Y = R.reset.y * T; ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(X + 4, Y + 4, T - 8, T - 8); text('↺', X + T / 2, Y + T / 2, T * .6, '#c9a8ff'); }
+  for (const a of R.answers) { const X = a.x * T, Y = a.y * T; ctx.fillStyle = a.bad ? 'rgba(90,20,40,.6)' : `hsla(${h},50%,30%,.8)`; ctx.fillRect(X + 3, Y + 3, T - 6, T - 6); ctx.strokeStyle = a.bad ? '#6b2a3a' : '#ffd36b'; ctx.lineWidth = 2; ctx.strokeRect(X + 3, Y + 3, T - 6, T - 6); text('ABCD'[a.i], X + T / 2, Y + T / 2, T * .5, a.bad ? '#6b5470' : '#ffd36b'); }
+  if (R.tablet) { const X = R.tablet.x * T, Y = R.tablet.y * T; ctx.fillStyle = `hsl(${h},15%,30%)`; ctx.fillRect(X + T * .1, Y + T * .05, T * .8, T * .9); ctx.fillStyle = `hsl(${h},15%,20%)`; for (let i = 0; i < 4; i++) ctx.fillRect(X + T * .22, Y + T * (.22 + i * .17), T * .56, T * .06); text('?', X + T / 2, Y - T * .2, T * .45, '#ffd36b'); }
+  for (const k of R.keys) if (!k.got) { const X = k.x * T + T / 2, Y = k.y * T + T / 2 + Math.sin(t * 3 + k.x) * 2; ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = Math.max(2, T / 12); ctx.beginPath(); ctx.arc(X - T * .12, Y, T * .12, 0, 6.28); ctx.moveTo(X, Y); ctx.lineTo(X + T * .25, Y); ctx.lineTo(X + T * .25, Y + T * .1); ctx.stroke(); }
+  const S = R.shard;
+  if (!S.taken && S.revealed) {
+    const d = Math.hypot(P.px - S.x, P.py - S.y);
+    let a = R.g[S.y][S.x] === 0 && S.mode === 'wall' ? 1 : d < 1.6 ? 1 : d < 2.6 ? 2.6 - d : 0;
+    if (a <= 0 && (t * 1.3 + S.x) % 3.2 < .12) a = .45;
+    if (a > 0) drawStar(S.x * T + T / 2, S.y * T + T / 2, T * .28, a);
+  }
+  for (const b of R.blocks) { const X = b.x * T, Y = b.y * T, on = R.plates.some(p => p.x === b.x && p.y === b.y); ctx.fillStyle = on ? '#6d5a2a' : `hsl(${h},18%,32%)`; ctx.fillRect(X + 3, Y + 2, T - 6, T - 5); ctx.fillStyle = on ? '#9a8240' : `hsl(${h},18%,42%)`; ctx.fillRect(X + 3, Y + 2, T - 6, T * .28); text('◇', X + T / 2, Y + T * .62, T * .4, on ? '#ffd36b' : '#c9a8ff'); }
+  for (let i = 0; i < R.pillars.length; i++) {
+    const p = R.pillars[i], X = p.x * T, Y = p.y * T, red = R.flash > 0;
+    ctx.fillStyle = p.lit ? `hsl(${h + 20},70%,45%)` : red ? '#5a1f30' : `hsl(${h},18%,30%)`; ctx.fillRect(X + T * .15, Y + T * .05, T * .7, T * .9);
+    ctx.fillStyle = p.lit ? `hsl(${h + 20},90%,70%)` : `hsl(${h},18%,40%)`; ctx.fillRect(X + T * .15, Y + T * .05, T * .7, T * .2);
+    ctx.fillStyle = 'rgba(8,4,16,.85)'; ctx.fillRect(X - T * .45, Y + T * .35, T * 1.9, T * .4);
+    text(p.label, X + T / 2, Y + T * .56, T * .32, p.lit ? '#ffd36b' : '#efe6ff', T * 1.8);
+  }
+  drawHero(ctx, (P.px + .5) * T, (P.py + .5) * T, T, P.fx, P.fy, P.moving ? P.walk : 0, P.punch > 0, 1);
+  if (R.dark) {
+    const cx = (P.px + .5) * T, cy = (P.py + .5) * T, g = ctx.createRadialGradient(cx, cy, T * 1.2, cx, cy, T * 2.9);
+    g.addColorStop(0, 'rgba(4,2,10,0)'); g.addColorStop(1, 'rgba(4,2,10,.97)'); ctx.fillStyle = g; ctx.fillRect(0, 0, GW * T, GH * T);
+    if (R.solved) { ctx.fillStyle = `hsla(${h},90%,70%,.35)`; ctx.fillRect(4 * T + 2, 0, T - 4, T); }
+  }
+}
+function drawBoss() {
+  const b = B, X = b.x * T, Y = b.y * T, r = b.r * T, t = performance.now() / 1000;
+  if (b.dead) { if (b.dead > .6) return; ctx.globalAlpha = 1 - b.dead / .6; }
+  const body = `hsl(${b.hue},55%,${b.hitT > 0 ? 55 : 38}%)`, dark = `hsl(${b.hue},50%,18%)`, eye = `hsl(${(b.hue + 180) % 360},100%,70%)`;
+  ctx.save(); ctx.translate(X, Y);
+  ctx.fillStyle = `hsla(${b.hue},90%,60%,.18)`; ctx.beginPath(); ctx.arc(0, 0, r * 1.5 + Math.sin(t * 4) * 3, 0, 6.28); ctx.fill();
+  ctx.fillStyle = body; ctx.strokeStyle = dark; ctx.lineWidth = Math.max(2, T / 14);
+  if (b.fam === 'golem') { ctx.fillRect(-r, -r * .8, r * 2, r * 1.6); ctx.fillStyle = dark; ctx.fillRect(-r * 1.4, -r * .4, r * .4, r); ctx.fillRect(r, -r * .4, r * .4, r); }
+  else if (b.fam === 'spider') { for (let i = 0; i < 4; i++) for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(0, 0); const a = (i - 1.5) * .45 + Math.sin(t * 6 + i) * .08; ctx.lineTo(s * r * 1.5 * Math.cos(a), r * .9 * Math.sin(a) - r * .4); ctx.lineTo(s * r * 1.8 * Math.cos(a), r * Math.sin(a) + r * .4); ctx.stroke(); } ctx.beginPath(); ctx.arc(0, 0, r * .85, 0, 6.28); ctx.fill(); }
+  else if (b.fam === 'eye') { ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.28); ctx.fill(); for (let i = 0; i < 8; i++) { const a = i * .785 + t; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); ctx.lineTo(Math.cos(a) * r * 1.35, Math.sin(a) * r * 1.35); ctx.stroke(); } }
+  else if (b.fam === 'witch') { ctx.beginPath(); ctx.moveTo(-r, r); ctx.lineTo(r, r); ctx.lineTo(r * .5, -r * .2); ctx.lineTo(-r * .5, -r * .2); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.moveTo(-r * 1.1, -r * .2); ctx.lineTo(r * 1.1, -r * .2); ctx.lineTo(r * .2, -r * 1.5); ctx.fill(); ctx.fillStyle = body; ctx.beginPath(); ctx.arc(0, -r * .05, r * .5, 0, 6.28); ctx.fill(); }
+  else if (b.fam === 'knight') { ctx.beginPath(); ctx.moveTo(-r, -r * .3); ctx.quadraticCurveTo(0, -r * 1.5, r, -r * .3); ctx.lineTo(r * .8, r); ctx.lineTo(-r * .8, r); ctx.fill(); ctx.fillStyle = dark; ctx.fillRect(-r * .7, -r * .15, r * 1.4, r * .25); ctx.fillStyle = body; ctx.fillRect(-r * .08, -r * 1.2, r * .16, r * .5); }
+  else { for (let i = 4; i >= 0; i--) { ctx.beginPath(); ctx.arc(Math.sin(t * 3 + i) * r * .5, r * .35 * i - r * .4, r * (.75 - i * .1), 0, 6.28); ctx.fill(); ctx.stroke(); } }
+  if (b.big || b.f >= 100) { ctx.fillStyle = '#ffd36b'; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * r * .4 - r * .15, -r * 1.05); ctx.lineTo(i * r * .4, -r * 1.45 - (i === 0 ? r * .15 : 0)); ctx.lineTo(i * r * .4 + r * .15, -r * 1.05); ctx.fill(); } }
+  ctx.fillStyle = eye;
+  if (b.fam === 'eye') { ctx.beginPath(); ctx.arc((P.bx - b.x) * 3, (P.by - b.y) * 2, r * .35, 0, 6.28); ctx.fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc((P.bx - b.x) * 3, (P.by - b.y) * 2, r * .15, 0, 6.28); ctx.fill(); }
+  else { const ey = b.fam === 'witch' ? -r * .05 : b.fam === 'serpent' ? -r * .45 : 0; ctx.fillRect(-r * .38, ey - r * .1, r * .26, r * .16); ctx.fillRect(r * .12, ey - r * .1, r * .26, r * .16); }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+function drawFight() {
+  drawRoomBase(false);
+  drawBoss();
+  ctx.fillStyle = '#d9c2ff'; for (const s of shots) { ctx.fillRect(s.x * T - 2, s.y * T - 5, 4, 10); }
+  for (const u of bullets) { ctx.fillStyle = u.home ? '#ff7a45' : '#ff5c9a'; ctx.beginPath(); ctx.arc(u.x * T, u.y * T, u.r * T, 0, 6.28); ctx.fill(); ctx.fillStyle = '#ffe1ee'; ctx.beginPath(); ctx.arc(u.x * T, u.y * T, u.r * T * .45, 0, 6.28); ctx.fill(); }
+  if (!(P.inv > 0 && Math.floor(P.inv * 14) % 2)) drawHero(ctx, P.bx * T, P.by * T, T, P.fx, P.fy, P.walk, P.dashT > 0, 1);
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(P.bx * T, P.by * T, .2 * T, 0, 6.28); ctx.fill();
+  const w = GW * T - T * 1.4; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(T * .7, T * .3, w, T * .28);
+  ctx.fillStyle = `hsl(${B.hue},80%,60%)`; ctx.fillRect(T * .7, T * .3, w * B.hp / B.max, T * .28);
+  text(B.name, GW * T / 2, T * .44, T * .24, '#fff', w);
+}
+function drawParts() { for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = `hsl(${p.hue},90%,70%)`; ctx.fillRect(p.x * T - 2, p.y * T - 2, 4, 4); } ctx.globalAlpha = 1; }
+
+// A hősnő: rövid fekete-lila haj, lila szem, fekete bomberdzseki, fekete testhezálló ruha, ujjatlan kesztyű.
+function drawHero(c, x, y, s, fx, fy, walk, punch, sc) {
+  s *= sc;
+  const back = fy < 0 && fx === 0, sw = Math.sin(walk) * s * .05;
+  const skin = '#f1d3c2', hair = '#1d1230', hairHi = '#5a3394', jacket = '#18141f', jacketHi = '#2c2538', suit = '#0f0c15', suitHi = '#2a2238', acc = '#a066ff', eyeC = '#b77dff';
+  c.save(); c.translate(x, y);
+  c.fillStyle = 'rgba(164,107,255,.28)'; c.beginPath(); c.ellipse(0, s * .42, s * .36, s * .1, 0, 0, 6.28); c.fill();
+  // lábak
+  c.fillStyle = suit;
+  c.fillRect(-s * .2 + sw, s * .06, s * .17, s * .38); c.fillRect(s * .03 - sw, s * .06, s * .17, s * .38);
+  c.fillStyle = acc; c.fillRect(-s * .17 + sw, s * .12, s * .025, s * .2); c.fillRect(s * .145 - sw, s * .12, s * .025, s * .2);
+  c.fillStyle = '#05040a'; c.fillRect(-s * .21 + sw, s * .4, s * .19, s * .06); c.fillRect(s * .02 - sw, s * .4, s * .19, s * .06);
+  // csípő
+  c.fillStyle = suit; c.beginPath(); c.ellipse(0, s * .06, s * .27, s * .15, 0, 0, 6.28); c.fill();
+  c.fillStyle = suitHi; c.beginPath(); c.ellipse(back ? 0 : -s * .1, s * .03, s * .08, s * .05, 0, 0, 6.28); c.fill();
+  if (back) { c.fillStyle = suitHi; c.beginPath(); c.ellipse(-s * .11, s * .08, s * .1, s * .08, 0, 0, 6.28); c.ellipse(s * .11, s * .08, s * .1, s * .08, 0, 0, 6.28); c.fill(); c.fillStyle = suit; c.fillRect(-s * .01, s * .02, s * .02, s * .14); }
+  // öv
+  c.fillStyle = '#26202e'; c.fillRect(-s * .22, -s * .04, s * .44, s * .05); c.fillStyle = acc; c.fillRect(-s * .03, -s * .045, s * .06, s * .06);
+  // derék, felsőtest
+  c.fillStyle = suit; c.beginPath(); c.moveTo(-s * .13, -s * .04); c.lineTo(s * .13, -s * .04); c.lineTo(s * .17, -s * .3); c.lineTo(-s * .17, -s * .3); c.fill();
+  if (!back) {
+    c.fillStyle = suit; c.beginPath(); c.arc(-s * .075, -s * .2, s * .095, 0, 6.28); c.arc(s * .075, -s * .2, s * .095, 0, 6.28); c.fill();
+    c.fillStyle = suitHi; c.beginPath(); c.arc(-s * .1, -s * .23, s * .03, 0, 6.28); c.arc(s * .05, -s * .23, s * .03, 0, 6.28); c.fill();
+    c.fillStyle = acc; c.fillRect(-s * .005, -s * .15, s * .01, s * .1);
+  }
+  // dzseki
+  c.fillStyle = jacket;
+  c.beginPath(); c.moveTo(-s * .25, -s * .34); c.lineTo(-s * .13, -s * .36); c.lineTo(-s * .16, -s * .1); c.lineTo(-s * .23, -s * .08); c.fill();
+  c.beginPath(); c.moveTo(s * .25, -s * .34); c.lineTo(s * .13, -s * .36); c.lineTo(s * .16, -s * .1); c.lineTo(s * .23, -s * .08); c.fill();
+  if (back) { c.fillRect(-s * .24, -s * .36, s * .48, s * .28); c.fillStyle = jacketHi; c.fillRect(-s * .24, -s * .11, s * .48, s * .03); }
+  // karok
+  const pr = punch ? s * .12 : 0;
+  c.fillStyle = jacket;
+  c.fillRect(-s * .33, -s * .33, s * .1, s * .3); c.fillRect(s * .23, -s * .33 - (punch && fx >= 0 ? pr : 0), s * .1, s * .3);
+  c.fillStyle = jacketHi; c.fillRect(-s * .33, -s * .06, s * .1, s * .03); c.fillRect(s * .23, -s * .06 - (punch && fx >= 0 ? pr : 0), s * .1, s * .03);
+  c.fillStyle = '#0a080e'; c.beginPath(); c.arc(-s * .28, s * .0, s * .055, 0, 6.28); c.arc(s * .28, s * .0 - (punch && fx >= 0 ? pr : 0), punch ? s * .07 : s * .055, 0, 6.28); c.fill();
+  c.fillStyle = skin; c.fillRect(-s * .31, s * .02, s * .06, s * .02); c.fillRect(s * .25, s * .02 - (punch && fx >= 0 ? pr : 0), s * .06, s * .02);
+  // nyak, fej
+  c.fillStyle = suit; c.fillRect(-s * .06, -s * .42, s * .12, s * .07);
+  c.fillStyle = skin; c.beginPath(); c.arc(0, -s * .56, s * .19, 0, 6.28); c.fill();
+  // haj
+  c.fillStyle = hair;
+  c.beginPath(); c.arc(0, -s * .6, s * .215, Math.PI * .95, Math.PI * 2.05); c.fill();
+  if (back) { c.beginPath(); c.ellipse(0, -s * .52, s * .22, s * .2, 0, 0, 6.28); c.fill(); }
+  else {
+    c.beginPath(); c.moveTo(-s * .22, -s * .62); c.lineTo(-s * .24, -s * .4); c.lineTo(-s * .16, -s * .46); c.lineTo(-s * .15, -s * .6); c.fill();
+    c.beginPath(); c.moveTo(s * .22, -s * .62); c.lineTo(s * .24, -s * .4); c.lineTo(s * .16, -s * .46); c.lineTo(s * .15, -s * .6); c.fill();
+    c.beginPath(); c.moveTo(-s * .2, -s * .63); for (let i = 0; i <= 6; i++) c.lineTo(-s * .2 + i * s * .067, -s * (i % 2 ? .62 : .52)); c.lineTo(s * .2, -s * .7); c.lineTo(-s * .2, -s * .7); c.fill();
+    const ex = fx * s * .03;
+    c.fillStyle = eyeC; c.fillRect(-s * .1 + ex, -s * .55, s * .06, s * .05); c.fillRect(s * .04 + ex, -s * .55, s * .06, s * .05);
+    c.fillStyle = '#fff'; c.fillRect(-s * .09 + ex, -s * .55, s * .015, s * .015); c.fillRect(s * .05 + ex, -s * .55, s * .015, s * .015);
+    c.fillStyle = '#c98a8a'; c.fillRect(-s * .025 + ex, -s * .45, s * .05, s * .012);
+  }
+  c.fillStyle = hairHi; c.beginPath(); c.arc(-s * .06, -s * .7, s * .05, Math.PI, Math.PI * 1.8); c.fill();
+  c.restore();
+}
+
+function render() {
+  const W = GW * T, H = GH * T;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
+  if (mode === 'boss' || (mode === 'paused' && B && B.t > 0)) drawFight();
+  else if (R) drawRoom();
+  drawParts();
+}
+
+// ---------- bevitel ----------
+let jx = 0, jy = 0, actQ = false; const keys = new Set();
+const stick = $('#stick'), knob = $('#knob');
+let stickId = null;
+function stickMove(e) {
+  const r = stick.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let dx = e.clientX - cx, dy = e.clientY - cy; const m = Math.hypot(dx, dy), max = r.width * .4;
+  if (m > max) { dx *= max / m; dy *= max / m; }
+  jx = dx / max; jy = dy / max; knob.style.transform = `translate(${dx}px,${dy}px)`;
+}
+stick.addEventListener('pointerdown', e => { stickId = e.pointerId; stick.setPointerCapture(e.pointerId); stickMove(e); e.preventDefault(); });
+stick.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickMove(e); });
+const stickEnd = e => { if (e.pointerId !== stickId) return; stickId = null; jx = jy = 0; knob.style.transform = ''; };
+stick.addEventListener('pointerup', stickEnd); stick.addEventListener('pointercancel', stickEnd);
+const act = $('#act');
+act.addEventListener('pointerdown', e => { e.preventDefault(); actQ = true; act.classList.add('dn'); });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => act.addEventListener(ev, () => act.classList.remove('dn')));
+addEventListener('keydown', e => {
+  if (e.repeat && (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ')) return;
+  if (['Space', 'Enter', 'KeyJ'].includes(e.code)) { if (mode === 'room' || mode === 'boss') { actQ = true; e.preventDefault(); } return; }
+  if (e.code === 'Escape' || e.code === 'KeyP') { if (mode === 'room' || mode === 'boss') pause(); return; }
+  keys.add(e.code);
+});
+addEventListener('keyup', e => keys.delete(e.code));
+function joyVec() {
+  let x = jx, y = jy;
+  if (keys.has('ArrowLeft') || keys.has('KeyA')) x = -1; if (keys.has('ArrowRight') || keys.has('KeyD')) x = 1;
+  if (keys.has('ArrowUp') || keys.has('KeyW')) y = -1; if (keys.has('ArrowDown') || keys.has('KeyS')) y = 1;
+  const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
+  return [x, y];
+}
+function dirInput() {
+  const [x, y] = joyVec();
+  if (Math.hypot(x, y) < .4) return null;
+  return Math.abs(x) > Math.abs(y) ? [Math.sign(x), 0] : [0, Math.sign(y)];
+}
+
+// ---------- képernyők ----------
+function hideScreens() { document.querySelectorAll('.screen').forEach(s => s.hidden = true); }
+function showScreen(id) { hideScreens(); $(id).hidden = false; }
+function showInfo(html) { $('#infoIn').innerHTML = html; showScreen('#scInfo'); }
+function showTitle() {
+  mode = 'title'; showScreen('#scTitle');
+  const nf = nextFloor();
+  $('#bContinue').textContent = nf ? (Object.keys(save.cleared).length ? `Folytatás: ${floorName(nf)}` : 'Új játék') : 'Minden szint teljesítve!';
+  $('#bContinue').disabled = !nf;
+  $('#titleStats').innerHTML = `<span>Emelet: ${Object.keys(save.cleared).filter(k => +k <= 100).length}/100</span><span>✦ ${shardCount()}/100</span>${deepOpen() ? `<span>◆ ${deepCount()}/50</span>` : ''}`;
+  drawPortrait();
+}
+function drawPortrait() {
+  const pc = $('#portrait'), c = pc.getContext('2d');
+  c.clearRect(0, 0, pc.width, pc.height);
+  const g = c.createRadialGradient(210, 230, 20, 210, 230, 240); g.addColorStop(0, 'rgba(164,107,255,.55)'); g.addColorStop(1, 'rgba(164,107,255,0)');
+  c.fillStyle = g; c.fillRect(0, 0, pc.width, pc.height);
+  const r = rngOf(5); c.fillStyle = '#e4c9ff'; for (let i = 0; i < 40; i++) { c.globalAlpha = r() * .8; c.fillRect(r() * 420, r() * 520, 3, 3); } c.globalAlpha = 1;
+  drawHero(c, 210, 330, 330, 0, 1, 0, false, 1);
+}
+function showMap() {
+  mode = 'title'; showScreen('#scMap');
+  const nf = nextFloor();
+  const cell = f => {
+    const ok = canPlay(f), cls = ['cell']; if (save.cleared[f]) cls.push('done'); if (!ok) cls.push('lock'); if (f === nf) cls.push('next'); if (f % 10 === 0) cls.push('big');
+    return `<button class="${cls.join(' ')}" data-f="${f}" ${ok ? '' : 'disabled'} aria-label="${floorName(f)}">${floorShort(f)}${save.shards[f] ? `<span class="s">${f <= 100 ? '✦' : '◆'}</span>` : ''}</button>`;
+  };
+  let a = ''; for (let f = 1; f <= 100; f++) a += cell(f); $('#gridTower').innerHTML = a;
+  let b = ''; for (let f = 101; f <= 150; f++) b += cell(f); $('#gridDeep').innerHTML = b;
+  $('#deepNote').textContent = deepOpen() ? `◆ ${deepCount()}/50 mélységkő` : `Zárva: 100. emelet + mind a 100 szilánk (${shardCount()}/100)`;
+  $('#mapStats').innerHTML = `<span>✦ ${shardCount()}/100</span><span>♥ ${maxHearts()}</span><span>Sebzés: ${dmg()}</span>`;
+}
+document.addEventListener('click', e => {
+  const c = e.target.closest('.cell'); if (c && !c.disabled) startFloor(+c.dataset.f);
+  if (e.target.closest('[data-back]')) showTitle();
+});
+$('#bContinue').onclick = () => { const nf = nextFloor(); if (nf) startFloor(nf); };
+$('#bMap').onclick = showMap;
+$('#bHow').onclick = () => showScreen('#scHow');
+function pause() {
+  if (mode !== 'room' && mode !== 'boss') return;
+  const was = mode; mode = 'paused';
+  showInfo(`<h2>Szünet</h2><p>${floorName(floor)}</p>
+    <button class="btn" id="bRes">Folytatás</button>
+    <button class="btn sec" id="bRest">Szint újrakezdése</button>
+    <button class="btn sec" id="bSnd">Hang: ${save.sound ? 'be' : 'ki'}</button>
+    <button class="btn sec" id="bPMap">Térkép</button>
+    <button class="btn sec" id="bPTitle">Főmenü</button>`);
+  $('#bRes').onclick = () => { mode = was; hideScreens(); };
+  $('#bRest').onclick = () => startFloor(floor);
+  $('#bSnd').onclick = () => { save.sound = !save.sound; store(); $('#bSnd').textContent = `Hang: ${save.sound ? 'be' : 'ki'}`; };
+  $('#bPMap').onclick = showMap;
+  $('#bPTitle').onclick = showTitle;
+}
+$('#pauseBtn').onclick = pause;
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+// ---------- méretezés, ciklus ----------
+function resize() {
+  const st = $('#stage'), w = st.clientWidth - 8, h = st.clientHeight - 4;
+  T = Math.max(12, Math.floor(Math.min(w / GW, h / GH)));
+  DPR = Math.min(3, window.devicePixelRatio || 1);
+  cv.style.width = GW * T + 'px'; cv.style.height = GH * T + 'px';
+  cv.width = GW * T * DPR; cv.height = GH * T * DPR;
+}
+new ResizeObserver(resize).observe($('#stage'));
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (mode === 'room') updRoom(dt);
+  else if (mode === 'boss') updBoss(dt);
+  else actQ = false;
+  updParts(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+resize();
+R = genRoom(1); floor = 1; updateHUD();
+showTitle();
+if (document.fonts) document.fonts.ready.then(drawPortrait);
+requestAnimationFrame(loop);
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
