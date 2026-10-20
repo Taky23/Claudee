@@ -51,7 +51,7 @@ A játék végén a bot magától lezár egy **időkapszulát**, ami pontosan eg
 
 ## 📱 Telefonos webappok (Discord nélkül)
 
-A `web/` mappában öt telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
+A `web/` mappában hat telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
 
 - **🎲 Véletlen kaland** (`web/kaland/`) – egy gombnyomásra apró, fura napi küldetést kapsz. Naponta kétszer kérhetsz helyette másikat, utána jöhetnek a bónuszküldetések. Fotót és jegyzetet is csatolhatsz. Pontokat, szinteket, szériát és 22 jelvényt gyűjthetsz, a teljesítéseid a kalandnaplóba kerülnek.
 - **🕵️ Zsebdetektív** (`web/detektiv/`) – minden nap egy új rejtély öt gyanúsítottal és nyomokkal. A napi eset mindenkinek ugyanaz, így a barátaiddal is összemérhetitek. A nyomok együtt mindig pontosan egy tettest adnak ki. Két nyom ingyenes, minden további pontba kerül, és csak egyszer vádolhatsz. Van pont nélküli gyakorló mód és statisztika is.
@@ -69,11 +69,17 @@ A `web/` mappában öt telepíthető webapp (PWA) van. A kezdőképernyőre kit�
   - **Játékár-figyelő** a [CheapShark](https://www.cheapshark.com) ingyenes API-jával: akciók boltok szerint (Steam, Epic, GOG, Humble…), ingyen játékok, keresés, egy játék összes boltban elérhető ára és a valaha volt legalacsonyabb ára, figyelőlista célárral, valamint opcionális email-riasztás a CheapShark-on keresztül. Az utoljára letöltött adatokat megjegyzi, így a szolgáltatás kiesésekor is mutat valamit.
   - **Tarkov kihívás-generátor** (net nélkül): sorsol pályát, helyszínt, fegyvert, páncélszabályt és extra szabályokat, 3 nehézségi szinten, akár 5 fős csapatra. Az egyes elemek újrasorsolhatók, és pontokat meg előzményeket is vezet.
 
+- **🗄️ Gamer Tár** (`web/tar/`) – minden adat **kizárólag a telefonon** (IndexedDB) él. Az oldal Content-Security-Policy szabálya megtiltja, hogy bármilyen külső szerverhez forduljon.
+  - **Érzékenység-átváltó:** CS2, Apex, Valorant, Overwatch 2, CoD, Destiny 2 és mások között, cm/360° és eDPI számítással, DPI-váltással és mentett beállításokkal.
+  - **Játéknapló:** stopper (bezárt appnál is megy), napi, heti és havi statisztika, 7 napos grafikon, állapotok (játszom / backlog / kijátszva / félretéve), értékelés, jegyzetek és elért eredmények.
+  - **Tár:** linkek, képek, videók, bármilyen fájl és jegyzet, mappákkal és keresővel. Más appokból a **Megosztás** menüvel is ide küldhetők a dolgok (Web Share Target).
+  - **Mentés:** biztonsági mentés JSON-fájlba és visszaállítás, tárhely-kijelzés, védett (persistent) tárhely kérése.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
 2. Amikor a `web/` mappa változása bekerül a `main` ágba, a `.github/workflows/pages.yml` magától közzéteszi az oldalt itt:
-   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/`, `kod/`, `tarkov/` és `gamer/` alatt).
+   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/`, `kod/`, `tarkov/`, `gamer/` és `tar/` alatt).
 3. Nyisd meg a telefonon, majd:
    - **Android (Chrome):** ⋮ menü → *Hozzáadás a kezdőképernyőhöz* / *Alkalmazás telepítése*
    - **iPhone (Safari):** Megosztás (□↑) → *Főképernyőhöz adás*
