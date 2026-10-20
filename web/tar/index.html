@@ -107,6 +107,12 @@ nav button { flex: 1; border: 0; background: none; color: var(--muted); padding:
 nav button span { display: block; font-size: 21px; }
 nav button.active { color: var(--accent); }
 a { color: var(--accent-2); word-break: break-all; }
+.idea { text-align: center; padding: 20px 14px; }
+.idea .e { font-size: 54px; line-height: 1.1; }
+.idea .t { font-size: 21px; font-weight: 800; margin: 10px 0 6px; line-height: 1.3; }
+.idea img { width: 100%; max-height: 40vh; object-fit: cover; border-radius: 12px; margin-top: 8px; }
+.bored { font-size: 20px; padding: 18px; }
+.quip { text-align: center; color: var(--warn); font-weight: 650; min-height: 1.4em; }
 </style>
 </head>
 <body>
@@ -170,6 +176,22 @@ a { color: var(--accent-2); word-break: break-all; }
     <input type="file" id="fileIn" multiple hidden>
   </section>
 
+  <!-- UNALOM -->
+  <section class="view" id="v-bored">
+    <div class="card">
+      <div class="small">Mennyi energiád van?</div>
+      <div class="chips" id="bEnergy">
+        <button class="chip" data-en="0">😴 Semmi</button>
+        <button class="chip on" data-en="1">🙂 Egy kicsi</button>
+        <button class="chip" data-en="2">⚡ Van</button>
+      </div>
+    </div>
+    <div id="bOut"></div>
+    <p class="quip" id="bQuip"></p>
+    <button class="btn go full bored" id="bGo">🥱 Nincs kedvem semmihez</button>
+    <p class="small" id="bStats"></p>
+  </section>
+
   <!-- MENTÉS -->
   <section class="view" id="v-backup">
     <div class="card">
@@ -193,8 +215,9 @@ a { color: var(--accent-2); word-break: break-all; }
 </main>
 
 <nav>
-  <button class="active" data-view="v-sens"><span>🎯</span>Érzékenység</button>
-  <button data-view="v-log"><span>🕹️</span>Napló</button>
+  <button class="active" data-view="v-sens"><span>🎯</span>Célzás</button>
+  <button data-view="v-log"><span>🕹️</span>Játék</button>
+  <button data-view="v-bored"><span>🥱</span>Unalom</button>
   <button data-view="v-vault"><span>🔐</span>Tár</button>
   <button data-view="v-backup"><span>💾</span>Mentés</button>
 </nav>
@@ -510,6 +533,114 @@ function openItem(v) {
   $('iDel').onclick = async () => { if (!confirm('Biztosan törlöd?')) return; await dbDel('vault', v.id); closeModal(); await loadVault(); toast('Törölve'); };
 }
 
+// ================= UNALOM =================
+// Energiaszintenként: 0 = semmi, 1 = egy kicsi, 2 = van.
+const IDEAS = [
+  [0, '😴', 'Aludj egy 20 perces szundit. Utána minden jobb.'],
+  [0, '🎧', 'Fekve hallgass végig egy teljes albumot, csukott szemmel.'],
+  [0, '🫖', 'Csinálj egy teát vagy kakaót, és idd meg az ablakban állva.'],
+  [0, '📺', 'Nézz meg egy rövid dokumentumfilmet valamiről, amiről semmit sem tudsz.'],
+  [0, '🧘', 'Csináld ezt: 4 mp belégzés, 4 mp bent tartás, 4 mp kilégzés. Ötször.'],
+  [0, '📱', 'Nézd végig a galériádat egy évvel ezelőttről. Mit csináltál akkor?'],
+  [0, '🛏️', 'Húzd fel a takarót, és tervezd meg fejben az álomnyaralásod.'],
+  [0, '💬', 'Írj egy rövid üzenetet valakinek, akivel rég beszéltél. Csak annyit: „mizu?”'],
+  [0, '🍿', 'Nézz meg egy filmet, amit már ezerszer láttál, de mindig bejön.'],
+  [0, '🎮', 'Egy laza, nyugis játék 20 percre – semmi ranked, semmi stressz.'],
+  [1, '🚶', 'Menj ki 10 percre sétálni. Csak a sarokig és vissza.'],
+  [1, '🧹', 'Rendezd át az asztalod – a valódit vagy a PC-asztalt.'],
+  [1, '📞', 'Hívd fel egy haverodat, és dumáljatok 10 percet.'],
+  [1, '🍳', 'Csinálj magadnak valami finomat – akár csak egy nagyon jó szendvicset.'],
+  [1, '🎨', 'Rajzolj le valamit a szobádból, akármilyen rondán is sikerül.'],
+  [1, '🌅', 'Nézd meg a naplementét (vagy a csillagokat) telefon nélkül.'],
+  [1, '🗑️', 'Takaríts ki 10 felesleges dolgot a telefonodról: appot, fotót, screenshotot.'],
+  [1, '📚', 'Olvass el 10 oldalt valamiből. Csak tízet.'],
+  [1, '🎵', 'Csinálj egy lejátszási listát a mostani hangulatodhoz.'],
+  [1, '🪴', 'Locsold meg a növényeket. Ha nincs növényed, vegyél egyet. 😄'],
+  [2, '💪', 'Csinálj 20 fekvőtámaszt és 30 guggolást. Most.'],
+  [2, '🚴', 'Ülj biciklire, vagy menj el futni 20 percre.'],
+  [2, '🧑‍🍳', 'Főzz valamit, amit még sosem főztél.'],
+  [2, '🗺️', 'Menj el valahova a városban, ahol még sosem voltál.'],
+  [2, '🎯', 'Edzd a célzást 15 percig – aztán egy ranked meccs!'],
+  [2, '👥', 'Szervezz össze egy közös estét a haverokkal: játék, kaja, film.'],
+  [2, '🧽', 'Takarítsd ki a szobádat zenére, 25 perc alatt – mintha verseny lenne.'],
+  [2, '🛠️', 'Szedd szét és porold ki a PC-det vagy a kontrollered.'],
+  [2, '🎬', 'Vegyél fel egy rövid videót: egy vicces pillanatot vagy egy tippet.'],
+  [2, '🏀', 'Menj ki egy pályára dobálni vagy rúgni egy kicsit.'],
+];
+const QUIPS = ['', '', 'Nem tetszik? Oké, másik.', 'Hát jó…', 'Válogatós vagy ma, mi? 😏', 'Már az ötödiket dobod el.',
+  'Kezdem azt hinni, hogy tényleg semmihez nincs kedved.', 'Ez már a hetedik. Az ágy is egy opció. 😴', 'Komolyan? 🙃',
+  'Oké, feladom. Feküdj le, és nézd a plafont. Az is valami.'];
+let bEnergy = 1, bRolls = 0, bLast = null, bSeen = new Set(), bImgUrl = null;
+const daysAgo = t => Math.floor((Date.now() - t) / DAY);
+
+function boredCandidates() {
+  const out = [];
+  const lastPlayed = id => Math.max(0, ...sessions.filter(s => s.gameId === id).map(s => s.end));
+  for (const g of games) {
+    const lp = lastPlayed(g.id);
+    if (g.status === 'playing' && lp && daysAgo(lp) >= 3) out.push({ key: 'g' + g.id, e: '🎮', t: `Rég nem játszottál ezzel: ${g.name}`, sub: `${daysAgo(lp)} napja volt utoljára. Egy kör?`, game: g });
+    else if (g.status === 'playing' && !lp) out.push({ key: 'g' + g.id, e: '🎮', t: `Játssz egy kicsit: ${g.name}`, sub: 'Még nem mértél vele időt.', game: g });
+    else if (g.status === 'backlog' && bEnergy >= 1) out.push({ key: 'g' + g.id, e: '📋', t: `A listádon van: ${g.name}`, sub: 'Most kezdj bele!', game: g });
+    else if (g.status === 'dropped' && bEnergy === 2) out.push({ key: 'g' + g.id, e: '💤', t: `Adsz még egy esélyt neki? ${g.name}`, sub: 'Félretetted – lehet, hogy most bejön.', game: g });
+  }
+  for (const v of vault) {
+    if (daysAgo(v.ts) < 3) continue;
+    const name = v.title || (v.type === 'link' ? host(v.url) : v.name || 'egy jegyzet');
+    const t = v.type === 'image' ? 'Emlékszel erre a képre?' : v.type === 'link' ? `Ezt elmentetted, megnézed? ${name}` : v.type === 'note' ? `Egy régi jegyzeted: ${name}` : `Egy elmentett fájl: ${name}`;
+    out.push({ key: 'v' + v.id, e: v.type === 'image' ? '🖼️' : v.type === 'link' ? '🔗' : v.type === 'note' ? '📝' : '📄', t, sub: `${daysAgo(v.ts)} napja mentetted el.`, item: v });
+  }
+  return out;
+}
+function rollBored() {
+  const mine = boredCandidates().filter(c => !bSeen.has(c.key));
+  const ideas = IDEAS.filter(i => i[0] === bEnergy).map(i => ({ key: 'i' + i[2], e: i[1], t: i[2], idea: true })).filter(c => !bSeen.has(c.key));
+  // Ha van saját anyag, nagyjából minden második ajánlás abból jön.
+  let pool = mine.length && (Math.random() < 0.5 || !ideas.length) ? mine : ideas;
+  if (!pool.length) { bSeen.clear(); pool = IDEAS.filter(i => i[0] === bEnergy).map(i => ({ key: 'i' + i[2], e: i[1], t: i[2], idea: true })); }
+  bLast = pool[Math.floor(Math.random() * pool.length)];
+  bSeen.add(bLast.key);
+  bRolls++;
+  renderBored();
+}
+function renderBored() {
+  document.querySelectorAll('[data-en]').forEach(c => c.classList.toggle('on', +c.dataset.en === bEnergy));
+  $('bGo').textContent = bLast ? '🔄 Mást!' : '🥱 Nincs kedvem semmihez';
+  $('bQuip').textContent = QUIPS[Math.min(bRolls - 1, QUIPS.length - 1)] || '';
+  kvGet('boredDone').then(done => { $('bStats').textContent = done ? `Eddig ${done}× vágtál bele valamibe unalom helyett. 💪` : ''; });
+  if (!bLast) { $('bOut').innerHTML = '<div class="card idea"><div class="e">🥱</div><div class="t">Unatkozol?</div><div class="small">Nyomd meg a gombot, és mondok valamit.</div></div>'; return; }
+  const c = bLast;
+  if (bImgUrl) URL.revokeObjectURL(bImgUrl);
+  bImgUrl = c.item && c.item.type === 'image' ? URL.createObjectURL(c.item.blob) : null;
+  const img = bImgUrl ? `<img src="${bImgUrl}" alt="">` : '';
+  $('bOut').innerHTML = `
+    <div class="card idea">
+      <div class="e">${c.e}</div>
+      <div class="t">${esc(c.t)}</div>
+      ${c.sub ? `<div class="small">${esc(c.sub)}</div>` : ''}
+      ${img}
+      ${c.game ? '<button class="btn go full" id="bAct">▶️ Indítom az órát</button>'
+        : c.item ? '<button class="btn blue full" id="bAct">↗️ Megnyitom</button>'
+        : '<button class="btn go full" id="bAct">✅ Megcsináltam!</button>'}
+    </div>`;
+  $('bAct').onclick = async () => {
+    await kvSet('boredDone', ((await kvGet('boredDone')) || 0) + 1);
+    if (c.game) {
+      if (!running) { running = { gameId: c.game.id, start: Date.now() }; await kvSet('running', running); }
+      bLast = null; bRolls = 0; show('v-log'); toast('Jó játékot! 🎮');
+    } else if (c.item) {
+      openItem(c.item);
+    } else {
+      bLast = null; bRolls = 0; renderBored(); toast('Ez az! 💪');
+    }
+  };
+}
+$('bGo').onclick = rollBored;
+$('bEnergy').addEventListener('click', e => {
+  const c = e.target.closest('[data-en]'); if (!c) return;
+  bEnergy = +c.dataset.en; bSeen.clear();
+  if (bLast) rollBored(); else renderBored();
+});
+
 // ================= MENTÉS =================
 async function renderBackup() {
   let txt = '';
@@ -578,7 +709,7 @@ $('wipeBtn').onclick = async () => {
 };
 
 // ================= INDÍTÁS =================
-const RENDER = { 'v-sens': () => {}, 'v-log': renderLog, 'v-vault': renderVault, 'v-backup': renderBackup };
+const RENDER = { 'v-sens': () => {}, 'v-log': renderLog, 'v-bored': renderBored, 'v-vault': renderVault, 'v-backup': renderBackup };
 function show(view) {
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.view === view));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
