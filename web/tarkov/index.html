@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#11130f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tarkov Segéd">
+<title>Tarkov Segéd</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #11130f;
+  --card: #1b1e18;
+  --card-2: #252920;
+  --text: #e9e6d8;
+  --muted: #9a9a86;
+  --accent: #c9b16b;
+  --ok: #7cc36a;
+  --bad: #e2675b;
+  --warn: #e8b24a;
+  --line: #33382c;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom));
+}
+header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; }
+header h1 { font-size: 19px; margin: 0; letter-spacing: .02em; }
+.mode { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--accent); }
+main { max-width: 640px; margin: 0 auto; padding: 0 12px; }
+.view { display: none; }
+.view.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 10px 0; }
+input[type=search], select {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card-2); color: var(--text); font: inherit; font-size: 16px;
+}
+.sticky { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 8px 0; }
+.small { font-size: 12px; color: var(--muted); }
+.muted { color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex-shrink: 0; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.chip.on { background: var(--accent); color: #1b1b12; border-color: transparent; }
+.btn { border: 1px solid var(--line); background: var(--card-2); color: var(--text); border-radius: 10px; padding: 9px 12px; font: inherit; font-weight: 650; cursor: pointer; }
+.btn.full { width: 100%; margin-top: 8px; }
+.item { display: flex; gap: 10px; align-items: flex-start; }
+.item img { width: 52px; height: 52px; object-fit: contain; background: #0c0d0a; border-radius: 8px; flex-shrink: 0; }
+.item .body { flex: 1; min-width: 0; }
+.item .name { font-weight: 700; }
+.prices { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 6px; font-size: 13px; }
+.prices b { font-size: 15px; }
+.verdict { margin-top: 8px; font-weight: 700; font-size: 14px; padding: 6px 10px; border-radius: 8px; background: var(--card-2); }
+.verdict.flea { color: var(--ok); }
+.verdict.trader { color: var(--accent); }
+.need { margin-top: 6px; font-size: 13px; color: var(--warn); font-weight: 650; }
+.star { background: none; border: 0; font-size: 22px; cursor: pointer; padding: 0 2px; color: var(--muted); }
+.star.on { color: var(--accent); }
+.up { color: var(--ok); } .down { color: var(--bad); }
+.details { margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; font-size: 13px; }
+.details p { margin: 3px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 7px 4px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { color: var(--muted); font-weight: 650; position: sticky; top: 0; background: var(--card); }
+th:first-child, td:first-child { text-align: left; white-space: normal; }
+.pen { display: inline-block; min-width: 28px; text-align: center; border-radius: 6px; padding: 1px 5px; font-weight: 800; color: #111; }
+.task { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.task:last-child { border-bottom: 0; }
+.task.done { opacity: .45; }
+.task .top { display: flex; gap: 10px; align-items: flex-start; }
+.task input[type=checkbox] { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
+.task ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+.badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--card-2); color: var(--accent); margin-left: 4px; }
+.station { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.station:last-child { border-bottom: 0; }
+.station .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.stepper { display: flex; align-items: center; gap: 6px; }
+.stepper button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--card-2); color: var(--text); font-size: 18px; font-weight: 800; cursor: pointer; }
+.req { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.clock { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+.clocks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }
+.trader-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.trader-row:last-child { border-bottom: 0; }
+.err { color: var(--bad); font-weight: 650; }
+.loading { color: var(--muted); padding: 16px 0; text-align: center; }
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; z-index: 10;
+  background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom);
+}
+nav button { flex: 1; border: 0; background: none; color: var(--muted); padding: 8px 0 10px; font-size: 11px; font-weight: 650; cursor: pointer; }
+nav button span { display: block; font-size: 21px; }
+nav button.active { color: var(--accent); }
+a { color: var(--accent); }
+.need-list .r { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 Tarkov Segéd</h1>
+  <span class="mode" id="modeTag">PvP</span>
+</header>
+
+<main>
+  <!-- ÁRAK -->
+  <section class="view active" id="v-price">
+    <div class="sticky">
+      <input type="search" id="q" placeholder="Tárgy keresése (pl. salewa, ledx, gpu)…" autocomplete="off">
+      <div class="chips">
+        <button class="chip on" data-pv="search">🔎 Keresés</button>
+        <button class="chip" data-pv="fav">⭐ Kedvencek</button>
+      </div>
+    </div>
+    <div id="priceOut"><p class="small">Írd be egy tárgy nevét (legalább 2 betű). Az árak élőben jönnek a tarkov.dev-ről.</p></div>
+  </section>
+
+  <!-- LŐSZER -->
+  <section class="view" id="v-ammo">
+    <div class="sticky"><select id="caliber"></select></div>
+    <div id="ammoOut" class="loading">Betöltés…</div>
+  </section>
+
+  <!-- QUESTEK -->
+  <section class="view" id="v-tasks">
+    <div class="sticky">
+      <input type="search" id="tq" placeholder="Quest vagy tárgy keresése…" autocomplete="off">
+      <div class="chips" id="traderChips"></div>
+      <div class="chips">
+        <button class="chip" id="kappaChip">🎒 Csak Kappa</button>
+        <button class="chip" id="doneChip">✅ Kész is látszik</button>
+      </div>
+    </div>
+    <div id="tasksOut" class="loading">Betöltés…</div>
+  </section>
+
+  <!-- HIDEOUT -->
+  <section class="view" id="v-hideout">
+    <div class="chips" style="padding-top:8px">
+      <button class="chip on" data-hv="stations">🏗️ Állomások</button>
+      <button class="chip" data-hv="needs">📦 Összes hiányzó tárgy</button>
+    </div>
+    <div id="hideoutOut" class="loading">Betöltés…</div>
+  </section>
+
+  <!-- IDŐ + BEÁLLÍTÁSOK -->
+  <section class="view" id="v-time">
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">⏰ Tarkov idő (a raidben)</div>
+      <div class="clocks">
+        <div><div class="clock" id="clockL">--:--</div><div class="small">bal</div></div>
+        <div><div class="clock" id="clockR">--:--</div><div class="small">jobb</div></div>
+      </div>
+      <p class="small" style="margin:8px 0 0">Raid indításakor ez alapján választhatsz nappalt vagy éjszakát. A Factory és a Labs ideje fix, rájuk nem vonatkozik.</p>
+    </div>
+    <div class="card">
+      <div class="small" style="margin-bottom:4px">🔄 Trader frissítések (restock)</div>
+      <div id="traderOut" class="loading">Betöltés…</div>
+    </div>
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">⚙️ Beállítások</div>
+      <div class="row" style="margin-bottom:8px">
+        <span style="flex:1">Játékmód</span>
+        <button class="chip" data-mode="regular">PvP</button>
+        <button class="chip" data-mode="pve">PvE</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <span style="flex:1">Tárgy- és questnevek nyelve</span>
+        <button class="chip" data-lang="en">English</button>
+        <button class="chip" data-lang="hu">Magyar</button>
+      </div>
+      <button class="btn full" id="refresh">♻️ Questek, hideout és lőszer újratöltése</button>
+      <button class="btn full" id="resetProgress">🗑️ Quest- és hideout-haladás törlése</button>
+      <p class="small">Adatok: <a href="https://tarkov.dev" target="_blank" rel="noopener">tarkov.dev</a> (közösségi, nem hivatalos). A haladásodat csak ez a telefon tárolja.</p>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="active" data-view="v-price"><span>💰</span>Árak</button>
+  <button data-view="v-ammo"><span>🔫</span>Lőszer</button>
+  <button data-view="v-tasks"><span>📋</span>Questek</button>
+  <button data-view="v-hideout"><span>🏠</span>Hideout</button>
+  <button data-view="v-time"><span>⏱️</span>Idő</button>
+</nav>
+
+<script>
+const API = 'https://api.tarkov.dev/graphql';
+const STORE = 'tarkov-seged-v1';
+const DAY = 24 * 3600 * 1000;
+
+// ---------- Állapot ----------
+function loadState() {
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s) return s; } catch (e) {}
+  return {};
+}
+const S = Object.assign({ mode: 'regular', lang: 'en', favs: {}, doneTasks: {}, built: {}, kappaOnly: false, showDone: false, trader: 'all', caliber: '' }, loadState());
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
+
+// Nagyobb, ritkán változó adatok gyorsítótárazva (questek, hideout, lőszer).
+const mem = {};
+function cacheKey(name) { return `tarkov-cache:${name}:${S.mode}:${S.lang}`; }
+async function cached(name, ttl, fetcher) {
+  const key = cacheKey(name);
+  if (mem[key]) return mem[key];
+  try {
+    const c = JSON.parse(localStorage.getItem(key));
+    if (c && Date.now() - c.t < ttl) return (mem[key] = c.d);
+  } catch (e) {}
+  const d = await fetcher();
+  mem[key] = d;
+  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d })); } catch (e) {}
+  return d;
+}
+function clearCache() {
+  Object.keys(mem).forEach(k => delete mem[k]);
+  try { Object.keys(localStorage).filter(k => k.startsWith('tarkov-cache:')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+}
+
+async function gql(query, variables = {}) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables: { lang: S.lang, gm: S.mode, ...variables } }),
+  });
+  if (!res.ok) throw new Error('A tarkov.dev nem válaszol (' + res.status + ')');
+  const j = await res.json();
+  if (!j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Ismeretlen hiba');
+  return j.data;
+}
+
+// ---------- Segédek ----------
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rub = n => n == null ? '–' : Math.round(n).toLocaleString('hu-HU') + ' ₽';
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const errHtml = e => `<p class="err">⚠️ ${esc(e.message)}</p><p class="small">Van internet? Próbáld újra kicsit később.</p>`;
+
+// ---------- Árak ----------
+const ITEM_FIELDS = `
+  id name shortName width height iconLink wikiLink link types
+  avg24hPrice lastLowPrice changeLast48hPercent fleaMarketFee
+  sellFor { price currency priceRUB vendor { name normalizedName } }
+`;
+
+function priceInfo(it) {
+  const noFlea = (it.types || []).includes('noFlea');
+  const traders = (it.sellFor || []).filter(s => s.vendor.normalizedName !== 'flea-market');
+  const best = traders.reduce((a, b) => (!a || b.priceRUB > a.priceRUB ? b : a), null);
+  const flea = it.lastLowPrice || it.avg24hPrice || null;
+  const fleaNet = !noFlea && flea ? flea - (it.fleaMarketFee || 0) : null;
+  const slots = Math.max(1, it.width * it.height);
+  let verdict = null;
+  if (fleaNet && (!best || fleaNet > best.priceRUB)) {
+    verdict = { cls: 'flea', text: `➜ Flea-n add el (kb. ${rub(fleaNet - (best ? best.priceRUB : 0))}-val több a díj után is)` };
+  } else if (best) {
+    verdict = { cls: 'trader', text: `➜ Add el ${best.vendor.name}-nak${noFlea ? ' (flea-n nem eladható)' : ''}` };
+  }
+  const top = Math.max(fleaNet || 0, best ? best.priceRUB : 0);
+  return { noFlea, best, flea, fleaNet, slots, perSlot: top / slots, verdict };
+}
+
+function itemCard(it, needs) {
+  const p = priceInfo(it);
+  const ch = it.changeLast48hPercent;
+  const need = needs && needs[it.id];
+  return `
+    <div class="card" data-id="${it.id}">
+      <div class="item">
+        <img src="${esc(it.iconLink)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div class="body">
+          <div class="row"><div class="name" style="flex:1">${esc(it.name)}</div>
+            <button class="star ${S.favs[it.id] ? 'on' : ''}" data-fav="${it.id}" aria-label="Kedvenc">${S.favs[it.id] ? '★' : '☆'}</button></div>
+          <div class="prices">
+            <div><span class="small">Flea (legolcsóbb)</span><br><b>${p.noFlea ? 'nem eladható' : rub(p.flea)}</b>
+              ${ch != null && !p.noFlea ? `<span class="${ch >= 0 ? 'up' : 'down'}"> ${ch >= 0 ? '▲' : '▼'}${Math.abs(ch).toFixed(1)}%</span>` : ''}</div>
+            <div><span class="small">Legjobb trader</span><br><b>${p.best ? rub(p.best.priceRUB) : '–'}</b> <span class="small">${p.best ? esc(p.best.vendor.name) : ''}</span></div>
+            <div><span class="small">24 órás átlag</span><br>${rub(it.avg24hPrice)}</div>
+            <div><span class="small">Rekeszenként (${it.width}×${it.height})</span><br>${rub(p.perSlot)}</div>
+          </div>
+          ${p.verdict ? `<div class="verdict ${p.verdict.cls}">${p.verdict.text}</div>` : ''}
+          ${need ? `<div class="need">⚠️ Tartsd meg! Még kell: ${need.task ? `${need.task} db questhez${need.fir ? ' (ebből ' + need.fir + ' FIR)' : ''}` : ''}${need.task && need.hideout ? ', ' : ''}${need.hideout ? need.hideout + ' db hideouthoz' : ''}</div>` : ''}
+          <div class="details" hidden></div>
+          <button class="btn" data-more="${it.id}" style="margin-top:8px;font-size:13px">Részletek ▾</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function itemDetails(card, id) {
+  const box = card.querySelector('.details');
+  if (!box.hidden) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = '<span class="small">Betöltés…</span>';
+  try {
+    const d = await gql(`query($ids:[ID],$lang:LanguageCode,$gm:GameMode){ items(ids:$ids, lang:$lang, gameMode:$gm){
+      id low24hPrice high24hPrice lastOfferCount wikiLink link
+      sellFor { priceRUB price currency vendor { name normalizedName } }
+      usedInTasks { id name trader { name } }
+    } }`, { ids: [id] });
+    const it = d.items[0];
+    const traders = it.sellFor.filter(s => s.vendor.normalizedName !== 'flea-market').sort((a, b) => b.priceRUB - a.priceRUB);
+    box.innerHTML = `
+      <p><span class="muted">24 óra:</span> ${rub(it.low24hPrice)} – ${rub(it.high24hPrice)} · <span class="muted">ajánlat:</span> ${it.lastOfferCount ?? '–'}</p>
+      <p class="muted" style="margin-top:6px">Traderek:</p>
+      ${traders.map(t => `<p>${esc(t.vendor.name)}: <b>${rub(t.priceRUB)}</b>${t.currency !== 'RUB' ? ` <span class="small">(${t.price} ${t.currency})</span>` : ''}</p>`).join('') || '<p>–</p>'}
+      ${it.usedInTasks.length ? `<p class="muted" style="margin-top:6px">Questekhez kell:</p>${it.usedInTasks.map(t => `<p>${S.doneTasks[t.id] ? '✅' : '•'} ${esc(t.name)} <span class="small">(${esc(t.trader.name)})</span></p>`).join('')}` : ''}
+      <p style="margin-top:6px">${it.wikiLink ? `<a href="${esc(it.wikiLink)}" target="_blank" rel="noopener">Wiki</a> · ` : ''}<a href="${esc(it.link)}" target="_blank" rel="noopener">tarkov.dev</a></p>`;
+  } catch (e) { box.innerHTML = errHtml(e); }
+}
+
+let priceView = 'search';
+let lastResults = [];
+const priceOut = document.getElementById('priceOut');
+
+async function getNeeds() {
+  // Mennyi kell még az egyes tárgyakból a még nem kész questekhez és a meg nem épített hideout szintekhez.
+  try {
+    const [tasks, stations] = await Promise.all([loadTasks(), loadHideout()]);
+    const needs = {};
+    const add = (id, k, n) => { needs[id] = needs[id] || { task: 0, fir: 0, hideout: 0 }; needs[id][k] += n; };
+    for (const t of tasks) {
+      if (S.doneTasks[t.id]) continue;
+      for (const o of t.objectives) {
+        if (o.type !== 'giveItem' || !o.items || !o.items.length) continue;
+        // Ha több tárgy is elfogadott, mindegyiknél jelezzük.
+        for (const it of o.items) { add(it.id, 'task', o.count); if (o.foundInRaid) add(it.id, 'fir', o.count); }
+      }
+    }
+    for (const st of stations) {
+      const built = S.built[st.id] || 0;
+      for (const lv of st.levels) {
+        if (lv.level <= built) continue;
+        for (const r of lv.itemRequirements) add(r.item.id, 'hideout', r.count);
+      }
+    }
+    return needs;
+  } catch (e) { return null; }
+}
+
+async function renderPrices(list, emptyText) {
+  if (!list.length) { priceOut.innerHTML = `<p class="small">${emptyText}</p>`; return; }
+  priceOut.innerHTML = list.map(it => itemCard(it, null)).join('');
+  const needs = await getNeeds();
+  if (needs) priceOut.innerHTML = list.map(it => itemCard(it, needs)).join('');
+}
+
+const search = debounce(async q => {
+  if (priceView !== 'search') return;
+  if (q.length < 2) { priceOut.innerHTML = '<p class="small">Írd be egy tárgy nevét (legalább 2 betű).</p>'; return; }
+  priceOut.innerHTML = '<p class="loading">Keresés…</p>';
+  try {
+    const d = await gql(`query($name:String,$lang:LanguageCode,$gm:GameMode){ items(name:$name, lang:$lang, gameMode:$gm, limit:25){ ${ITEM_FIELDS} } }`, { name: q });
+    if (document.getElementById('q').value.trim() !== q) return;
+    lastResults = d.items;
+    renderPrices(d.items, 'Nincs találat. Próbáld angolul vagy rövidebben (pl. „graphics”, „ledx”).');
+  } catch (e) { priceOut.innerHTML = errHtml(e); }
+}, 350);
+
+async function showFavs() {
+  const ids = Object.keys(S.favs);
+  if (!ids.length) { priceOut.innerHTML = '<p class="small">Még nincs kedvenced. Keresésnél a ☆ gombbal adhatsz hozzá – így egy pillantással látod az árukat.</p>'; return; }
+  priceOut.innerHTML = '<p class="loading">Árak frissítése…</p>';
+  try {
+    const d = await gql(`query($ids:[ID],$lang:LanguageCode,$gm:GameMode){ items(ids:$ids, lang:$lang, gameMode:$gm){ ${ITEM_FIELDS} } }`, { ids });
+    renderPrices(d.items.sort((a, b) => a.name.localeCompare(b.name)), '');
+  } catch (e) { priceOut.innerHTML = errHtml(e); }
+}
+
+document.getElementById('q').addEventListener('input', e => {
+  if (priceView !== 'search') setPriceView('search');
+  search(e.target.value.trim());
+});
+function setPriceView(v) {
+  priceView = v;
+  document.querySelectorAll('[data-pv]').forEach(c => c.classList.toggle('on', c.dataset.pv === v));
+  if (v === 'fav') showFavs(); else search(document.getElementById('q').value.trim());
+}
+document.querySelectorAll('[data-pv]').forEach(c => c.onclick = () => setPriceView(c.dataset.pv));
+priceOut.addEventListener('click', e => {
+  const fav = e.target.closest('[data-fav]');
+  if (fav) {
+    const id = fav.dataset.fav;
+    if (S.favs[id]) delete S.favs[id]; else S.favs[id] = 1;
+    save();
+    fav.classList.toggle('on', !!S.favs[id]);
+    fav.textContent = S.favs[id] ? '★' : '☆';
+    return;
+  }
+  const more = e.target.closest('[data-more]');
+  if (more) itemDetails(more.closest('.card'), more.dataset.more);
+});
+
+// ---------- Lőszer ----------
+const CAL_NAMES = {
+  '556x45NATO': '5.56x45 NATO', '545x39': '5.45x39', '762x39': '7.62x39', '762x51': '7.62x51 NATO', '762x54R': '7.62x54R',
+  '9x19PARA': '9x19 Para', '9x18PM': '9x18 PM', '9x18PMM': '9x18 PMM', '9x39': '9x39', '366TKM': '.366 TKM', '12g': '12/70',
+  '20g': '20/70', '23x75': '23x75', '127x55': '12.7x55', '1143x23ACP': '.45 ACP', '46x30': '4.6x30', '57x28': '5.7x28',
+  '762x25TT': '7.62x25 TT', '86x70': '.338 Lapua Magnum', '68x51': '6.8x51', '762x35': '.300 Blackout', '9x21': '9x21',
+  '9x33R': '.357 Magnum', '127x33': '.50 AE', '40x46': '40x46 gránát', '30x29': '30x29 gránát', '26x75': '26x75 jelzőrakéta',
+  '127x99': '12.7x99 (.50 BMG)', '20x1mm': '20x1 mm', '93x64': '9.3x64', '725': '7.25',
+};
+const calName = c => { const k = (c || '').replace(/^Caliber/, ''); return CAL_NAMES[k] || k; };
+function penColor(p) {
+  if (p >= 60) return '#c084fc';
+  if (p >= 50) return '#f87171';
+  if (p >= 40) return '#fb923c';
+  if (p >= 30) return '#facc15';
+  if (p >= 20) return '#a3e635';
+  return '#9ca3af';
+}
+const loadAmmo = () => cached('ammo', DAY / 2, async () => (await gql(`query($lang:LanguageCode,$gm:GameMode){ ammo(lang:$lang, gameMode:$gm){
+  caliber damage penetrationPower armorDamage fragmentationChance initialSpeed projectileCount tracer
+  item { id name shortName lastLowPrice avg24hPrice types }
+} }`)).ammo.filter(a => a && a.item));
+
+async function renderAmmo() {
+  const out = document.getElementById('ammoOut');
+  let ammo;
+  try { ammo = await loadAmmo(); } catch (e) { out.innerHTML = errHtml(e); return; }
+  const sel = document.getElementById('caliber');
+  const cals = [...new Set(ammo.map(a => a.caliber).filter(Boolean))].sort((a, b) => calName(a).localeCompare(calName(b), 'hu', { numeric: true }));
+  if (!S.caliber || !cals.includes(S.caliber)) S.caliber = cals.includes('Caliber556x45NATO') ? 'Caliber556x45NATO' : cals[0];
+  sel.innerHTML = cals.map(c => `<option value="${esc(c)}" ${c === S.caliber ? 'selected' : ''}>${esc(calName(c))}</option>`).join('');
+  const list = ammo.filter(a => a.caliber === S.caliber).sort((a, b) => b.penetrationPower - a.penetrationPower);
+  out.className = '';
+  out.innerHTML = `
+    <div class="card" style="padding:4px 8px;overflow-x:auto">
+      <table>
+        <tr><th>Lőszer</th><th>Seb.</th><th>Átüt.</th><th>Páncél</th><th>Frag.</th><th>Ár</th></tr>
+        ${list.map(a => `
+          <tr>
+            <td>${esc(a.item.shortName || a.item.name)}${a.tracer ? ' <span class="small">nyomjelző</span>' : ''}</td>
+            <td>${a.damage}${a.projectileCount > 1 ? '×' + a.projectileCount : ''}</td>
+            <td><span class="pen" style="background:${penColor(a.penetrationPower)}">${a.penetrationPower}</span></td>
+            <td>${a.armorDamage}%</td>
+            <td>${Math.round(a.fragmentationChance * 100)}%</td>
+            <td>${(a.item.types || []).includes('noFlea') ? '<span class="small">nincs flea</span>' : rub(a.item.lastLowPrice || a.item.avg24hPrice)}</td>
+          </tr>`).join('')}
+      </table>
+    </div>
+    <p class="small">Átütés színe: <span class="pen" style="background:#9ca3af">&lt;20</span> <span class="pen" style="background:#a3e635">20+</span> <span class="pen" style="background:#facc15">30+</span> <span class="pen" style="background:#fb923c">40+</span> <span class="pen" style="background:#f87171">50+</span> <span class="pen" style="background:#c084fc">60+</span> – nagyjából ennyiedik osztályú (×10) páncélon megy át jól.</p>`;
+}
+document.getElementById('caliber').addEventListener('change', e => { S.caliber = e.target.value; save(); renderAmmo(); });
+
+// ---------- Questek ----------
+const loadTasks = () => cached('tasks', DAY, async () => (await gql(`query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){
+  id name minPlayerLevel kappaRequired lightkeeperRequired wikiLink
+  trader { name normalizedName } map { name }
+  objectives { id type description optional
+    ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
+  }
+} }`)).tasks);
+
+async function renderTasks() {
+  const out = document.getElementById('tasksOut');
+  let tasks;
+  try { tasks = await loadTasks(); } catch (e) { out.innerHTML = errHtml(e); return; }
+  const traders = [...new Map(tasks.map(t => [t.trader.normalizedName, t.trader.name])).entries()];
+  const chips = document.getElementById('traderChips');
+  chips.innerHTML = `<button class="chip ${S.trader === 'all' ? 'on' : ''}" data-tr="all">Mind</button>` +
+    traders.map(([k, n]) => `<button class="chip ${S.trader === k ? 'on' : ''}" data-tr="${esc(k)}">${esc(n)}</button>`).join('');
+  document.getElementById('kappaChip').classList.toggle('on', S.kappaOnly);
+  document.getElementById('doneChip').classList.toggle('on', S.showDone);
+
+  const q = document.getElementById('tq').value.trim().toLowerCase();
+  const scope = tasks.filter(t => (S.trader === 'all' || t.trader.normalizedName === S.trader) && (!S.kappaOnly || t.kappaRequired));
+  const doneCount = scope.filter(t => S.doneTasks[t.id]).length;
+  const list = scope
+    .filter(t => S.showDone || !S.doneTasks[t.id])
+    .filter(t => !q || t.name.toLowerCase().includes(q) || t.objectives.some(o => (o.items || []).some(i => i.name.toLowerCase().includes(q) || (i.shortName || '').toLowerCase().includes(q))))
+    .sort((a, b) => (a.minPlayerLevel || 0) - (b.minPlayerLevel || 0) || a.name.localeCompare(b.name));
+  out.className = '';
+  out.innerHTML = `
+    <p class="small">✅ ${doneCount} / ${scope.length} kész${S.kappaOnly ? ' (Kappa)' : ''}</p>
+    <div class="card">${list.length ? list.map(t => `
+      <div class="task ${S.doneTasks[t.id] ? 'done' : ''}">
+        <div class="top">
+          <input type="checkbox" data-task="${t.id}" ${S.doneTasks[t.id] ? 'checked' : ''}>
+          <div style="flex:1">
+            <b>${esc(t.name)}</b>${t.kappaRequired ? '<span class="badge">KAPPA</span>' : ''}${t.lightkeeperRequired ? '<span class="badge">LK</span>' : ''}
+            <div class="small">${esc(t.trader.name)} · ${t.minPlayerLevel ? t.minPlayerLevel + '. szinttől' : 'bármikor'}${t.map ? ' · ' + esc(t.map.name) : ''}
+              ${t.wikiLink ? ` · <a href="${esc(t.wikiLink)}" target="_blank" rel="noopener">wiki</a>` : ''}</div>
+            <ul>${t.objectives.map(o => `<li>${o.optional ? '(opcionális) ' : ''}${esc(o.description)}${o.type === 'giveItem' && o.count ? ` <b>×${o.count}${o.foundInRaid ? ' FIR' : ''}</b>` : ''}</li>`).join('')}</ul>
+          </div>
+        </div>
+      </div>`).join('') : '<p class="small">Nincs ilyen quest.</p>'}</div>`;
+}
+document.getElementById('tasksOut').addEventListener('change', e => {
+  const id = e.target.dataset.task;
+  if (!id) return;
+  if (e.target.checked) S.doneTasks[id] = 1; else delete S.doneTasks[id];
+  save(); renderTasks();
+});
+document.getElementById('traderChips').addEventListener('click', e => {
+  const c = e.target.closest('[data-tr]');
+  if (c) { S.trader = c.dataset.tr; save(); renderTasks(); }
+});
+document.getElementById('kappaChip').onclick = () => { S.kappaOnly = !S.kappaOnly; save(); renderTasks(); };
+document.getElementById('doneChip').onclick = () => { S.showDone = !S.showDone; save(); renderTasks(); };
+document.getElementById('tq').addEventListener('input', debounce(renderTasks, 200));
+
+// ---------- Hideout ----------
+const loadHideout = () => cached('hideout', DAY, async () => (await gql(`query($lang:LanguageCode,$gm:GameMode){ hideoutStations(lang:$lang, gameMode:$gm){
+  id name normalizedName
+  levels { level itemRequirements { count item { id name shortName lastLowPrice avg24hPrice } } }
+} }`)).hideoutStations);
+
+let hideoutView = 'stations';
+async function renderHideout() {
+  const out = document.getElementById('hideoutOut');
+  let stations;
+  try { stations = await loadHideout(); } catch (e) { out.innerHTML = errHtml(e); return; }
+  out.className = '';
+  stations = stations.slice().sort((a, b) => a.name.localeCompare(b.name));
+  if (hideoutView === 'stations') {
+    out.innerHTML = `<div class="card">${stations.map(st => {
+      const max = Math.max(0, ...st.levels.map(l => l.level));
+      const built = Math.min(S.built[st.id] || 0, max);
+      const next = st.levels.find(l => l.level === built + 1);
+      return `
+        <div class="station">
+          <div class="head">
+            <div><b>${esc(st.name)}</b><div class="small">${built} / ${max}. szint${built === max ? ' · ✅ kész' : ''}</div></div>
+            <div class="stepper">
+              <button data-st="${st.id}" data-d="-1" ${built === 0 ? 'disabled' : ''}>−</button>
+              <button data-st="${st.id}" data-d="1" ${built === max ? 'disabled' : ''}>+</button>
+            </div>
+          </div>
+          ${next ? `<div class="req">Következő (${next.level}.): ${next.itemRequirements.length ? next.itemRequirements.map(r => `${esc(r.item.shortName || r.item.name)} ×${r.count.toLocaleString('hu-HU')}`).join(', ') : 'nincs tárgyigény'}</div>` : ''}
+        </div>`;
+    }).join('')}</div>
+    <p class="small">A + / − gombokkal állítsd be, hányadik szintig építetted meg az egyes állomásokat. Az árkeresőben így látod, mit kell még megtartanod.</p>`;
+  } else {
+    const agg = {};
+    for (const st of stations) {
+      const built = S.built[st.id] || 0;
+      for (const lv of st.levels) {
+        if (lv.level <= built) continue;
+        for (const r of lv.itemRequirements) {
+          const a = agg[r.item.id] = agg[r.item.id] || { item: r.item, count: 0 };
+          a.count += r.count;
+        }
+      }
+    }
+    const list = Object.values(agg).sort((a, b) => a.item.name.localeCompare(b.item.name));
+    const price = a => a.item.id === '5449016a4bdc2d6f028b456f' ? 1 : (a.item.lastLowPrice || a.item.avg24hPrice || 0);
+    const total = list.reduce((s, a) => s + price(a) * a.count, 0);
+    out.innerHTML = list.length ? `
+      <div class="card"><b>Becsült összköltség flea-n: ${rub(total)}</b><div class="small">${list.length} féle tárgy hiányzik</div></div>
+      <div class="card need-list">${list.map(a => `<div class="r"><span>${esc(a.item.name)}</span><b>×${a.count.toLocaleString('hu-HU')}</b></div>`).join('')}</div>`
+      : '<div class="card">🎉 Minden hideout állomás kész!</div>';
+  }
+}
+document.getElementById('hideoutOut').addEventListener('click', e => {
+  const b = e.target.closest('[data-st]');
+  if (!b) return;
+  S.built[b.dataset.st] = Math.max(0, (S.built[b.dataset.st] || 0) + +b.dataset.d);
+  save(); renderHideout();
+});
+document.querySelectorAll('[data-hv]').forEach(c => c.onclick = () => {
+  hideoutView = c.dataset.hv;
+  document.querySelectorAll('[data-hv]').forEach(x => x.classList.toggle('on', x === c));
+  renderHideout();
+});
+
+// ---------- Idő ----------
+// Tarkov ideje 7x gyorsabban telik, moszkvai időhöz igazítva; a „jobb” oldal 12 órával eltolva.
+function tarkovTime(right) {
+  const oneDay = 24 * 3600 * 1000;
+  const offset = 3 * 3600 * 1000 + (right ? 12 * 3600 * 1000 : 0);
+  const t = new Date((offset + Date.now() * 7) % oneDay);
+  return String(t.getUTCHours()).padStart(2, '0') + ':' + String(t.getUTCMinutes()).padStart(2, '0') + ':' + String(t.getUTCSeconds()).padStart(2, '0');
+}
+let traders = null, traderFetched = 0, traderLoading = false;
+async function renderTraders() {
+  const out = document.getElementById('traderOut');
+  if (!traders || Date.now() - traderFetched > 5 * 60 * 1000) {
+    if (traderLoading) return;
+    traderLoading = true;
+    try {
+      traders = (await gql(`query($lang:LanguageCode,$gm:GameMode){ traders(lang:$lang, gameMode:$gm){ name resetTime } }`)).traders;
+      traderFetched = Date.now();
+    } catch (e) { out.innerHTML = errHtml(e); return; } finally { traderLoading = false; }
+  }
+  out.className = '';
+  out.innerHTML = traders.filter(t => t.resetTime).map(t => {
+    const ms = new Date(t.resetTime) - Date.now();
+    const txt = ms <= 0 ? 'most frissült' : `${Math.floor(ms / 3600000)}:${String(Math.floor(ms / 60000) % 60).padStart(2, '0')}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+    return `<div class="trader-row"><span>${esc(t.name)}</span><b>${txt}</b></div>`;
+  }).join('') || '<p class="small">Nincs adat.</p>';
+}
+let timeTimer = null;
+function startClock() {
+  stopClock();
+  const tick = () => {
+    document.getElementById('clockL').textContent = tarkovTime(false);
+    document.getElementById('clockR').textContent = tarkovTime(true);
+    if (traders) renderTraders();
+  };
+  tick();
+  renderTraders();
+  timeTimer = setInterval(tick, 1000);
+}
+function stopClock() { if (timeTimer) clearInterval(timeTimer); timeTimer = null; }
+
+// ---------- Beállítások ----------
+function syncSettings() {
+  document.getElementById('modeTag').textContent = S.mode === 'pve' ? 'PvE' : 'PvP';
+  document.querySelectorAll('[data-mode]').forEach(c => c.classList.toggle('on', c.dataset.mode === S.mode));
+  document.querySelectorAll('[data-lang]').forEach(c => c.classList.toggle('on', c.dataset.lang === S.lang));
+}
+document.querySelectorAll('[data-mode]').forEach(c => c.onclick = () => { S.mode = c.dataset.mode; traders = null; save(); syncSettings(); renderTraders(); });
+document.querySelectorAll('[data-lang]').forEach(c => c.onclick = () => { S.lang = c.dataset.lang; traders = null; save(); syncSettings(); renderTraders(); });
+document.getElementById('refresh').onclick = () => { clearCache(); alert('Kész! A következő megnyitáskor friss adatok töltődnek be.'); };
+document.getElementById('resetProgress').onclick = () => {
+  if (!confirm('Biztosan törlöd a kész questeket és a hideout szinteket?')) return;
+  S.doneTasks = {}; S.built = {}; save();
+};
+
+// ---------- Navigáció ----------
+const RENDER = { 'v-ammo': renderAmmo, 'v-tasks': renderTasks, 'v-hideout': renderHideout, 'v-price': () => setPriceView(priceView) };
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === b.dataset.view));
+  if (b.dataset.view === 'v-time') startClock(); else stopClock();
+  if (RENDER[b.dataset.view]) RENDER[b.dataset.view]();
+  window.scrollTo(0, 0);
+});
+
+syncSettings();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
