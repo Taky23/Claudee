@@ -49,6 +49,24 @@ A játék végén a bot magától lezár egy **időkapszulát**, ami pontosan eg
 | `/idokapszula torol` | Saját kapszula törlése |
 | `/idokapszula sugo` | Súgó |
 
+## 📱 Telefonos webappok (Discord nélkül)
+
+A `web/` mappában két telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
+
+- **🎲 Véletlen kaland** (`web/kaland/`) – egy gombnyomásra apró, fura napi küldetést kapsz. Naponta kétszer kérhetsz helyette másikat, utána jöhetnek a bónuszküldetések. Fotót és jegyzetet is csatolhatsz. Pontokat, szinteket, szériát és 22 jelvényt gyűjthetsz, a teljesítéseid a kalandnaplóba kerülnek.
+- **🕵️ Zsebdetektív** (`web/detektiv/`) – minden nap egy új rejtély öt gyanúsítottal és nyomokkal. A napi eset mindenkinek ugyanaz, így a barátaiddal is összemérhetitek. A nyomok együtt mindig pontosan egy tettest adnak ki. Két nyom ingyenes, minden további pontba kerül, és csak egyszer vádolhatsz. Van pont nélküli gyakorló mód és statisztika is.
+
+### Kitenni a telefonra
+
+1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
+2. Amikor a `web/` mappa változása bekerül a `main` ágba, a `.github/workflows/pages.yml` magától közzéteszi az oldalt itt:
+   `https://<felhasználónév>.github.io/<repó>/` (a két app a `kaland/` és a `detektiv/` alatt).
+3. Nyisd meg a telefonon, majd:
+   - **Android (Chrome):** ⋮ menü → *Hozzáadás a kezdőképernyőhöz* / *Alkalmazás telepítése*
+   - **iPhone (Safari):** Megosztás (□↑) → *Főképernyőhöz adás*
+
+Helyben is kipróbálhatod: `cd web && python -m http.server`, majd nyisd meg a `http://localhost:8000` címet.
+
 ## ⚙️ Telepítés
 
 ### 1. Bot létrehozása a Discordon
