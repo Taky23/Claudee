@@ -225,13 +225,25 @@ function clearCache() {
   try { Object.keys(localStorage).filter(k => k.startsWith('tarkov-cache:')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
 }
 
+// A változókat beírjuk a lekérdezésbe, így sima GET kérés mehet ki: ehhez nem kell CORS preflight,
+// és a tarkov.dev gyorsítótára is ki tudja szolgálni.
+function inlineVars(query, vars) {
+  return query
+    .replace(/^\s*query\s*\([^)]*\)\s*/, '')
+    .replace(/\$(\w+)/g, (_, k) => (k === 'lang' || k === 'gm') ? vars[k] : JSON.stringify(vars[k]));
+}
 async function gql(query, variables = {}) {
-  const res = await fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables: { lang: S.lang, gm: S.mode, ...variables } }),
-  });
-  if (!res.ok) throw new Error('A tarkov.dev nem válaszol (' + res.status + ')');
+  const q = inlineVars(query, { lang: S.lang, gm: S.mode, ...variables });
+  let res = null;
+  try { res = await fetch(API + '?query=' + encodeURIComponent(q)); } catch (e) {}
+  if (!res || !res.ok) {
+    try {
+      res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+    } catch (e) {
+      throw new Error('Nem sikerült elérni a tarkov.dev-et.');
+    }
+  }
+  if (!res.ok) throw new Error('A tarkov.dev hibát jelzett (' + res.status + ').');
   const j = await res.json();
   if (!j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Ismeretlen hiba');
   return j.data;
@@ -241,7 +253,7 @@ async function gql(query, variables = {}) {
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rub = n => n == null ? '–' : Math.round(n).toLocaleString('hu-HU') + ' ₽';
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-const errHtml = e => `<p class="err">⚠️ ${esc(e.message)}</p><p class="small">Van internet? Próbáld újra kicsit később.</p>`;
+const errHtml = e => `<div class="card"><p class="err">⚠️ ${esc(e.message)}</p><p class="small">Van internet? Ha igen, lehet, hogy a tarkov.dev épp akadozik – próbáld újra pár perc múlva.</p><button class="btn full" data-retry>🔄 Újra</button></div>`;
 
 // ---------- Árak ----------
 const ITEM_FIELDS = `
@@ -633,6 +645,12 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   if (b.dataset.view === 'v-time') startClock(); else stopClock();
   if (RENDER[b.dataset.view]) RENDER[b.dataset.view]();
   window.scrollTo(0, 0);
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-retry]')) return;
+  const v = document.querySelector('.view.active').id;
+  if (v === 'v-time') { traders = null; renderTraders(); } else RENDER[v]();
 });
 
 syncSettings();
