@@ -51,18 +51,25 @@ A játék végén a bot magától lezár egy **időkapszulát**, ami pontosan eg
 
 ## 📱 Telefonos webappok (Discord nélkül)
 
-A `web/` mappában három telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
+A `web/` mappában négy telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
 
 - **🎲 Véletlen kaland** (`web/kaland/`) – egy gombnyomásra apró, fura napi küldetést kapsz. Naponta kétszer kérhetsz helyette másikat, utána jöhetnek a bónuszküldetések. Fotót és jegyzetet is csatolhatsz. Pontokat, szinteket, szériát és 22 jelvényt gyűjthetsz, a teljesítéseid a kalandnaplóba kerülnek.
 - **🕵️ Zsebdetektív** (`web/detektiv/`) – minden nap egy új rejtély öt gyanúsítottal és nyomokkal. A napi eset mindenkinek ugyanaz, így a barátaiddal is összemérhetitek. A nyomok együtt mindig pontosan egy tettest adnak ki. Két nyom ingyenes, minden további pontba kerül, és csak egyszer vádolhatsz. Van pont nélküli gyakorló mód és statisztika is.
 
 - **🩸 A Kód** (`web/kod/`) – Dexter-szerű, korlátlanul játszható igazságosztó-játék. Minden játékbeli nap egy akta: a nyomokból kell kiválasztanod a valódi tettest (ha ártatlant választasz, vége), aztán egy olyan időpontot és helyszínt, ahol nincs tanú. Minden extra nyom és felderítés növeli Bakó őrmester gyanúját, és 100%-nál lebuksz. A játék addig tart, amíg le nem buksz, a nehézség napról napra nő. A túlélt napokból top 10-es ranglista készül a telefonon.
 
+- **🎯 Tarkov Segéd** (`web/tarkov/`) – Escape from Tarkov segédapp a [tarkov.dev](https://tarkov.dev) nyilvános API-jával:
+  - **Árak:** élő flea ár (legolcsóbb és 24 órás átlag, 48 órás változás), legjobb trader ár, rekeszenkénti érték, és hogy flea-n vagy traderen érdemes-e eladni (a flea díjjal számolva). Szól, ha a tárgy még kell a questjeidhez vagy a hideoutodhoz. Kedvencekkel.
+  - **Lőszer:** kaliberenkénti táblázat sebzéssel, átütéssel, páncélsebzéssel, fragmentációval és árral.
+  - **Questek:** traderenként, Kappa-szűrővel, keresővel és pipálható haladással.
+  - **Hideout:** az állomások szintjeinek követése, és az összes hiányzó tárgy listája becsült költséggel.
+  - **Idő:** Tarkov idő (bal/jobb), trader restock visszaszámláló, PvP/PvE mód, angol vagy magyar tárgynevek.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
 2. Amikor a `web/` mappa változása bekerül a `main` ágba, a `.github/workflows/pages.yml` magától közzéteszi az oldalt itt:
-   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/` és `kod/` alatt).
+   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/`, `kod/` és `tarkov/` alatt).
 3. Nyisd meg a telefonon, majd:
    - **Android (Chrome):** ⋮ menü → *Hozzáadás a kezdőképernyőhöz* / *Alkalmazás telepítése*
    - **iPhone (Safari):** Megosztás (□↑) → *Főképernyőhöz adás*
