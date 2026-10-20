@@ -51,16 +51,18 @@ A játék végén a bot magától lezár egy **időkapszulát**, ami pontosan eg
 
 ## 📱 Telefonos webappok (Discord nélkül)
 
-A `web/` mappában két telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
+A `web/` mappában három telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
 
 - **🎲 Véletlen kaland** (`web/kaland/`) – egy gombnyomásra apró, fura napi küldetést kapsz. Naponta kétszer kérhetsz helyette másikat, utána jöhetnek a bónuszküldetések. Fotót és jegyzetet is csatolhatsz. Pontokat, szinteket, szériát és 22 jelvényt gyűjthetsz, a teljesítéseid a kalandnaplóba kerülnek.
 - **🕵️ Zsebdetektív** (`web/detektiv/`) – minden nap egy új rejtély öt gyanúsítottal és nyomokkal. A napi eset mindenkinek ugyanaz, így a barátaiddal is összemérhetitek. A nyomok együtt mindig pontosan egy tettest adnak ki. Két nyom ingyenes, minden további pontba kerül, és csak egyszer vádolhatsz. Van pont nélküli gyakorló mód és statisztika is.
+
+- **🩸 A Kód** (`web/kod/`) – Dexter-szerű, korlátlanul játszható igazságosztó-játék. Minden játékbeli nap egy akta: a nyomokból kell kiválasztanod a valódi tettest (ha ártatlant választasz, vége), aztán egy olyan időpontot és helyszínt, ahol nincs tanú. Minden extra nyom és felderítés növeli Bakó őrmester gyanúját, és 100%-nál lebuksz. A játék addig tart, amíg le nem buksz, a nehézség napról napra nő. A túlélt napokból top 10-es ranglista készül a telefonon.
 
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
 2. Amikor a `web/` mappa változása bekerül a `main` ágba, a `.github/workflows/pages.yml` magától közzéteszi az oldalt itt:
-   `https://<felhasználónév>.github.io/<repó>/` (a két app a `kaland/` és a `detektiv/` alatt).
+   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/` és `kod/` alatt).
 3. Nyisd meg a telefonon, majd:
    - **Android (Chrome):** ⋮ menü → *Hozzáadás a kezdőképernyőhöz* / *Alkalmazás telepítése*
    - **iPhone (Safari):** Megosztás (□↑) → *Főképernyőhöz adás*
