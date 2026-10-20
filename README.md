@@ -51,7 +51,7 @@ A játék végén a bot magától lezár egy **időkapszulát**, ami pontosan eg
 
 ## 📱 Telefonos webappok (Discord nélkül)
 
-A `web/` mappában négy telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
+A `web/` mappában öt telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
 
 - **🎲 Véletlen kaland** (`web/kaland/`) – egy gombnyomásra apró, fura napi küldetést kapsz. Naponta kétszer kérhetsz helyette másikat, utána jöhetnek a bónuszküldetések. Fotót és jegyzetet is csatolhatsz. Pontokat, szinteket, szériát és 22 jelvényt gyűjthetsz, a teljesítéseid a kalandnaplóba kerülnek.
 - **🕵️ Zsebdetektív** (`web/detektiv/`) – minden nap egy új rejtély öt gyanúsítottal és nyomokkal. A napi eset mindenkinek ugyanaz, így a barátaiddal is összemérhetitek. A nyomok együtt mindig pontosan egy tettest adnak ki. Két nyom ingyenes, minden további pontba kerül, és csak egyszer vádolhatsz. Van pont nélküli gyakorló mód és statisztika is.
@@ -65,11 +65,15 @@ A `web/` mappában négy telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **Hideout:** az állomások szintjeinek követése, és az összes hiányzó tárgy listája becsült költséggel.
   - **Idő:** Tarkov idő (bal/jobb), trader restock visszaszámláló, PvP/PvE mód, angol vagy magyar tárgynevek.
 
+- **🎮 Gamer Zseb** (`web/gamer/`) – két dolog egy appban:
+  - **Játékár-figyelő** a [CheapShark](https://www.cheapshark.com) ingyenes API-jával: akciók boltok szerint (Steam, Epic, GOG, Humble…), ingyen játékok, keresés, egy játék összes boltban elérhető ára és a valaha volt legalacsonyabb ára, figyelőlista célárral, valamint opcionális email-riasztás a CheapShark-on keresztül. Az utoljára letöltött adatokat megjegyzi, így a szolgáltatás kiesésekor is mutat valamit.
+  - **Tarkov kihívás-generátor** (net nélkül): sorsol pályát, helyszínt, fegyvert, páncélszabályt és extra szabályokat, 3 nehézségi szinten, akár 5 fős csapatra. Az egyes elemek újrasorsolhatók, és pontokat meg előzményeket is vezet.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
 2. Amikor a `web/` mappa változása bekerül a `main` ágba, a `.github/workflows/pages.yml` magától közzéteszi az oldalt itt:
-   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/`, `kod/` és `tarkov/` alatt).
+   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/`, `kod/`, `tarkov/` és `gamer/` alatt).
 3. Nyisd meg a telefonon, majd:
    - **Android (Chrome):** ⋮ menü → *Hozzáadás a kezdőképernyőhöz* / *Alkalmazás telepítése*
    - **iPhone (Safari):** Megosztás (□↑) → *Főképernyőhöz adás*
