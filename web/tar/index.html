@@ -107,6 +107,12 @@ nav button { flex: 1; border: 0; background: none; color: var(--muted); padding:
 nav button span { display: block; font-size: 21px; }
 nav button.active { color: var(--accent); }
 a { color: var(--accent-2); word-break: break-all; }
+.top-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.top-row:last-child { border-bottom: 0; }
+.song { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.song:last-child { border-bottom: 0; }
+.song .links { display: flex; gap: 6px; margin-top: 6px; }
+.song .links a, .song .links button { font-size: 12px; padding: 5px 10px; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -170,6 +176,27 @@ a { color: var(--accent-2); word-break: break-all; }
     <input type="file" id="fileIn" multiple hidden>
   </section>
 
+  <!-- ZENE -->
+  <section class="view" id="v-music">
+    <div class="card">
+      <b>🎵 Mi szól most?</b>
+      <div class="grid2">
+        <div><label class="f">Dal</label><input type="text" id="mSong" maxlength="80" placeholder="pl. Blinding Lights"></div>
+        <div><label class="f">Előadó</label><input type="text" id="mArtist" maxlength="60" placeholder="pl. The Weeknd" list="artistList"><datalist id="artistList"></datalist></div>
+      </div>
+      <label class="f">Hangulat</label>
+      <div class="chips" id="mMood"></div>
+      <label class="f">Jegyzet (nem kötelező)</label><input type="text" id="mNote" maxlength="120" placeholder="pl. ezt hallgattam a meccs alatt">
+      <button class="btn go full" id="mAdd">➕ Felírom</button>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn" id="mPrev">◀</button><b id="mMonth"></b><button class="btn" id="mNext">▶</button>
+    </div>
+    <div class="card" id="mTop"></div>
+    <h2>Napló</h2>
+    <div class="card" id="mList"></div>
+  </section>
+
   <!-- MENTÉS -->
   <section class="view" id="v-backup">
     <div class="card">
@@ -193,8 +220,9 @@ a { color: var(--accent-2); word-break: break-all; }
 </main>
 
 <nav>
-  <button class="active" data-view="v-sens"><span>🎯</span>Érzékenység</button>
-  <button data-view="v-log"><span>🕹️</span>Napló</button>
+  <button class="active" data-view="v-sens"><span>🎯</span>Célzás</button>
+  <button data-view="v-log"><span>🕹️</span>Játék</button>
+  <button data-view="v-music"><span>🎵</span>Zene</button>
   <button data-view="v-vault"><span>🔐</span>Tár</button>
   <button data-view="v-backup"><span>💾</span>Mentés</button>
 </nav>
@@ -510,6 +538,68 @@ function openItem(v) {
   $('iDel').onclick = async () => { if (!confirm('Biztosan törlöd?')) return; await dbDel('vault', v.id); closeModal(); await loadVault(); toast('Törölve'); };
 }
 
+// ================= ZENE =================
+const MOODS = [['😊', 'Vidám'], ['🔥', 'Pörgős'], ['😌', 'Nyugis'], ['😢', 'Szomorú'], ['💪', 'Edzés'], ['🎮', 'Gaming'], ['💘', 'Szerelmes'], ['🌧️', 'Borongós']];
+let music = [], mMood = '', mMonthOff = 0;
+// A linkek csak megnyitják a keresést a Spotifyban / YouTube-on – az app maga semmit nem küld el.
+const spotify = m => 'https://open.spotify.com/search/' + encodeURIComponent(`${m.song} ${m.artist}`.trim());
+const youtube = m => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${m.song} ${m.artist}`.trim());
+
+async function loadMusic() { music = await dbAll('music'); renderMusic(); }
+function renderMusic() {
+  $('mMood').innerHTML = MOODS.map(([e, n]) => `<button class="chip ${mMood === e ? 'on' : ''}" data-mood="${e}">${e} ${n}</button>`).join('');
+  $('artistList').innerHTML = [...new Set(music.map(m => m.artist).filter(Boolean))].sort().map(a => `<option value="${esc(a)}">`).join('');
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + mMonthOff);
+  const from = new Date(d.getFullYear(), d.getMonth(), 1).getTime(), to = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+  $('mMonth').textContent = d.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+  $('mNext').disabled = mMonthOff >= 0;
+  const inMonth = music.filter(m => m.ts >= from && m.ts < to).sort((a, b) => b.ts - a.ts);
+  const count = key => {
+    const c = {};
+    inMonth.forEach(m => { const k = key(m); if (k) c[k] = (c[k] || 0) + 1; });
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  };
+  const songs = count(m => m.song + (m.artist ? ' – ' + m.artist : '')), artists = count(m => m.artist), moods = count(m => m.mood);
+  const medal = i => ['🥇', '🥈', '🥉'][i] || (i + 1) + '.';
+  $('mTop').innerHTML = inMonth.length ? `
+    <div class="small">🏆 A hónap dalai</div>${songs.map(([k, n], i) => `<div class="top-row"><span>${medal(i)} ${esc(k)}</span><b>${n}×</b></div>`).join('')}
+    ${artists.length ? `<div class="small" style="margin-top:10px">🎤 Kedvenc előadók</div>${artists.map(([k, n], i) => `<div class="top-row"><span>${medal(i)} ${esc(k)}</span><b>${n}×</b></div>`).join('')}` : ''}
+    ${moods.length ? `<div class="small" style="margin-top:10px">Hangulat</div><div style="font-size:22px">${moods.map(([e, n]) => `${e}<span class="small">${n}</span>`).join(' ')}</div>` : ''}`
+    : '<p class="small" style="margin:0">Ebben a hónapban még nincs felírt dal.</p>';
+  $('mList').innerHTML = inMonth.length ? inMonth.map(m => `
+    <div class="song">
+      <b>${m.mood ? m.mood + ' ' : ''}${esc(m.song)}</b>${m.artist ? ` <span class="muted">– ${esc(m.artist)}</span>` : ''}
+      <div class="small">${new Date(m.ts).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}${m.note ? ' · ' + esc(m.note) : ''}</div>
+      <div class="links">
+        <a class="btn" href="${spotify(m)}" target="_blank" rel="noopener noreferrer">🟢 Spotify</a>
+        <a class="btn" href="${youtube(m)}" target="_blank" rel="noopener noreferrer">▶️ YouTube</a>
+        <button class="btn" data-again="${m.id}">🔁 Megint ezt</button>
+        <button class="btn danger" data-mdel="${m.id}">✕</button>
+      </div>
+    </div>`).join('') : '<p class="small" style="margin:0">Itt jelennek meg a felírt dalaid.</p>';
+}
+$('mMood').addEventListener('click', e => { const c = e.target.closest('[data-mood]'); if (c) { mMood = mMood === c.dataset.mood ? '' : c.dataset.mood; renderMusic(); } });
+$('mAdd').onclick = async () => {
+  const song = $('mSong').value.trim();
+  if (!song) { toast('Írd be a dal címét!'); return; }
+  const m = { id: newId(), song, artist: $('mArtist').value.trim(), mood: mMood, note: $('mNote').value.trim(), ts: Date.now() };
+  await dbPut('music', m); music.push(m);
+  $('mSong').value = ''; $('mNote').value = ''; mMood = ''; mMonthOff = 0;
+  renderMusic(); toast('Felírva 🎵');
+};
+$('mList').addEventListener('click', async e => {
+  const del = e.target.closest('[data-mdel]');
+  if (del) { await dbDel('music', del.dataset.mdel); music = music.filter(m => m.id !== del.dataset.mdel); renderMusic(); return; }
+  const again = e.target.closest('[data-again]');
+  if (again) {
+    const o = music.find(m => m.id === again.dataset.again);
+    const m = { id: newId(), song: o.song, artist: o.artist, mood: o.mood, note: '', ts: Date.now() };
+    await dbPut('music', m); music.push(m); mMonthOff = 0; renderMusic(); toast('Még egyszer felírva 🔁');
+  }
+});
+$('mPrev').onclick = () => { mMonthOff--; renderMusic(); };
+$('mNext').onclick = () => { if (mMonthOff < 0) { mMonthOff++; renderMusic(); } };
+
 // ================= MENTÉS =================
 async function renderBackup() {
   let txt = '';
@@ -539,7 +629,7 @@ $('exportBtn').onclick = async () => {
     if (v.blob) { c.blob = await blobToB64(v.blob); c.blobType = v.blob.type; }
     items.push(c);
   }
-  const data = { app: 'gamer-tar', version: 1, date: new Date().toISOString(), sens: await kvGet('sens'), games: await dbAll('games'), sessions: await dbAll('sessions'), vault: items };
+  const data = { app: 'gamer-tar', version: 2, date: new Date().toISOString(), sens: await kvGet('sens'), games: await dbAll('games'), sessions: await dbAll('sessions'), music: await dbAll('music'), vault: items };
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -559,26 +649,27 @@ $('importIn').addEventListener('change', async e => {
   if (data.sens) await kvSet('sens', data.sens);
   for (const g of data.games || []) await dbPut('games', g);
   for (const s of data.sessions || []) await dbPut('sessions', s);
+  for (const m of data.music || []) await dbPut('music', m);
   for (const v of data.vault || []) {
     const c = Object.assign({}, v);
     if (typeof c.blob === 'string') c.blob = b64ToBlob(c.blob, c.blobType);
     delete c.blobType;
     await dbPut('vault', c);
   }
-  await Promise.all([initSens(), loadLog(), loadVault()]);
+  await Promise.all([initSens(), loadLog(), loadVault(), loadMusic()]);
   toast('Visszaállítva ✅');
 });
 $('wipeBtn').onclick = async () => {
   if (!confirm('Biztosan törölsz MINDENT? Ezt nem lehet visszacsinálni (csak mentésből).')) return;
   if (!confirm('Tényleg? Utolsó esély!')) return;
-  for (const s of ['games', 'sessions', 'vault', 'kv']) await dbClear(s);
+  for (const s of ['games', 'sessions', 'vault', 'music', 'kv']) await dbClear(s);
   sens = { game: 'cs2', sens: 1, dpi: 800, profiles: [] };
-  await Promise.all([initSens(), loadLog(), loadVault()]);
+  await Promise.all([initSens(), loadLog(), loadVault(), loadMusic()]);
   renderBackup(); toast('Minden törölve');
 };
 
 // ================= INDÍTÁS =================
-const RENDER = { 'v-sens': () => {}, 'v-log': renderLog, 'v-vault': renderVault, 'v-backup': renderBackup };
+const RENDER = { 'v-sens': () => {}, 'v-log': renderLog, 'v-music': renderMusic, 'v-vault': renderVault, 'v-backup': renderBackup };
 function show(view) {
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.view === view));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
@@ -590,7 +681,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.da
 
 (async () => {
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
-  await Promise.all([initSens(), loadLog(), loadVault()]);
+  await Promise.all([initSens(), loadLog(), loadVault(), loadMusic()]);
   const shared = new URLSearchParams(location.search).get('shared');
   if (shared !== null) {
     history.replaceState(null, '', location.pathname);

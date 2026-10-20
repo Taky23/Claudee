@@ -72,6 +72,7 @@ A `web/` mappában hat telepíthető webapp (PWA) van. A kezdőképernyőre kit�
 - **🗄️ Gamer Tár** (`web/tar/`) – minden adat **kizárólag a telefonon** (IndexedDB) él. Az oldal Content-Security-Policy szabálya megtiltja, hogy bármilyen külső szerverhez forduljon.
   - **Érzékenység-átváltó:** CS2, Apex, Valorant, Overwatch 2, CoD, Destiny 2 és mások között, cm/360° és eDPI számítással, DPI-váltással és mentett beállításokkal.
   - **Játéknapló:** stopper (bezárt appnál is megy), napi, heti és havi statisztika, 7 napos grafikon, állapotok (játszom / backlog / kijátszva / félretéve), értékelés, jegyzetek és elért eredmények.
+  - **Zene:** zenei napló (dal, előadó, hangulat, jegyzet), havi toplista dalokra, előadókra és hangulatokra, „Megint ezt” gomb, és Spotify vagy YouTube keresés egy koppintással (csak linkként, az app maga nem küld el semmit).
   - **Tár:** linkek, képek, videók, bármilyen fájl és jegyzet, mappákkal és keresővel. Más appokból a **Megosztás** menüvel is ide küldhetők a dolgok (Web Share Target).
   - **Mentés:** biztonsági mentés JSON-fájlba és visszaállítás, tárhely-kijelzés, védett (persistent) tárhely kérése.
 

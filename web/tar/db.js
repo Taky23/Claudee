@@ -1,7 +1,7 @@
 // Közös IndexedDB réteg az oldalnak és a service workernek.
 // Minden adat csak a telefon böngészőjében, ebben az adatbázisban él.
 const DB_NAME = 'gamer-tar';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise = null;
 
 function openDb() {
@@ -11,7 +11,7 @@ function openDb() {
       req.onupgradeneeded = () => {
         const d = req.result;
         if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
-        for (const s of ['games', 'sessions', 'vault']) {
+        for (const s of ['games', 'sessions', 'vault', 'music']) {
           if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' });
         }
       };
