@@ -1,0 +1,58 @@
+{
+  "name": "Gamer Tár",
+  "short_name": "Gamer Tár",
+  "description": "Érzékenység-átváltó, játéknapló és saját tár linkeknek, képeknek, fájloknak – minden csak a telefonodon.",
+  "lang": "hu",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0d1117",
+  "background_color": "#0d1117",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "share_target": {
+    "action": "./share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "image/*",
+            "video/*",
+            "audio/*",
+            "application/pdf",
+            "text/*",
+            "*/*"
+          ]
+        }
+      ]
+    }
+  }
+}

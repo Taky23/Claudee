@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Szigorú szabály: az oldal semmilyen külső szerverhez nem fordulhat; minden adat a telefonon marad. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; frame-src 'none'; object-src 'none'; form-action 'self'; base-uri 'self'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gamer Tár">
+<title>Gamer Tár</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --card-2: #1f2630;
+  --text: #e6edf3;
+  --muted: #8b98a8;
+  --accent: #3fb950;
+  --accent-2: #58a6ff;
+  --warn: #d29922;
+  --bad: #f85149;
+  --line: #2a323d;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom));
+}
+header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; }
+header h1 { font-size: 19px; margin: 0; }
+.lock { font-size: 12px; color: var(--accent); font-weight: 700; }
+main { max-width: 640px; margin: 0 auto; padding: 0 12px; }
+.view { display: none; }
+.view.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 10px 0; }
+h2 { font-size: 16px; margin: 16px 0 4px; display: flex; justify-content: space-between; align-items: baseline; }
+.small { font-size: 12px; color: var(--muted); }
+.muted { color: var(--muted); }
+label.f { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+input, select, textarea {
+  width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--card-2); color: var(--text); font: inherit; font-size: 16px;
+}
+textarea { min-height: 70px; resize: vertical; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn { border: 1px solid var(--line); background: var(--card-2); color: var(--text); border-radius: 10px; padding: 10px 12px; font: inherit; font-weight: 650; cursor: pointer; }
+.btn.full { width: 100%; margin-top: 8px; display: block; }
+.btn.go { background: var(--accent); border-color: transparent; color: #04120a; }
+.btn.blue { background: var(--accent-2); border-color: transparent; color: #021022; }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .45; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row > .grow { flex: 1; min-width: 0; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex-shrink: 0; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.chip.on { background: var(--accent-2); border-color: transparent; color: #021022; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+td, th { padding: 8px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+td:first-child, th:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+tr.src td { color: var(--accent); font-weight: 700; }
+.big { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.timer { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.stats b { display: block; font-size: 20px; }
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 90px; margin-top: 8px; }
+.bars div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: 11px; color: var(--muted); }
+.bars i { display: block; width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+.game { padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; display: flex; gap: 10px; align-items: center; }
+.game:last-child { border-bottom: 0; }
+.badge { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--card-2); border: 1px solid var(--line); white-space: nowrap; }
+.vgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.vimg { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--card-2); cursor: pointer; }
+.vimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vitem { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.vitem:last-child { border-bottom: 0; }
+.vitem .ico { width: 42px; height: 42px; border-radius: 10px; background: var(--card-2); display: grid; place-items: center; font-size: 20px; flex-shrink: 0; }
+.vitem .t { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vitem .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.addrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+.modal-bg.show { display: flex; }
+.modal { background: var(--card); width: 100%; max-width: 640px; border-radius: 20px 20px 0 0; padding: 16px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 90dvh; overflow: auto; animation: up .22s ease; }
+@keyframes up { from { transform: translateY(100%); } to { transform: none; } }
+.modal h3 { margin: 0 0 6px; }
+.preview { width: 100%; border-radius: 12px; display: block; max-height: 55vh; object-fit: contain; background: #000; }
+.toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translate(-50%, -160%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 700; transition: transform .3s; z-index: 30; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { transform: translate(-50%, 0); }
+.log { font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.log:last-child { border-bottom: 0; }
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; z-index: 10;
+  background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom);
+}
+nav button { flex: 1; border: 0; background: none; color: var(--muted); padding: 8px 0 10px; font-size: 11px; font-weight: 650; cursor: pointer; }
+nav button span { display: block; font-size: 21px; }
+nav button.active { color: var(--accent); }
+a { color: var(--accent-2); word-break: break-all; }
+</style>
+</head>
+<body>
+<header><h1>🗄️ Gamer Tár</h1><span class="lock">🔒 csak a telefonodon</span></header>
+
+<main>
+  <!-- ÉRZÉKENYSÉG -->
+  <section class="view active" id="v-sens">
+    <div class="card">
+      <label class="f">Ebből a játékból</label>
+      <select id="sGame"></select>
+      <div class="grid2">
+        <div><label class="f">Érzékenység</label><input type="number" id="sSens" step="any" inputmode="decimal" value="1"></div>
+        <div><label class="f">Egér DPI</label><input type="number" id="sDpi" step="1" inputmode="numeric" value="800"></div>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <div><div class="small">cm / 360°</div><div class="big" id="sCm">–</div></div>
+        <div style="text-align:right"><div class="small">eDPI</div><div class="big" id="sEdpi">–</div></div>
+      </div>
+    </div>
+    <h2>Ugyanez a célzás más játékokban</h2>
+    <div class="card" style="padding:4px 12px"><table id="sTable"></table></div>
+    <h2>Új egér vagy DPI?</h2>
+    <div class="card">
+      <div class="grid2">
+        <div><label class="f">Új DPI</label><input type="number" id="sNewDpi" inputmode="numeric" placeholder="pl. 1600"></div>
+        <div><label class="f">Új érzékenység</label><div class="big" id="sNewSens" style="padding-top:4px">–</div></div>
+      </div>
+      <p class="small">Így a célzásod pontosan ugyanolyan marad az új DPI-vel.</p>
+    </div>
+    <h2>Mentett beállítások</h2>
+    <div class="card">
+      <div class="row"><input class="grow" type="text" id="sProfName" placeholder="Név (pl. CS2 main)" maxlength="30"><button class="btn go" id="sSave">💾 Mentés</button></div>
+      <div id="sProfiles"></div>
+    </div>
+    <p class="small">A Tarkov, a PUBG, a Rainbow Six és a Fortnite érzékenysége a látószögtől (FOV) is függ, ezért ezek nincsenek a listában – így mindig pontos, amit látsz.</p>
+  </section>
+
+  <!-- JÁTÉKNAPLÓ -->
+  <section class="view" id="v-log">
+    <div class="card" id="runCard"></div>
+    <div class="card stats" id="logStats"></div>
+    <div class="card"><div class="small">Az elmúlt 7 nap (óra)</div><div class="bars" id="logBars"></div></div>
+    <h2>Játékaim <button class="btn go" id="addGame" style="padding:6px 12px">➕ Új játék</button></h2>
+    <div class="chips" id="statusChips"></div>
+    <div class="card" id="gameList"></div>
+  </section>
+
+  <!-- TÁR -->
+  <section class="view" id="v-vault">
+    <div class="addrow">
+      <button class="btn blue" id="addLink">🔗 Link</button>
+      <button class="btn blue" id="addFile">🖼️ Kép / fájl</button>
+      <button class="btn blue" id="addNote">📝 Jegyzet</button>
+    </div>
+    <input type="search" id="vSearch" placeholder="Keresés…" style="margin-top:10px">
+    <div class="chips" id="vTypeChips"></div>
+    <div class="chips" id="vFolderChips"></div>
+    <div id="vaultOut"></div>
+    <p class="small">💡 Tipp: bármelyik appban (YouTube, TikTok, Galéria, Chrome…) nyomd meg a <b>Megosztás</b> gombot, és válaszd a <b>Gamer Tár</b>-at – egyből ide kerül. (Ehhez az appot ki kell tenni a kezdőképernyőre.)</p>
+    <input type="file" id="fileIn" multiple hidden>
+  </section>
+
+  <!-- MENTÉS -->
+  <section class="view" id="v-backup">
+    <div class="card">
+      <b>🔒 Hol vannak az adataid?</b>
+      <p class="small" style="margin:6px 0 0">Kizárólag ezen a telefonon, a böngésző saját tárhelyén. Az app egy beépített biztonsági szabály miatt semmit nem tud internetre küldeni, nincs fiók, nincs felhő. Az app <i>kódja</i> a GitHubról töltődik be, de a te dolgaid sosem hagyják el a telefont.</p>
+    </div>
+    <div class="card">
+      <div id="storageInfo" class="small">Tárhely ellenőrzése…</div>
+    </div>
+    <div class="card">
+      <b>💾 Biztonsági mentés</b>
+      <p class="small">Ha törlöd a Chrome adatait vagy új telefont veszel, az adatok elveszhetnek. Időnként készíts mentést – ez egy fájl lesz a telefonod Letöltések mappájában.</p>
+      <button class="btn go full" id="exportBtn">⬇️ Mentés fájlba</button>
+      <button class="btn full" id="importBtn">⬆️ Visszaállítás fájlból</button>
+      <input type="file" id="importIn" accept=".json,application/json" hidden>
+    </div>
+    <div class="card">
+      <button class="btn danger full" id="wipeBtn">🗑️ Minden adat törlése</button>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="active" data-view="v-sens"><span>🎯</span>Érzékenység</button>
+  <button data-view="v-log"><span>🕹️</span>Napló</button>
+  <button data-view="v-vault"><span>🔐</span>Tár</button>
+  <button data-view="v-backup"><span>💾</span>Mentés</button>
+</nav>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="db.js"></script>
+<script>
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = id => document.getElementById(id);
+let toastT;
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
+function openModal(html) { $('modal').innerHTML = html; $('modalBg').classList.add('show'); }
+function closeModal() { $('modalBg').classList.remove('show'); revokeUrls(); }
+$('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg' || e.target.closest('[data-close]')) closeModal(); });
+const fmtNum = (n, d = 3) => (Math.round(n * 10 ** d) / 10 ** d).toString();
+
+// ================= ÉRZÉKENYSÉG =================
+// Yaw: hány fokot fordul a kamera egy egérlépésre 1-es érzékenységnél (nyilvánosan ismert értékek).
+const GAMES = [
+  ['cs2', 'Counter-Strike 2 / CS:GO', 0.022],
+  ['apex', 'Apex Legends', 0.022],
+  ['tf2', 'Team Fortress 2 / Source játékok', 0.022],
+  ['qc', 'Quake Champions', 0.022],
+  ['val', 'Valorant', 0.07],
+  ['ow2', 'Overwatch 2', 0.0066],
+  ['cod', 'Call of Duty (MW 2019 óta, Warzone)', 0.0066],
+  ['d2', 'Destiny 2', 0.0066],
+];
+const yaw = id => GAMES.find(g => g[0] === id)[2];
+let sens = { game: 'cs2', sens: 1, dpi: 800, profiles: [] };
+
+async function initSens() {
+  const saved = await kvGet('sens');
+  if (saved) sens = Object.assign(sens, saved);
+  $('sGame').innerHTML = GAMES.map(g => `<option value="${g[0]}">${esc(g[1])}</option>`).join('');
+  $('sGame').value = sens.game; $('sSens').value = sens.sens; $('sDpi').value = sens.dpi;
+  calcSens();
+}
+function calcSens() {
+  sens.game = $('sGame').value;
+  sens.sens = parseFloat($('sSens').value);
+  sens.dpi = parseFloat($('sDpi').value);
+  const ok = sens.sens > 0 && sens.dpi > 0;
+  const deg = ok ? yaw(sens.game) * sens.sens : 0;
+  $('sCm').textContent = ok ? fmtNum(360 / (deg * sens.dpi) * 2.54, 1) : '–';
+  $('sEdpi').textContent = ok ? fmtNum(sens.sens * sens.dpi, 0) : '–';
+  $('sTable').innerHTML = '<tr><th>Játék</th><th>Érzékenység</th></tr>' + GAMES.map(g =>
+    `<tr class="${g[0] === sens.game ? 'src' : ''}"><td>${esc(g[1])}</td><td>${ok ? fmtNum(deg / g[2], 4) : '–'}</td></tr>`).join('');
+  const nd = parseFloat($('sNewDpi').value);
+  $('sNewSens').textContent = ok && nd > 0 ? fmtNum(sens.sens * sens.dpi / nd, 4) : '–';
+  if (ok) kvSet('sens', sens);
+  renderProfiles();
+}
+function renderProfiles() {
+  $('sProfiles').innerHTML = sens.profiles.length ? sens.profiles.map((p, i) => `
+    <div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)">
+      <div class="grow" data-prof="${i}" style="cursor:pointer"><b>${esc(p.name)}</b><div class="small">${esc(GAMES.find(g => g[0] === p.game)?.[1] || p.game)} · ${p.sens} · ${p.dpi} DPI</div></div>
+      <button class="btn danger" data-pdel="${i}">✕</button>
+    </div>`).join('') : '<p class="small" style="margin:8px 0 0">Még nincs mentett beállítás.</p>';
+}
+['sGame', 'sSens', 'sDpi', 'sNewDpi'].forEach(id => $(id).addEventListener('input', calcSens));
+$('sSave').onclick = () => {
+  const name = $('sProfName').value.trim() || GAMES.find(g => g[0] === sens.game)[1];
+  if (!(sens.sens > 0 && sens.dpi > 0)) return;
+  sens.profiles.unshift({ name, game: sens.game, sens: sens.sens, dpi: sens.dpi });
+  $('sProfName').value = ''; kvSet('sens', sens); renderProfiles(); toast('Elmentve 💾');
+};
+$('sProfiles').addEventListener('click', e => {
+  const d = e.target.closest('[data-pdel]');
+  if (d) { sens.profiles.splice(+d.dataset.pdel, 1); kvSet('sens', sens); renderProfiles(); return; }
+  const p = e.target.closest('[data-prof]');
+  if (p) { const pr = sens.profiles[+p.dataset.prof]; $('sGame').value = pr.game; $('sSens').value = pr.sens; $('sDpi').value = pr.dpi; calcSens(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+});
+
+// ================= JÁTÉKNAPLÓ =================
+const STATUSES = [['playing', '🎮 Játszom'], ['backlog', '📋 Ki akarom játszani'], ['done', '✅ Kijátszottam'], ['dropped', '💤 Félretettem']];
+const PLATFORMS = ['PC', 'PlayStation', 'Xbox', 'Switch', 'Mobil', 'Egyéb'];
+let games = [], sessions = [], running = null, statusFilter = 'all', runTimer = null;
+const DAY = 86400000;
+const startOfDay = (t = Date.now()) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const fmtDur = ms => { const m = Math.round(ms / 60000); return m < 60 ? m + ' p' : Math.floor(m / 60) + ' ó ' + (m % 60) + ' p'; };
+const fmtClock = ms => { const s = Math.floor(ms / 1000); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(v => String(v).padStart(2, '0')).join(':'); };
+
+async function loadLog() {
+  [games, sessions, running] = await Promise.all([dbAll('games'), dbAll('sessions'), kvGet('running')]);
+  renderLog();
+}
+function playedIn(from, to, gameId) {
+  return sessions.filter(s => (!gameId || s.gameId === gameId) && s.end > from && s.start < to)
+    .reduce((sum, s) => sum + Math.min(s.end, to) - Math.max(s.start, from), 0);
+}
+function renderLog() {
+  clearInterval(runTimer);
+  const rc = $('runCard');
+  if (running) {
+    const g = games.find(x => x.id === running.gameId);
+    rc.innerHTML = `<div class="small">Most játszol</div><b>${esc(g ? g.name : '?')}</b><div class="timer" id="runClock">${fmtClock(Date.now() - running.start)}</div>
+      <button class="btn go full" id="stopRun">⏹️ Befejeztem</button>`;
+    runTimer = setInterval(() => { const c = $('runClock'); if (c) c.textContent = fmtClock(Date.now() - running.start); }, 1000);
+    $('stopRun').onclick = stopRun;
+  } else {
+    const active = games.filter(g => g.status !== 'done' && g.status !== 'dropped');
+    rc.innerHTML = games.length ? `
+      <div class="small">Mivel játszol most?</div>
+      <div class="row" style="margin-top:6px"><select class="grow" id="runGame">${(active.length ? active : games).map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select>
+      <button class="btn go" id="startRun">▶️ Indítás</button></div>
+      <p class="small" style="margin:6px 0 0">Az óra akkor is megy, ha bezárod az appot.</p>`
+      : '<p class="small" style="margin:0">Add hozzá az első játékodat lent a ➕ gombbal, aztán itt indíthatod az időmérést.</p>';
+    if (games.length) $('startRun').onclick = async () => { running = { gameId: $('runGame').value, start: Date.now() }; await kvSet('running', running); renderLog(); toast('Jó játékot! 🎮'); };
+  }
+  const now = Date.now(), today = startOfDay();
+  const weekStart = today - ((new Date().getDay() + 6) % 7) * DAY;
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+  $('logStats').innerHTML = `
+    <div><b>${fmtDur(playedIn(today, now))}</b><span class="small">ma</span></div>
+    <div><b>${fmtDur(playedIn(weekStart, now))}</b><span class="small">ezen a héten</span></div>
+    <div><b>${fmtDur(playedIn(monthStart, now))}</b><span class="small">ebben a hónapban</span></div>`;
+  const days = [];
+  for (let i = 6; i >= 0; i--) { const s = today - i * DAY; days.push([s, playedIn(s, s + DAY)]); }
+  const max = Math.max(3600000, ...days.map(d => d[1]));
+  $('logBars').innerHTML = days.map(([s, ms]) => `<div><span>${ms ? (ms / 3600000).toFixed(1) : ''}</span><i style="height:${ms / max * 70}px"></i>${['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'][new Date(s).getDay()]}</div>`).join('');
+
+  $('statusChips').innerHTML = `<button class="chip ${statusFilter === 'all' ? 'on' : ''}" data-st="all">Mind (${games.length})</button>` +
+    STATUSES.map(([k, n]) => `<button class="chip ${statusFilter === k ? 'on' : ''}" data-st="${k}">${n} (${games.filter(g => g.status === k).length})</button>`).join('');
+  const list = games.filter(g => statusFilter === 'all' || g.status === statusFilter)
+    .map(g => ({ g, total: playedIn(0, now, g.id), last: Math.max(0, ...sessions.filter(s => s.gameId === g.id).map(s => s.end)) }))
+    .sort((a, b) => b.last - a.last || a.g.name.localeCompare(b.g.name));
+  $('gameList').innerHTML = list.length ? list.map(({ g, total, last }) => `
+    <div class="game" data-game="${g.id}">
+      <div style="flex:1;min-width:0"><b>${esc(g.name)}</b><div class="small">${esc(g.platform)} · ${fmtDur(total)}${last ? ' · utoljára ' + new Date(last).toLocaleDateString('hu-HU') : ''}${g.rating ? ' · ' + '⭐'.repeat(g.rating) : ''}</div></div>
+      <span class="badge">${STATUSES.find(s => s[0] === g.status)[1]}</span>
+    </div>`).join('') : '<p class="small" style="margin:0">Nincs itt még játék.</p>';
+}
+async function stopRun() {
+  const s = { id: newId(), gameId: running.gameId, start: running.start, end: Date.now() };
+  if (s.end - s.start >= 60000) { await dbPut('sessions', s); sessions.push(s); toast('Mentve: ' + fmtDur(s.end - s.start)); }
+  else toast('Egy percnél rövidebb volt, nem mentettem.');
+  running = null; await kvSet('running', null); renderLog();
+}
+$('statusChips').addEventListener('click', e => { const c = e.target.closest('[data-st]'); if (c) { statusFilter = c.dataset.st; renderLog(); } });
+$('addGame').onclick = () => openGameModal(null);
+$('gameList').addEventListener('click', e => { const g = e.target.closest('[data-game]'); if (g) openGameModal(games.find(x => x.id === g.dataset.game)); });
+
+function openGameModal(g) {
+  const isNew = !g;
+  g = g || { id: newId(), name: '', platform: 'PC', status: 'playing', rating: 0, notes: '', log: [] };
+  const gs = sessions.filter(s => s.gameId === g.id).sort((a, b) => b.start - a.start);
+  openModal(`
+    <h3>${isNew ? '➕ Új játék' : esc(g.name)}</h3>
+    <label class="f">Név</label><input type="text" id="gName" value="${esc(g.name)}" maxlength="60" placeholder="pl. Escape from Tarkov">
+    <div class="grid2">
+      <div><label class="f">Platform</label><select id="gPlat">${PLATFORMS.map(p => `<option ${p === g.platform ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+      <div><label class="f">Állapot</label><select id="gStatus">${STATUSES.map(([k, n]) => `<option value="${k}" ${k === g.status ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    </div>
+    <label class="f">Értékelés</label>
+    <div class="chips" id="gRate">${[0, 1, 2, 3, 4, 5].map(r => `<button class="chip ${r === g.rating ? 'on' : ''}" data-r="${r}">${r ? '⭐'.repeat(r) : 'nincs'}</button>`).join('')}</div>
+    <label class="f">Jegyzet</label><textarea id="gNotes" placeholder="Beállítások, tippek, bármi…">${esc(g.notes)}</textarea>
+    <button class="btn go full" id="gSave">💾 Mentés</button>
+    ${isNew ? '' : `
+      <h2>🏆 Mit értem el?</h2>
+      <div class="row"><input class="grow" type="text" id="gAch" placeholder="pl. Megvan a Kappa!" maxlength="100"><button class="btn" id="gAchAdd">➕</button></div>
+      ${(g.log || []).slice().reverse().map(l => `<div class="log">${esc(l.text)} <span class="small">· ${new Date(l.ts).toLocaleDateString('hu-HU')}</span></div>`).join('')}
+      <h2>⏱️ Játékidő <span class="small">${fmtDur(playedIn(0, Date.now(), g.id))} összesen</span></h2>
+      <div class="row"><input class="grow" type="number" id="gMin" inputmode="numeric" placeholder="Utólag hozzáadás (perc)"><button class="btn" id="gMinAdd">➕</button></div>
+      ${gs.slice(0, 15).map(s => `<div class="log row"><span class="grow">${new Date(s.start).toLocaleDateString('hu-HU')} · ${fmtDur(s.end - s.start)}</span><button class="btn danger" data-sdel="${s.id}" style="padding:4px 10px">✕</button></div>`).join('')}
+      <button class="btn danger full" id="gDel">🗑️ Játék törlése</button>`}
+    <button class="btn full" data-close>Bezár</button>`);
+  let rating = g.rating;
+  $('gRate').addEventListener('click', e => { const c = e.target.closest('[data-r]'); if (!c) return; rating = +c.dataset.r; $('gRate').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c)); });
+  $('gSave').onclick = async () => {
+    const name = $('gName').value.trim();
+    if (!name) { toast('Adj nevet a játéknak!'); return; }
+    Object.assign(g, { name, platform: $('gPlat').value, status: $('gStatus').value, rating, notes: $('gNotes').value });
+    await dbPut('games', g);
+    if (isNew) games.push(g);
+    closeModal(); renderLog(); toast('Elmentve 💾');
+  };
+  if (isNew) return;
+  $('gAchAdd').onclick = async () => {
+    const t = $('gAch').value.trim(); if (!t) return;
+    g.log = g.log || []; g.log.push({ text: t, ts: Date.now() });
+    await dbPut('games', g); openGameModal(g); toast('🏆 Szép munka!');
+  };
+  $('gMinAdd').onclick = async () => {
+    const m = parseInt($('gMin').value, 10); if (!(m > 0)) return;
+    const end = Date.now(), s = { id: newId(), gameId: g.id, start: end - m * 60000, end };
+    await dbPut('sessions', s); sessions.push(s); openGameModal(g); renderLog();
+  };
+  $('modal').querySelectorAll('[data-sdel]').forEach(b => b.onclick = async () => {
+    await dbDel('sessions', b.dataset.sdel); sessions = sessions.filter(s => s.id !== b.dataset.sdel); openGameModal(g); renderLog();
+  });
+  $('gDel').onclick = async () => {
+    if (!confirm(`Biztosan törlöd: ${g.name}? A játékidők is törlődnek.`)) return;
+    await dbDel('games', g.id);
+    for (const s of sessions.filter(s => s.gameId === g.id)) await dbDel('sessions', s.id);
+    games = games.filter(x => x.id !== g.id); sessions = sessions.filter(s => s.gameId !== g.id);
+    if (running && running.gameId === g.id) { running = null; await kvSet('running', null); }
+    closeModal(); renderLog();
+  };
+}
+
+// ================= TÁR =================
+const TYPES = [['all', 'Minden'], ['image', '🖼️ Képek'], ['link', '🔗 Linkek'], ['note', '📝 Jegyzetek'], ['file', '📄 Fájlok']];
+let vault = [], vType = 'all', vFolder = '', urls = [];
+function objUrl(blob) { const u = URL.createObjectURL(blob); urls.push(u); return u; }
+// A modalban létrehozott fájl-linkeket bezáráskor felszabadítjuk.
+function revokeUrls() { urls.forEach(u => URL.revokeObjectURL(u)); urls = []; }
+let listUrls = [];
+const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+const fileIco = (mime = '') => mime.startsWith('video/') ? '🎬' : mime.startsWith('audio/') ? '🎵' : mime === 'application/pdf' ? '📕' : '📄';
+const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+
+async function loadVault() { vault = await dbAll('vault'); renderVault(); }
+function renderVault() {
+  listUrls.forEach(u => URL.revokeObjectURL(u)); listUrls = [];
+  const folders = [...new Set(vault.map(v => v.folder).filter(Boolean))].sort();
+  if (vFolder && !folders.includes(vFolder)) vFolder = '';
+  $('vTypeChips').innerHTML = TYPES.map(([k, n]) => `<button class="chip ${vType === k ? 'on' : ''}" data-vt="${k}">${n} (${k === 'all' ? vault.length : vault.filter(v => v.type === k).length})</button>`).join('');
+  $('vFolderChips').innerHTML = folders.length ? `<button class="chip ${!vFolder ? 'on' : ''}" data-vf="">📁 Minden mappa</button>` + folders.map(f => `<button class="chip ${vFolder === f ? 'on' : ''}" data-vf="${esc(f)}">📁 ${esc(f)}</button>`).join('') : '';
+  const q = $('vSearch').value.trim().toLowerCase();
+  const list = vault.filter(v => (vType === 'all' || v.type === vType) && (!vFolder || v.folder === vFolder) &&
+    (!q || [v.title, v.note, v.url, v.name, v.folder].some(x => (x || '').toLowerCase().includes(q)))).sort((a, b) => b.ts - a.ts);
+  if (!list.length) { $('vaultOut').innerHTML = `<div class="card"><p class="small" style="margin:0">${vault.length ? 'Nincs találat.' : 'Még üres. Ments el valamit a fenti gombokkal, vagy oszd meg ide más appokból!'}</p></div>`; return; }
+  const imgs = list.filter(v => v.type === 'image'), rest = list.filter(v => v.type !== 'image');
+  const lu = b => { const u = URL.createObjectURL(b); listUrls.push(u); return u; };
+  $('vaultOut').innerHTML =
+    (imgs.length ? `<div class="card"><div class="vgrid">${imgs.map(v => `<div class="vimg" data-v="${v.id}"><img src="${lu(v.blob)}" alt="" loading="lazy"></div>`).join('')}</div></div>` : '') +
+    (rest.length ? `<div class="card">${rest.map(v => `
+      <div class="vitem" data-v="${v.id}">
+        <div class="ico">${v.type === 'link' ? '🔗' : v.type === 'note' ? '📝' : fileIco(v.mime)}</div>
+        <div style="min-width:0;flex:1"><div class="t">${esc(v.title || (v.type === 'link' ? host(v.url) : v.name || 'Névtelen'))}</div>
+          <div class="s">${v.type === 'link' ? esc(host(v.url)) : v.type === 'note' ? esc((v.note || '').slice(0, 80)) : esc(v.name) + ' · ' + fmtSize(v.blob.size)}${v.folder ? ' · 📁 ' + esc(v.folder) : ''}</div></div>
+      </div>`).join('')}</div>` : '');
+}
+$('vTypeChips').addEventListener('click', e => { const c = e.target.closest('[data-vt]'); if (c) { vType = c.dataset.vt; renderVault(); } });
+$('vFolderChips').addEventListener('click', e => { const c = e.target.closest('[data-vf]'); if (c) { vFolder = c.dataset.vf; renderVault(); } });
+$('vSearch').addEventListener('input', renderVault);
+$('vaultOut').addEventListener('click', e => { const c = e.target.closest('[data-v]'); if (c) openItem(vault.find(v => v.id === c.dataset.v)); });
+
+function folderField(cur) {
+  const folders = [...new Set(vault.map(v => v.folder).filter(Boolean))].sort();
+  return `<label class="f">Mappa (nem kötelező)</label><input type="text" id="iFolder" list="folderList" value="${esc(cur || '')}" maxlength="30" placeholder="pl. Tarkov, Receptek, Mémek">
+    <datalist id="folderList">${folders.map(f => `<option value="${esc(f)}">`).join('')}</datalist>`;
+}
+$('addLink').onclick = () => {
+  openModal(`<h3>🔗 Link mentése</h3>
+    <label class="f">Link</label><input type="url" id="iUrl" placeholder="https://…" inputmode="url">
+    <label class="f">Cím (nem kötelező)</label><input type="text" id="iTitle" maxlength="100">
+    <label class="f">Megjegyzés</label><textarea id="iNote"></textarea>
+    ${folderField(vFolder)}
+    <button class="btn go full" id="iSave">💾 Mentés</button><button class="btn full" data-close>Mégse</button>`);
+  $('iSave').onclick = async () => {
+    let url = $('iUrl').value.trim();
+    if (!url) { toast('Add meg a linket!'); return; }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    await saveItem({ id: newId(), type: 'link', url, title: $('iTitle').value.trim(), note: $('iNote').value, folder: $('iFolder').value.trim(), ts: Date.now() });
+  };
+};
+$('addNote').onclick = () => {
+  openModal(`<h3>📝 Jegyzet</h3>
+    <label class="f">Cím</label><input type="text" id="iTitle" maxlength="100">
+    <label class="f">Szöveg</label><textarea id="iNote" style="min-height:160px"></textarea>
+    ${folderField(vFolder)}
+    <button class="btn go full" id="iSave">💾 Mentés</button><button class="btn full" data-close>Mégse</button>`);
+  $('iSave').onclick = async () => {
+    const note = $('iNote').value, title = $('iTitle').value.trim();
+    if (!note.trim() && !title) { toast('Írj valamit!'); return; }
+    await saveItem({ id: newId(), type: 'note', title: title || 'Jegyzet', note, folder: $('iFolder').value.trim(), ts: Date.now() });
+  };
+};
+$('addFile').onclick = () => $('fileIn').click();
+$('fileIn').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  if (!files.length) return;
+  let n = 0;
+  for (const f of files) {
+    try {
+      await dbPut('vault', { id: newId(), type: f.type.startsWith('image/') ? 'image' : 'file', title: f.name.replace(/\.[^.]+$/, ''), note: '', folder: vFolder, blob: f, name: f.name, mime: f.type, ts: Date.now() + n });
+      n++;
+    } catch (err) { toast('Nem fért el: ' + f.name); }
+  }
+  await loadVault(); toast(n + ' fájl elmentve 🔐');
+});
+async function saveItem(item) {
+  try { await dbPut('vault', item); } catch (e) { toast('Nem sikerült menteni (tele a tárhely?)'); return; }
+  closeModal(); await loadVault(); toast('Elmentve 🔐');
+}
+
+function openItem(v) {
+  const prev = v.type === 'image' ? `<img class="preview" src="${objUrl(v.blob)}" alt="">`
+    : v.type === 'file' && (v.mime || '').startsWith('video/') ? `<video class="preview" src="${objUrl(v.blob)}" controls playsinline></video>`
+    : v.type === 'file' && (v.mime || '').startsWith('audio/') ? `<audio src="${objUrl(v.blob)}" controls style="width:100%"></audio>`
+    : v.type === 'link' ? `<p><a href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">${esc(v.url)}</a></p>`
+    : v.type === 'file' ? `<p class="small">${esc(v.name)} · ${fmtSize(v.blob.size)}</p>` : '';
+  openModal(`
+    ${prev}
+    <label class="f">Cím</label><input type="text" id="iTitle" value="${esc(v.title)}" maxlength="100">
+    <label class="f">${v.type === 'note' ? 'Szöveg' : 'Megjegyzés'}</label><textarea id="iNote" style="min-height:${v.type === 'note' ? 180 : 70}px">${esc(v.note)}</textarea>
+    ${folderField(v.folder)}
+    <p class="small">Mentve: ${new Date(v.ts).toLocaleString('hu-HU')}</p>
+    <div class="grid2">
+      ${v.type === 'link' ? `<a class="btn blue" style="text-align:center;text-decoration:none" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">↗️ Megnyitás</a>` : ''}
+      ${v.blob ? `<a class="btn blue" style="text-align:center;text-decoration:none" href="${objUrl(v.blob)}" download="${esc(v.name || 'fajl')}">⬇️ Letöltés</a>` : ''}
+      ${v.type === 'link' || v.type === 'note' ? '<button class="btn blue" id="iCopy">📋 Másolás</button>' : ''}
+      <button class="btn go" id="iSave">💾 Mentés</button>
+    </div>
+    <button class="btn danger full" id="iDel">🗑️ Törlés</button>
+    <button class="btn full" data-close>Bezár</button>`);
+  const cp = $('iCopy');
+  if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(v.type === 'link' ? v.url : v.note); toast('Kimásolva 📋'); } catch (e) { toast('Nem sikerült másolni'); } };
+  $('iSave').onclick = () => saveItem(Object.assign(v, { title: $('iTitle').value.trim(), note: $('iNote').value, folder: $('iFolder').value.trim() }));
+  $('iDel').onclick = async () => { if (!confirm('Biztosan törlöd?')) return; await dbDel('vault', v.id); closeModal(); await loadVault(); toast('Törölve'); };
+}
+
+// ================= MENTÉS =================
+async function renderBackup() {
+  let txt = '';
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      txt += `Használt hely: <b>${fmtSize(est.usage || 0)}</b> · szabad kb. ${fmtSize(Math.max(0, (est.quota || 0) - (est.usage || 0)))}`;
+    }
+    if (navigator.storage && navigator.storage.persisted) {
+      const p = await navigator.storage.persisted();
+      txt += `<br>${p ? '✅ Védett tárhely: a telefon nem törli magától az adataidat.' : '⚠️ A tárhely még nem védett. Tedd ki az appot a kezdőképernyőre, és nyisd meg onnan – akkor a telefon nem törli magától.'}`;
+    }
+  } catch (e) {}
+  $('storageInfo').innerHTML = txt || 'A tárhely adatai nem elérhetők ezen a telefonon.';
+}
+const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1] || ''); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+function b64ToBlob(b64, type) {
+  const bin = atob(b64), arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: type || '' });
+}
+$('exportBtn').onclick = async () => {
+  toast('Mentés készül…');
+  const items = [];
+  for (const v of await dbAll('vault')) {
+    const c = Object.assign({}, v);
+    if (v.blob) { c.blob = await blobToB64(v.blob); c.blobType = v.blob.type; }
+    items.push(c);
+  }
+  const data = { app: 'gamer-tar', version: 1, date: new Date().toISOString(), sens: await kvGet('sens'), games: await dbAll('games'), sessions: await dbAll('sessions'), vault: items };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `gamer-tar-mentes-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast('Kész! Megtalálod a Letöltések között. 💾');
+};
+$('importBtn').onclick = () => $('importIn').click();
+$('importIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  let data;
+  try { data = JSON.parse(await f.text()); } catch (err) { toast('Ez nem egy Gamer Tár mentés.'); return; }
+  if (data.app !== 'gamer-tar') { toast('Ez nem egy Gamer Tár mentés.'); return; }
+  if (!confirm('Visszaállítod? A mentésben lévő dolgok hozzáadódnak a mostaniakhoz (azonosak felülíródnak).')) return;
+  if (data.sens) await kvSet('sens', data.sens);
+  for (const g of data.games || []) await dbPut('games', g);
+  for (const s of data.sessions || []) await dbPut('sessions', s);
+  for (const v of data.vault || []) {
+    const c = Object.assign({}, v);
+    if (typeof c.blob === 'string') c.blob = b64ToBlob(c.blob, c.blobType);
+    delete c.blobType;
+    await dbPut('vault', c);
+  }
+  await Promise.all([initSens(), loadLog(), loadVault()]);
+  toast('Visszaállítva ✅');
+});
+$('wipeBtn').onclick = async () => {
+  if (!confirm('Biztosan törölsz MINDENT? Ezt nem lehet visszacsinálni (csak mentésből).')) return;
+  if (!confirm('Tényleg? Utolsó esély!')) return;
+  for (const s of ['games', 'sessions', 'vault', 'kv']) await dbClear(s);
+  sens = { game: 'cs2', sens: 1, dpi: 800, profiles: [] };
+  await Promise.all([initSens(), loadLog(), loadVault()]);
+  renderBackup(); toast('Minden törölve');
+};
+
+// ================= INDÍTÁS =================
+const RENDER = { 'v-sens': () => {}, 'v-log': renderLog, 'v-vault': renderVault, 'v-backup': renderBackup };
+function show(view) {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.view === view));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
+  if (view !== 'v-log') clearInterval(runTimer);
+  RENDER[view]();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.view));
+
+(async () => {
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+  await Promise.all([initSens(), loadLog(), loadVault()]);
+  const shared = new URLSearchParams(location.search).get('shared');
+  if (shared !== null) {
+    history.replaceState(null, '', location.pathname);
+    show('v-vault');
+    toast(+shared ? `${shared} elem a Tárba került 🔐` : 'Nem sikerült menteni a megosztott elemet.');
+  }
+})();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
