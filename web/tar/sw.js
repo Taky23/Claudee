@@ -2,7 +2,7 @@
 // Semmilyen külső szervert nem hív: csak a saját fájlokat szolgálja ki.
 importScripts('db.js');
 
-const CACHE = 'tar-v1';
+const CACHE = 'tar-v2';
 const FILES = ['./', 'index.html', 'db.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
