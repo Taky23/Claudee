@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120f1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gamer Zseb">
+<title>Gamer Zseb</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #120f1c;
+  --card: #1c1830;
+  --card-2: #27213f;
+  --text: #ece8ff;
+  --muted: #a39cc4;
+  --accent: #8b5cf6;
+  --accent-2: #22d3ee;
+  --ok: #4ade80;
+  --bad: #f87171;
+  --warn: #fbbf24;
+  --line: #322a52;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom));
+}
+header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; }
+header h1 { font-size: 19px; margin: 0; }
+main { max-width: 640px; margin: 0 auto; padding: 0 12px; }
+.view { display: none; }
+.view.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 10px 0; }
+input[type=search], input[type=number], input[type=email] {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card-2); color: var(--text); font: inherit; font-size: 16px;
+}
+.sticky { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 8px 0 4px; }
+.small { font-size: 12px; color: var(--muted); }
+.muted { color: var(--muted); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex-shrink: 0; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.chip.on { background: var(--accent); border-color: transparent; color: #fff; }
+.btn { border: 1px solid var(--line); background: var(--card-2); color: var(--text); border-radius: 12px; padding: 11px 14px; font: inherit; font-weight: 650; cursor: pointer; }
+.btn.full { width: 100%; margin-top: 8px; display: block; text-align: center; text-decoration: none; }
+.btn.primary { background: linear-gradient(135deg, var(--accent), #6d28d9); border-color: transparent; color: #fff; }
+.btn.big { font-size: 18px; padding: 16px; }
+.game { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+.game img { width: 92px; height: 43px; object-fit: cover; border-radius: 6px; background: #0b0914; flex-shrink: 0; }
+.game .body { flex: 1; min-width: 0; }
+.game .title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game .price { text-align: right; flex-shrink: 0; }
+.price b { font-size: 16px; }
+.old { text-decoration: line-through; color: var(--muted); font-size: 12px; }
+.off { display: inline-block; background: var(--ok); color: #052e12; font-weight: 800; font-size: 12px; border-radius: 6px; padding: 1px 6px; }
+.free { background: var(--accent-2); color: #042f36; }
+.list .game { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.list .game:last-child { border-bottom: 0; }
+.err { color: var(--bad); font-weight: 650; }
+.note { color: var(--warn); font-size: 13px; }
+.loading { color: var(--muted); padding: 16px 0; text-align: center; }
+.hit { color: var(--ok); font-weight: 700; font-size: 13px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+.modal-bg.show { display: flex; }
+.modal { background: var(--card); width: 100%; max-width: 640px; border-radius: 22px 22px 0 0; padding: 16px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 88dvh; overflow: auto; animation: up .25s ease; }
+@keyframes up { from { transform: translateY(100%); } to { transform: none; } }
+.modal img.hero { width: 100%; border-radius: 12px; aspect-ratio: 460 / 215; object-fit: cover; background: #0b0914; }
+.store-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; }
+.store-row:last-child { border-bottom: 0; }
+.store-row img { width: 16px; height: 16px; vertical-align: -3px; margin-right: 6px; }
+/* Kihívás */
+.map { font-size: 26px; font-weight: 800; }
+.player { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
+.line { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+.line .ico { width: 24px; text-align: center; flex-shrink: 0; }
+.line .txt { flex: 1; }
+.reroll { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 2px 8px; cursor: pointer; font-size: 13px; }
+.seg { display: flex; gap: 6px; }
+.seg .chip { flex: 1; text-align: center; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; gap: 8px; }
+.stats b { display: block; font-size: 22px; }
+.hist { font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.hist:last-child { border-bottom: 0; }
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; z-index: 10;
+  background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom);
+}
+nav button { flex: 1; border: 0; background: none; color: var(--muted); padding: 8px 0 10px; font-size: 11px; font-weight: 650; cursor: pointer; }
+nav button span { display: block; font-size: 21px; }
+nav button.active { color: var(--accent-2); }
+a { color: var(--accent-2); }
+</style>
+</head>
+<body>
+<header><h1>🎮 Gamer Zseb</h1><span class="small" id="hdr"></span></header>
+
+<main>
+  <!-- AKCIÓK -->
+  <section class="view active" id="v-deals">
+    <div class="sticky">
+      <div class="chips" id="storeChips"></div>
+      <div class="chips" id="sortChips"></div>
+    </div>
+    <div id="dealsOut" class="loading">Betöltés…</div>
+  </section>
+
+  <!-- KERESÉS -->
+  <section class="view" id="v-search">
+    <div class="sticky"><input type="search" id="q" placeholder="Játék keresése (pl. cyberpunk, elden ring)…" autocomplete="off"></div>
+    <div id="searchOut"><p class="small">Írd be a játék nevét (angolul), és megmutatom, hol a legolcsóbb.</p></div>
+  </section>
+
+  <!-- FIGYELT -->
+  <section class="view" id="v-watch">
+    <div id="watchOut"></div>
+  </section>
+
+  <!-- KIHÍVÁS -->
+  <section class="view" id="v-chal">
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">Nehézség</div>
+      <div class="seg" id="diffSeg">
+        <button class="chip" data-d="1">😎 Laza</button>
+        <button class="chip" data-d="2">😬 Kemény</button>
+        <button class="chip" data-d="3">💀 Hardcore</button>
+      </div>
+      <div class="small" style="margin:10px 0 6px">Játékosok</div>
+      <div class="seg" id="squadSeg">
+        <button class="chip" data-p="1">1</button><button class="chip" data-p="2">2</button>
+        <button class="chip" data-p="3">3</button><button class="chip" data-p="4">4</button><button class="chip" data-p="5">5</button>
+      </div>
+      <button class="btn primary big full" id="roll" style="margin-top:12px">🎲 Sorsolj kihívást!</button>
+    </div>
+    <div id="chalOut"></div>
+    <div class="card stats" id="chalStats"></div>
+    <div class="card" id="chalHist"></div>
+  </section>
+</main>
+
+<nav>
+  <button class="active" data-view="v-deals"><span>🔥</span>Akciók</button>
+  <button data-view="v-search"><span>🔎</span>Keresés</button>
+  <button data-view="v-watch"><span>⭐</span>Figyelt</button>
+  <button data-view="v-chal"><span>🎲</span>Tarkov kihívás</button>
+</nav>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+
+<script>
+const API = 'https://www.cheapshark.com/api/1.0';
+const SITE = 'https://www.cheapshark.com';
+const STORE = 'gamer-zseb-v1';
+
+function loadState() { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { return {}; } }
+const S = Object.assign({ watch: {}, store: 'all', sort: 'Deal Rating', diff: 2, players: 1, chal: null, hist: [], done: 0, tried: 0, points: 0 }, loadState());
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
+function stash(key, data) { try { localStorage.setItem('gz-cache:' + key, JSON.stringify({ t: Date.now(), d: data })); } catch (e) {} }
+function unstash(key) { try { return JSON.parse(localStorage.getItem('gz-cache:' + key)); } catch (e) { return null; } }
+
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const usd = n => (n = +n) === 0 ? 'INGYEN' : '$' + n.toFixed(2);
+const pct = s => Math.round(+s);
+const ago = t => new Date(t).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const dealLink = id => `${SITE}/redirect?dealID=${encodeURIComponent(id)}`;
+
+async function api(path) {
+  let res;
+  try { res = await fetch(API + path); } catch (e) { throw new Error('Nem sikerült elérni az árszolgáltatást (CheapShark).'); }
+  if (res.status === 429) throw new Error('Túl sok kérés – várj egy percet, és próbáld újra.');
+  if (!res.ok) throw new Error('Az árszolgáltatás most nem működik (' + res.status + ').');
+  return res.json();
+}
+const errHtml = (e, stale) => `<div class="card"><p class="err">⚠️ ${esc(e.message)}</p>${stale ? '' : '<p class="small">Próbáld újra pár perc múlva. A Tarkov kihívás net nélkül is megy. 😉</p>'}<button class="btn full" data-retry>🔄 Újra</button></div>`;
+
+// ---------- Boltok ----------
+const MAIN_STORES = ['1', '25', '7', '11', '15', '3', '8', '13'];
+let stores = {};
+async function loadStores() {
+  const c = unstash('stores');
+  if (c && Date.now() - c.t < 86400000) { stores = c.d; return; }
+  try {
+    const list = await api('/stores');
+    stores = {};
+    list.filter(s => s.isActive).forEach(s => { stores[s.storeID] = { name: s.storeName, icon: SITE + s.images.icon }; });
+    stash('stores', stores);
+  } catch (e) { if (c) stores = c.d; }
+}
+const storeName = id => (stores[id] && stores[id].name) || 'Bolt #' + id;
+const storeIcon = id => stores[id] ? `<img src="${esc(stores[id].icon)}" alt="">` : '';
+
+// ---------- Akciók ----------
+const SORTS = [['Deal Rating', '⭐ Legjobb'], ['Savings', '💯 Legnagyobb %'], ['Price', '💲 Legolcsóbb'], ['Recent', '🆕 Legújabb'], ['free', '🎁 Ingyen']];
+function renderChips() {
+  const ids = MAIN_STORES.filter(id => stores[id]);
+  document.getElementById('storeChips').innerHTML = `<button class="chip ${S.store === 'all' ? 'on' : ''}" data-store="all">Minden bolt</button>` +
+    ids.map(id => `<button class="chip ${S.store === id ? 'on' : ''}" data-store="${id}">${esc(storeName(id))}</button>`).join('');
+  document.getElementById('sortChips').innerHTML = SORTS.map(([k, n]) => `<button class="chip ${S.sort === k ? 'on' : ''}" data-sort="${k}">${n}</button>`).join('');
+}
+function dealRow(d) {
+  const free = +d.salePrice === 0;
+  return `
+    <div class="game" data-game="${esc(d.gameID)}">
+      <img src="${esc(d.thumb)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <div class="body">
+        <div class="title">${esc(d.title)}</div>
+        <div class="small">${storeIcon(d.storeID)}${esc(storeName(d.storeID))}${d.steamRatingPercent && d.steamRatingPercent !== '0' ? ` · 👍 ${d.steamRatingPercent}%` : ''}${d.metacriticScore && d.metacriticScore !== '0' ? ` · MC ${d.metacriticScore}` : ''}</div>
+      </div>
+      <div class="price">
+        <span class="off ${free ? 'free' : ''}">${free ? 'INGYEN' : '−' + pct(d.savings) + '%'}</span><br>
+        <b>${usd(d.salePrice)}</b> <span class="old">${usd(d.normalPrice)}</span>
+      </div>
+    </div>`;
+}
+async function renderDeals() {
+  renderChips();
+  const out = document.getElementById('dealsOut');
+  const free = S.sort === 'free';
+  const params = new URLSearchParams({ pageSize: '40', onSale: '1', sortBy: free ? 'Recent' : S.sort });
+  if (free) params.set('upperPrice', '0');
+  if (S.store !== 'all') params.set('storeID', S.store);
+  else if (!free) params.set('steamRating', '60');
+  const key = 'deals:' + params.toString();
+  out.className = 'loading'; out.textContent = 'Betöltés…';
+  try {
+    const deals = await api('/deals?' + params);
+    stash(key, deals);
+    showDeals(deals, null);
+  } catch (e) {
+    const c = unstash(key);
+    if (c) showDeals(c.d, e, c.t); else { out.className = ''; out.innerHTML = errHtml(e); }
+  }
+}
+function showDeals(deals, err, t) {
+  const out = document.getElementById('dealsOut');
+  out.className = '';
+  out.innerHTML = (err ? `<p class="note">⚠️ ${esc(err.message)} Mentett adatokat látsz (${ago(t)}).</p>` : '') +
+    (deals.length ? `<div class="card list">${deals.map(dealRow).join('')}</div>` : '<p class="small">Nincs találat ezzel a szűréssel.</p>') +
+    '<p class="small">Az árak dollárban, az amerikai boltárak szerint. A magyar ár eltérhet, de a kedvezmény mértéke általában ugyanaz.</p>';
+}
+document.getElementById('storeChips').addEventListener('click', e => { const c = e.target.closest('[data-store]'); if (c) { S.store = c.dataset.store; save(); renderDeals(); } });
+document.getElementById('sortChips').addEventListener('click', e => { const c = e.target.closest('[data-sort]'); if (c) { S.sort = c.dataset.sort; save(); renderDeals(); } });
+
+// ---------- Keresés ----------
+const search = debounce(async q => {
+  const out = document.getElementById('searchOut');
+  if (q.length < 2) { out.innerHTML = '<p class="small">Írd be a játék nevét (angolul), és megmutatom, hol a legolcsóbb.</p>'; return; }
+  out.innerHTML = '<p class="loading">Keresés…</p>';
+  try {
+    const list = await api('/games?limit=40&title=' + encodeURIComponent(q));
+    if (document.getElementById('q').value.trim() !== q) return;
+    out.innerHTML = list.length ? `<div class="card list">${list.map(g => `
+      <div class="game" data-game="${esc(g.gameID)}">
+        <img src="${esc(g.thumb)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div class="body"><div class="title">${esc(g.external)}</div><div class="small">${S.watch[g.gameID] ? '⭐ figyeled' : 'koppints a részletekért'}</div></div>
+        <div class="price"><span class="small">már</span><br><b>${usd(g.cheapest)}</b></div>
+      </div>`).join('')}</div>` : '<p class="small">Nincs találat. Próbáld angol névvel vagy rövidebben.</p>';
+  } catch (e) { out.innerHTML = errHtml(e); }
+}, 400);
+document.getElementById('q').addEventListener('input', e => search(e.target.value.trim()));
+
+// ---------- Játék részletek ----------
+async function openGame(id) {
+  const modal = document.getElementById('modal');
+  modal.innerHTML = '<p class="loading">Betöltés…</p>';
+  document.getElementById('modalBg').classList.add('show');
+  let g;
+  try { g = await api('/games?id=' + encodeURIComponent(id)); }
+  catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
+  const deals = g.deals.slice().sort((a, b) => a.price - b.price);
+  const best = deals[0];
+  const low = g.cheapestPriceEver;
+  const w = S.watch[id];
+  const hero = g.info.steamAppID ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.info.steamAppID}/header.jpg` : g.info.thumb;
+  modal.innerHTML = `
+    <img class="hero" src="${esc(hero)}" alt="" onerror="this.onerror=()=>this.style.display='none';this.src='${esc(g.info.thumb)}'">
+    <h3 style="margin:10px 0 2px">${esc(g.info.title)}</h3>
+    <p class="small" style="margin:0">Most a legolcsóbb: <b style="color:var(--text)">${best ? usd(best.price) : '–'}</b>${best ? ' · ' + esc(storeName(best.storeID)) : ''}
+      · Valaha legolcsóbb: <b style="color:var(--text)">${low ? usd(low.price) : '–'}</b>${low && low.date ? ' (' + new Date(low.date * 1000).toLocaleDateString('hu-HU') + ')' : ''}</p>
+    ${best && low && +best.price <= +low.price ? '<p class="hit">📉 Most van a valaha volt legalacsonyabb áron!</p>' : ''}
+    <div class="card" style="padding:4px 12px">
+      ${deals.map(d => `
+        <a class="store-row" href="${dealLink(d.dealID)}" target="_blank" rel="noopener">
+          <span>${storeIcon(d.storeID)}${esc(storeName(d.storeID))}</span>
+          <span>${+d.savings >= 1 ? `<span class="off">−${pct(d.savings)}%</span> ` : ''}<b>${usd(d.price)}</b>${+d.savings >= 1 ? ` <span class="old">${usd(d.retailPrice)}</span>` : ''} ›</span>
+        </a>`).join('') || '<p class="small">Most egyik boltban sincs.</p>'}
+    </div>
+    <div class="card">
+      <b>⭐ Figyelés</b>
+      <p class="small" style="margin:4px 0">Add meg, mennyiért vennéd meg. A Figyelt fülön szólok, ha eléri.</p>
+      <input type="number" id="target" step="0.01" min="0" inputmode="decimal" placeholder="Célár dollárban (pl. 15)" value="${w ? w.target : ''}">
+      <button class="btn primary full" id="watchBtn">${w ? '💾 Célár mentése' : '⭐ Figyelem'}</button>
+      ${w ? '<button class="btn full" id="unwatch">Figyelés törlése</button>' : ''}
+      <details style="margin-top:10px"><summary class="small">📧 Értesítés emailben is (CheapShark)</summary>
+        <p class="small">A CheapShark küld emailt, ha a játék a célár alá esik. Az email címed hozzájuk kerül.</p>
+        <input type="email" id="email" placeholder="email@pelda.hu" autocomplete="email" value="${esc(S.email || '')}">
+        <button class="btn full" id="alertBtn">📧 Email riasztás beállítása</button>
+      </details>
+    </div>
+    <button class="btn full" data-close>Bezár</button>`;
+  document.getElementById('watchBtn').onclick = () => {
+    const v = parseFloat(document.getElementById('target').value);
+    S.watch[id] = { title: g.info.title, thumb: g.info.thumb, target: isNaN(v) ? '' : v.toFixed(2) };
+    save(); closeModal(); refreshCurrent();
+  };
+  const un = document.getElementById('unwatch');
+  if (un) un.onclick = () => { delete S.watch[id]; save(); closeModal(); refreshCurrent(); };
+  document.getElementById('alertBtn').onclick = async () => {
+    const email = document.getElementById('email').value.trim();
+    const price = parseFloat(document.getElementById('target').value);
+    if (!email.includes('@') || isNaN(price)) { alert('Add meg az email címed és a célárat is.'); return; }
+    S.email = email; save();
+    try {
+      const ok = await api(`/alerts?action=set&email=${encodeURIComponent(email)}&gameID=${encodeURIComponent(id)}&price=${price}`);
+      alert(ok ? 'Kész! Emailt kapsz, ha az ár ' + usd(price) + ' alá esik.' : 'Nem sikerült beállítani. Próbáld később.');
+    } catch (e) { alert(e.message); }
+  };
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+document.getElementById('modalBg').addEventListener('click', e => {
+  if (e.target.id === 'modalBg' || e.target.closest('[data-close]')) closeModal();
+});
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-game]');
+  if (g) openGame(g.dataset.game);
+});
+
+// ---------- Figyelt ----------
+async function renderWatch() {
+  const out = document.getElementById('watchOut');
+  const ids = Object.keys(S.watch);
+  if (!ids.length) {
+    out.innerHTML = '<div class="card"><p>Még nem figyelsz semmit.</p><p class="small">Keress rá egy játékra, koppints rá, és nyomd meg a ⭐ Figyelem gombot. Itt egy helyen látod, mennyibe kerülnek, és szólok, ha elérik a célárad.</p></div>';
+    return;
+  }
+  out.innerHTML = '<p class="loading">Árak frissítése…</p>';
+  let data, err = null, t;
+  try {
+    data = {};
+    for (let i = 0; i < ids.length; i += 25) Object.assign(data, await api('/games?ids=' + ids.slice(i, i + 25).join(',')));
+    stash('watch', data);
+  } catch (e) {
+    err = e;
+    const c = unstash('watch');
+    data = c ? c.d : {};
+    t = c && c.t;
+  }
+  const rows = ids.map(id => {
+    const w = S.watch[id], g = data[id];
+    const best = g && g.deals.length ? g.deals.reduce((a, b) => (+b.price < +a.price ? b : a)) : null;
+    const low = g && g.cheapestPriceEver;
+    const hitTarget = best && w.target !== '' && +best.price <= +w.target;
+    const atLow = best && low && +best.price <= +low.price;
+    return { id, w, best, hitTarget, atLow, sortKey: hitTarget ? 0 : atLow ? 1 : 2 };
+  }).sort((a, b) => a.sortKey - b.sortKey || a.w.title.localeCompare(b.w.title));
+  const hits = rows.filter(r => r.hitTarget).length;
+  out.innerHTML = (err ? (t ? `<p class="note">⚠️ ${esc(err.message)} Mentett árakat látsz (${ago(t)}).</p>` : errHtml(err)) : '') +
+    (hits ? `<div class="card hit" style="font-size:15px">🎯 ${hits} játék elérte a célárad!</div>` : '') +
+    `<div class="card list">${rows.map(r => `
+      <div class="game" data-game="${esc(r.id)}">
+        <img src="${esc(r.w.thumb)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div class="body">
+          <div class="title">${esc(r.w.title)}</div>
+          <div class="small">${r.w.target !== '' ? 'Célár: ' + usd(r.w.target) : 'Nincs célár'}${r.best ? ' · ' + esc(storeName(r.best.storeID)) : ''}</div>
+          ${r.hitTarget ? '<div class="hit">🎯 Elérte a célárad!</div>' : r.atLow ? '<div class="hit">📉 Történelmi mélypont</div>' : ''}
+        </div>
+        <div class="price">${r.best && +r.best.savings >= 1 ? `<span class="off">−${pct(r.best.savings)}%</span><br>` : ''}<b>${r.best ? usd(r.best.price) : '–'}</b></div>
+      </div>`).join('')}</div>`;
+}
+
+// ---------- Tarkov kihívás (net nélkül) ----------
+const MAPS = [
+  ['Customs', 'a Dorms (kollégium)'], ['Woods', 'a fűrésztelep (Sawmill)'], ['Shoreline', 'az üdülő (Health Resort)'],
+  ['Interchange', 'a Kiba Arms bolt'], ['Reserve', 'a bunkerek'], ['Lighthouse', 'a víztisztító (Rogue-bázis)'],
+  ['Streets of Tarkov', 'a Lexos autószalon'], ['Factory', 'az irodák (3. emelet)'], ['Ground Zero', 'a Terragroup torony környéke'],
+  ['The Lab', 'a szerverterem'],
+];
+const WEAPONS = {
+  'Pisztoly': ['PM', 'TT', 'Glock 17', 'M1911A1', 'M9A3', 'USP .45', 'Desert Eagle', 'SR-1MP Gyurza', 'APS', 'MP-443 Grach'],
+  'Géppisztoly': ['MP5', 'MP7A1', 'MP9', 'Vector 9x19', 'UMP 45', 'PP-19-01 Vityaz', 'P90', 'PPSh-41', 'MPX', 'Kedr'],
+  'Gépkarabély': ['M4A1', 'HK 416A5', 'AK-74M', 'AKM', 'AK-105', 'AK-12', 'MDR', 'SCAR-L', 'AUG A3', 'ASh-12', 'SA-58', 'MCX'],
+  'Mesterlövész (DMR)': ['SVDS', 'RSASS', 'M1A', 'SR-25', 'SKS', 'VSS Vintorez', 'G28'],
+  'Ismétlő puska': ['Mosin', 'SV-98', 'M700', 'T-5000', 'DVL-10', 'AXMC'],
+  'Sörétes': ['MP-133', 'MP-153', 'Saiga-12', 'KS-23M', 'M590A1', 'M870', 'AA-12'],
+};
+const WEAPON_SPECIAL = ['🔪 Csak kés – semmi lőfegyver', '🎒 Meztelenül indulsz – csak azzal harcolhatsz, amit a raidben találsz', '🎲 Az első fegyver, amit a raidben felveszel'];
+const ARMOR = [
+  ['Nincs páncél és sisak', 3], ['Csak sisak, mellény nélkül', 2], ['Legfeljebb 3-as osztályú mellény', 1],
+  ['Bármilyen páncél jöhet', 0], ['Csak könnyű, 2-es osztályú mellény', 2], ['Páncél igen, sisak nem', 1],
+];
+const RULES = [
+  ['Csak vaslátóval – semmi optika', 1], ['Nincs fejhallgató', 2], ['Csak egy tár lőszer', 3], ['Nincs hátizsák', 1],
+  ['Csak kötszer és fájdalomcsillapító – semmi orvosi táska', 2], ['Ölj meg legalább 3 scavet', 1], ['Ölj meg legalább egy PMC-t', 2],
+  ['Ne lőj elsőként – csak visszalőhetsz', 2], ['Hozz ki legalább 100 000 ₽ értékű lootot', 1], ['Csak éjszakai raid', 2],
+  ['Sétálj végig, nem futhatsz (csak menekülésnél)', 2], ['Csak hangtompítós fegyver', 1], ['Nem gyógyíthatsz, amíg nem vagy biztonságban 1 percig', 2],
+  ['Az első 5 percben nem lőhetsz', 1], ['Csak egyetlen lövés módban (semmi sorozat)', 1], ['Hozz ki egy kulcsot vagy kulcskártyát', 3],
+];
+const R = arr => arr[Math.floor(Math.random() * arr.length)];
+
+function rollWeapon(diff) {
+  if (Math.random() < (diff === 3 ? 0.3 : diff === 2 ? 0.12 : 0.04)) return R(WEAPON_SPECIAL);
+  const cats = Object.keys(WEAPONS).filter(c => diff !== 1 || c !== 'Pisztoly');
+  const cat = R(cats);
+  return `${cat}: ${R(WEAPONS[cat])}`;
+}
+function rollArmor(diff) {
+  const pool = ARMOR.filter(a => (diff === 1 ? a[1] <= 1 : diff === 2 ? a[1] <= 2 : a[1] >= 1));
+  return R(pool)[0];
+}
+function rollRules(diff) {
+  const n = diff;
+  const pool = RULES.filter(r => diff === 3 || r[1] <= diff + 1);
+  const out = [];
+  while (out.length < n) { const r = R(pool)[0]; if (!out.includes(r)) out.push(r); }
+  return out;
+}
+function rollPlayer(diff) { return { weapon: rollWeapon(diff), armor: rollArmor(diff), rules: rollRules(diff) }; }
+function rollAll() {
+  const [map, spot] = R(MAPS);
+  S.chal = { map, spot: Math.random() < 0.5 + S.diff * 0.15 ? spot : null, diff: S.diff, players: Array.from({ length: S.players }, () => rollPlayer(S.diff)) };
+  save(); renderChal();
+}
+
+function renderChal() {
+  document.querySelectorAll('[data-d]').forEach(c => c.classList.toggle('on', +c.dataset.d === S.diff));
+  document.querySelectorAll('[data-p]').forEach(c => c.classList.toggle('on', +c.dataset.p === S.players));
+  const c = S.chal;
+  const out = document.getElementById('chalOut');
+  if (!c) { out.innerHTML = ''; } else {
+    const label = ['', '😎 Laza', '😬 Kemény', '💀 Hardcore'][c.diff];
+    out.innerHTML = `
+      <div class="card">
+        <div class="small">${label} kihívás · ${c.diff * 10 * c.players.length} pont</div>
+        <div class="line"><span class="ico">🗺️</span><span class="txt map">${esc(c.map)}</span><button class="reroll" data-rr="map">🔄</button></div>
+        ${c.spot ? `<div class="line"><span class="ico">📍</span><span class="txt">Menj el ide: <b>${esc(c.spot)}</b></span></div>` : ''}
+        ${c.players.map((p, i) => `
+          <div class="player">
+            ${c.players.length > 1 ? `<b>👤 ${i + 1}. játékos</b>` : ''}
+            <div class="line"><span class="ico">🔫</span><span class="txt">${esc(p.weapon)}</span><button class="reroll" data-rr="weapon:${i}">🔄</button></div>
+            <div class="line"><span class="ico">🛡️</span><span class="txt">${esc(p.armor)}</span><button class="reroll" data-rr="armor:${i}">🔄</button></div>
+            ${p.rules.map((r, j) => `<div class="line"><span class="ico">📜</span><span class="txt">${esc(r)}</span><button class="reroll" data-rr="rule:${i}:${j}">🔄</button></div>`).join('')}
+          </div>`).join('')}
+        <p class="small">A 🔄 gombbal egy-egy elemet újrasorsolhatsz. Ha élve kijutottál (extract), a kihívás teljesítve!</p>
+        <div style="display:flex;gap:8px">
+          <button class="btn primary" style="flex:1" id="chalDone">✅ Kijutottam!</button>
+          <button class="btn" style="flex:1" id="chalFail">💀 Meghaltam</button>
+        </div>
+      </div>`;
+    document.getElementById('chalDone').onclick = () => finishChal(true);
+    document.getElementById('chalFail').onclick = () => finishChal(false);
+  }
+  document.getElementById('chalStats').innerHTML = `
+    <div><b>${S.done}</b><span class="small">teljesítve</span></div>
+    <div><b>${S.tried ? Math.round(S.done / S.tried * 100) + '%' : '–'}</b><span class="small">siker</span></div>
+    <div><b>${S.points}</b><span class="small">pont</span></div>`;
+  document.getElementById('chalHist').innerHTML = S.hist.length
+    ? '<div class="small" style="margin-bottom:4px">Előzmények</div>' + S.hist.map(h => `<div class="hist">${h.ok ? '✅' : '💀'} <b>${esc(h.map)}</b> · ${esc(h.weapon)} <span class="small">· ${h.date}</span></div>`).join('')
+    : '<p class="small" style="margin:0">Itt jelennek meg a lejátszott kihívásaid.</p>';
+}
+function finishChal(ok) {
+  const c = S.chal;
+  S.tried++;
+  if (ok) { S.done++; S.points += c.diff * 10 * c.players.length; }
+  S.hist.unshift({ ok, map: c.map, weapon: c.players[0].weapon, date: new Date().toLocaleDateString('hu-HU') });
+  S.hist = S.hist.slice(0, 15);
+  S.chal = null;
+  save(); renderChal();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.getElementById('chalOut').addEventListener('click', e => {
+  const b = e.target.closest('[data-rr]');
+  if (!b) return;
+  const [what, i, j] = b.dataset.rr.split(':');
+  const c = S.chal;
+  if (what === 'map') { const [m, s] = R(MAPS.filter(x => x[0] !== c.map)); c.map = m; c.spot = c.spot ? s : null; }
+  if (what === 'weapon') c.players[i].weapon = rollWeapon(c.diff);
+  if (what === 'armor') c.players[i].armor = rollArmor(c.diff);
+  if (what === 'rule') {
+    const others = c.players[i].rules.filter((_, k) => k !== +j);
+    let r; do { r = R(RULES)[0]; } while (others.includes(r) || r === c.players[i].rules[j]);
+    c.players[i].rules[j] = r;
+  }
+  save(); renderChal();
+});
+document.getElementById('diffSeg').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) { S.diff = +b.dataset.d; save(); renderChal(); } });
+document.getElementById('squadSeg').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) { S.players = +b.dataset.p; save(); renderChal(); } });
+document.getElementById('roll').onclick = rollAll;
+
+// ---------- Navigáció ----------
+const RENDER = { 'v-deals': renderDeals, 'v-search': () => search(document.getElementById('q').value.trim()), 'v-watch': renderWatch, 'v-chal': renderChal };
+function refreshCurrent() { const v = document.querySelector('.view.active').id; RENDER[v](); }
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === b.dataset.view));
+  RENDER[b.dataset.view]();
+  window.scrollTo(0, 0);
+});
+document.addEventListener('click', e => { if (e.target.closest('[data-retry]')) { closeModal(); refreshCurrent(); } });
+
+loadStores().then(renderDeals);
+renderChal();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
