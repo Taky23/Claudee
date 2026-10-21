@@ -125,12 +125,23 @@ textarea { min-height: 70px; resize: vertical; }
 .persona { text-align: center; padding: 18px 12px; background: linear-gradient(135deg, rgba(255,111,181,.25), rgba(143,123,255,.25)); }
 .persona .e { font-size: 50px; }
 .persona b { font-size: 20px; display: block; margin-top: 4px; }
-.tier { display: flex; gap: 8px; align-items: stretch; margin: 6px 0; }
-.tier .lbl { width: 46px; border-radius: 10px; display: grid; place-items: center; font-weight: 900; font-size: 20px; color: #1a0f00; flex-shrink: 0; }
-.tier .items { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; background: var(--card-2); border-radius: 10px; padding: 6px; min-height: 72px; align-items: center; }
-.tier .items img { width: 42px; height: 60px; object-fit: cover; border-radius: 6px; cursor: pointer; }
-.tier .add { width: 42px; height: 60px; border: 2px dashed var(--line); border-radius: 6px; display: grid; place-items: center; color: var(--muted); cursor: pointer; font-size: 20px; background: none; }
 .mood { font-size: 15px; padding: 10px 14px; }
+.vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+.vs .side { cursor: pointer; text-align: center; transition: transform .1s; }
+.vs .side:active { transform: scale(.96); }
+.vs .side img { width: 100%; max-width: 150px; aspect-ratio: 2/3; object-fit: cover; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.vs .side b { display: block; font-size: 14px; margin-top: 6px; line-height: 1.25; }
+.vs .mid { font-size: 26px; font-weight: 900; color: var(--accent); }
+.rank-row { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.rank-row:last-child { border-bottom: 0; }
+.rank-row img { width: 34px; height: 48px; object-fit: cover; border-radius: 6px; }
+.ch { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ch:last-child { border-bottom: 0; }
+.ch.ok b { color: var(--ok); }
+.big-num { font-size: 34px; font-weight: 900; }
+.top3 { display: flex; gap: 10px; }
+.top3 div { flex: 1; text-align: center; font-size: 12px; }
+.top3 img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 10px; }
 .pick { text-align: center; }
 .pick img { width: 160px; aspect-ratio: 2/3; object-fit: cover; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.5); cursor: pointer; }
 .pick b { display: block; font-size: 19px; margin-top: 10px; }
@@ -191,9 +202,9 @@ a { color: var(--accent-2); }
 
   <!-- PROFIL -->
   <section class="view" id="v-me">
+    <div class="chips" id="meTabs" style="padding-top:8px"></div>
     <div id="meOut"></div>
-    <h2>🏆 Saját tier list</h2>
-    <div class="card" id="tierOut"></div>
+    <div id="meData">
     <h2>📥 MyAnimeList import</h2>
     <div class="card">
       <p class="small" style="margin-top:0">Hozd át a MAL-listádat! A listádnak nyilvánosnak kell lennie (alapból az).</p>
@@ -214,6 +225,7 @@ a { color: var(--accent-2); }
       <button class="btn full" id="impBtn">⬆️ Visszaállítás fájlból</button>
       <input type="file" id="impIn" accept=".json,application/json" hidden>
       <p class="small">Adatok és képek: <a href="https://anilist.co" target="_blank" rel="noopener noreferrer">AniList</a>. Csak a keresett cím és az anime azonosítója megy ki hozzájuk.</p>
+    </div>
     </div>
   </section>
 </main>
@@ -326,7 +338,17 @@ $('q').addEventListener('input', e => {
 
 // ---------- Részletek ----------
 function snapshot(m) {
-  return { id: m.id, title: title(m), cover: cover(m), episodes: m.episodes || null, duration: m.duration || 24, genres: m.genres || [], format: m.format, airing: m.nextAiringEpisode || null, alStatus: m.status, studios: m.studios ? m.studios.nodes.map(n => n.name) : [] };
+  return { id: m.id, title: title(m), cover: cover(m), episodes: m.episodes || null, duration: m.duration || 24, genres: m.genres || [], format: m.format, airing: m.nextAiringEpisode || null, alStatus: m.status, studios: m.studios ? m.studios.nodes.map(n => n.name) : [], year: m.seasonYear || null };
+}
+// Nézési napló az évkönyvhöz és a kihívásokhoz (csak a telefonon). type: ep | start | done | score
+function logEv(type, e, n = 1) {
+  S.log = S.log || [];
+  S.log.push({ t: Date.now(), type, id: e.id, n, mins: type === 'ep' ? n * (e.duration || 24) : 0, title: e.title, cover: e.cover });
+  if (S.log.length > 6000) S.log = S.log.slice(-6000);
+}
+function markDone(e) {
+  logEv('done', e);
+  setTimeout(() => nextPopup(e.id), 400);
 }
 const STATUSES = [['watching', '▶️ Nézem'], ['plan', '📌 Tervezem'], ['done', '✅ Befejeztem'], ['paused', '⏸️ Szüneteltetem'], ['dropped', '🗑️ Abbahagytam']];
 async function openAnime(id) {
@@ -394,28 +416,39 @@ function bindEditor(m) {
   const modal = $('modal');
   const rerender = () => { const box = modal.querySelector('.card'); box.innerHTML = listEditor(m, S.list[m.id]); bindEditor(m); };
   modal.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
-    S.list[m.id] = Object.assign(snapshot(m), { status: b.dataset.add, progress: b.dataset.add === 'done' ? (m.episodes || 0) : 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now(), tier: '' });
+    S.list[m.id] = Object.assign(snapshot(m), { status: b.dataset.add, progress: b.dataset.add === 'done' ? (m.episodes || 0) : 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() });
     save(); toast('Hozzáadva a listádhoz 🌸'); rerender();
   });
   const e = S.list[m.id];
   if (!e) return;
   const touch = () => { e.updated = Date.now(); save(); };
   modal.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+    const was = e.status;
     e.status = b.dataset.st;
-    if (e.status === 'done' && e.episodes) e.progress = e.episodes;
+    if (e.status === 'done' && was !== 'done') {
+      if (e.episodes && e.episodes > e.progress) { if (!e.progress) logEv('start', e); logEv('ep', e, e.episodes - e.progress); e.progress = e.episodes; }
+      markDone(e);
+    }
     touch(); rerender();
   });
   modal.querySelectorAll('[data-ep]').forEach(b => b.onclick = () => bumpEp(e, +b.dataset.ep, rerender));
-  modal.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { e.score = e.score === +b.dataset.sc ? 0 : +b.dataset.sc; touch(); rerender(); });
+  modal.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => {
+    const was = e.score;
+    e.score = e.score === +b.dataset.sc ? 0 : +b.dataset.sc;
+    if (!was && e.score) logEv('score', e);
+    touch(); rerender();
+  });
   modal.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => { e.rewatch = Math.max(0, (e.rewatch || 0) + +b.dataset.rw); touch(); rerender(); });
   $('note').onchange = () => { e.note = $('note').value; touch(); toast('Jegyzet mentve'); };
   $('rmList').onclick = () => { if (confirm('Törlöd a listádról?')) { delete S.list[m.id]; save(); rerender(); } };
 }
 function bumpEp(e, dlt, after) {
+  const before = e.progress;
   e.progress = Math.max(0, e.progress + dlt);
   if (e.episodes) e.progress = Math.min(e.episodes, e.progress);
+  if (e.progress !== before) { if (!before && e.progress) logEv('start', e); logEv('ep', e, e.progress - before); }
   if (dlt > 0 && e.status === 'plan') e.status = 'watching';
-  if (e.episodes && e.progress >= e.episodes && e.status !== 'done') { e.status = 'done'; toast('🎉 Befejezted! Ne felejts el pontozni.'); }
+  if (e.episodes && e.progress >= e.episodes && e.status !== 'done') { e.status = 'done'; markDone(e); }
   e.updated = Date.now(); save();
   if (after) after();
 }
@@ -579,7 +612,7 @@ function calcBed() {
 $('bed').addEventListener('input', calcBed);
 $('epLen').addEventListener('input', calcBed);
 
-// ---------- Én: statisztika, anime-személyiség, tier list ----------
+// ---------- Én: statisztika és anime-személyiség ----------
 const PERSONA = {
   Action: ['⚔️', 'Shonen harcos', 'Neked a harc, az erő és a nagy csaták jelentik az animét.'],
   Adventure: ['🗺️', 'Világjáró kalandor', 'Mindig új világokat és nagy utazásokat keresel.'],
@@ -613,7 +646,16 @@ function stats() {
     genres: Object.entries(gc).sort((a, b) => b[1] - a[1]), studios: Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 5),
   };
 }
+const ME_TABS = [['dna', '🧬 DNS'], ['year', '📆 Évkönyv'], ['ch', '🎯 Kihívások'], ['battle', '⚔️ Csata'], ['data', '⚙️ Import & mentés']];
 function renderMe() {
+  S.meTab = S.meTab || 'dna';
+  $('meTabs').innerHTML = ME_TABS.map(([k, n]) => `<button class="chip ${S.meTab === k ? 'on' : ''}" data-me="${k}">${n}</button>`).join('');
+  $('meData').style.display = S.meTab === 'data' ? '' : 'none';
+  $('meOut').style.display = S.meTab === 'data' ? 'none' : '';
+  ({ dna: renderDna, year: renderYear, ch: renderChallenges, battle: renderBattle, data: () => {} })[S.meTab]();
+}
+$('meTabs').addEventListener('click', e => { const c = e.target.closest('[data-me]'); if (c) { S.meTab = c.dataset.me; save(); renderMe(); } });
+function renderDna() {
   const st = stats();
   const top = st.genres[0] && PERSONA[st.genres[0][0]];
   const maxG = st.genres[0] ? st.genres[0][1] : 1;
@@ -633,7 +675,6 @@ function renderMe() {
     ${st.studios.length ? `<div class="card"><div class="small" style="margin-bottom:4px">Kedvenc stúdióid</div>${st.studios.map(([k, v]) => `<div class="bar"><span>${esc(k)}</span><b>${v}</b></div>`).join('')}</div>` : ''}`;
   const sh = $('shareCard');
   if (sh) sh.onclick = () => shareCard(st, top);
-  renderTiers();
 }
 async function shareCard(st, top) {
   const c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
@@ -661,10 +702,13 @@ async function shareCard(st, top) {
     x.fillStyle = bg; x.fillRect(400, y, 590 * v / maxG, 34);
   });
   x.textAlign = 'center'; x.fillStyle = '#a79fcb'; x.font = '500 26px system-ui'; x.fillText('Anime Hub', 540, 1300);
+  await shareCanvas(c, 'anime-dns.png', 'Az anime-DNS-em');
+}
+async function shareCanvas(c, name, ttl) {
   const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-  const file = new File([blob], 'anime-dns.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'Az anime-DNS-em' }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'anime-dns.png'; a.click();
+  const file = new File([blob], name, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: ttl }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   toast('Elmentve a Letöltések közé 📥');
 }
@@ -676,28 +720,211 @@ function wrap(x, text, cx, y, maxW, lh) {
   }
   x.fillText(line, cx, y);
 }
-const TIERS = [['S', '#ff6f91'], ['A', '#ffb36b'], ['B', '#ffe66b'], ['C', '#9be36b'], ['D', '#6bc6ff']];
-function renderTiers() {
-  const all = Object.values(S.list);
-  $('tierOut').innerHTML = TIERS.map(([t, c]) => `
-    <div class="tier"><div class="lbl" style="background:${c}">${t}</div>
-      <div class="items">${all.filter(x => x.tier === t).map(x => `<img src="${esc(x.cover)}" alt="" title="${esc(x.title)}" data-tierx="${x.id}">`).join('')}<button class="add" data-tadd="${t}">+</button></div></div>`).join('') +
-    '<p class="small" style="margin-bottom:0">Koppints a +-ra egy anime besorolásához, vagy egy borítóra az áthelyezéshez.</p>';
-}
-$('tierOut').addEventListener('click', e => {
-  const add = e.target.closest('[data-tadd]'), it = e.target.closest('[data-tierx]');
-  if (add) {
-    const pool = Object.values(S.list).filter(x => x.status !== 'plan' && x.tier !== add.dataset.tadd).sort((a, b) => (b.score || 0) - (a.score || 0));
-    $('modal').innerHTML = `<div class="dbody"><h2>${add.dataset.tadd} szintre</h2>${pool.length ? `<div class="grid">${pool.map(x => `<div class="poster" data-setier="${x.id}"><div class="img"><img src="${esc(x.cover)}" alt=""></div><div class="t">${esc(x.title)}</div></div>`).join('')}</div>` : '<p class="small">Előbb adj hozzá animéket, amiket már néztél.</p>'}<button class="btn full" data-close>Mégse</button></div>`;
-    $('modalBg').classList.add('show');
-    $('modal').querySelectorAll('[data-setier]').forEach(p => p.onclick = ev => { ev.stopPropagation(); S.list[p.dataset.setier].tier = add.dataset.tadd; save(); closeModal(); });
-  } else if (it) {
-    const x = S.list[it.dataset.tierx];
-    $('modal').innerHTML = `<div class="dbody"><h2>${esc(x.title)}</h2><div class="chips" style="flex-wrap:wrap">${TIERS.map(([t, c]) => `<button class="chip" data-mv="${t}" style="${x.tier === t ? `background:${c};color:#1a0f00` : ''}">${t}</button>`).join('')}<button class="chip" data-mv="">✕ Kivesz</button></div><button class="btn full" data-close>Mégse</button></div>`;
-    $('modalBg').classList.add('show');
-    $('modal').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { x.tier = b.dataset.mv; save(); closeModal(); });
+// ---------- Évkönyv ----------
+const MONTHS = ['január', 'február', 'március', 'április', 'május', 'június', 'július', 'augusztus', 'szeptember', 'október', 'november', 'december'];
+function yearRange() {
+  const now = new Date(), off = S.yearOff || 0;
+  if (S.yearMode === 'year') {
+    const y = now.getFullYear() + off;
+    return { from: new Date(y, 0, 1).getTime(), to: new Date(y + 1, 0, 1).getTime(), label: `${y}`, short: `${y}` };
   }
+  const d = new Date(now.getFullYear(), now.getMonth() + off, 1);
+  return { from: d.getTime(), to: new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(), label: `${d.getFullYear()}. ${MONTHS[d.getMonth()]}`, short: MONTHS[d.getMonth()] };
+}
+function recap(from, to) {
+  const ev = (S.log || []).filter(x => x.t >= from && x.t < to);
+  const eps = ev.filter(x => x.type === 'ep').reduce((s, x) => s + x.n, 0);
+  const mins = ev.filter(x => x.type === 'ep').reduce((s, x) => s + x.mins, 0);
+  const per = {}, days = {}, info = {};
+  for (const x of ev) {
+    info[x.id] = { title: x.title, cover: x.cover };
+    if (x.type === 'ep' && x.n > 0) { per[x.id] = (per[x.id] || 0) + x.n; const k = new Date(x.t).toDateString(); days[k] = (days[k] || 0) + x.n; }
+  }
+  const top = Object.entries(per).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, n]) => ({ id: +id, n, ...info[id] }));
+  const doneIds = [...new Set(ev.filter(x => x.type === 'done').map(x => x.id))];
+  const gc = {};
+  for (const [id, n] of Object.entries(per)) (S.list[id] ? S.list[id].genres : []).forEach(gg => gc[gg] = (gc[gg] || 0) + n);
+  const fav = doneIds.map(id => S.list[id]).filter(Boolean).sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+  const bestDay = Object.entries(days).sort((a, b) => b[1] - a[1])[0];
+  return { ev, eps, hours: Math.round(mins / 60), done: doneIds.length, activeDays: Object.keys(days).length, top, genres: Object.entries(gc).sort((a, b) => b[1] - a[1]).slice(0, 3), fav, bestDay };
+}
+function renderYear() {
+  S.yearMode = S.yearMode || 'month';
+  const r = yearRange(), rc = recap(r.from, r.to);
+  $('meOut').innerHTML = `
+    <div class="chips"><button class="chip ${S.yearMode === 'month' ? 'on' : ''}" data-ym="month">Havi</button><button class="chip ${S.yearMode === 'year' ? 'on' : ''}" data-ym="year">Éves</button></div>
+    <div class="row" style="justify-content:space-between;margin:6px 0"><button class="btn" data-yo="-1">◀</button><b>📆 ${r.label}</b><button class="btn" data-yo="1" ${(S.yearOff || 0) >= 0 ? 'disabled' : ''}>▶</button></div>
+    ${rc.ev.length ? `
+      <div class="card stats">
+        <div><b class="big-num">${rc.eps}</b><span class="small">rész</span></div>
+        <div><b class="big-num">${rc.hours}</b><span class="small">óra</span></div>
+        <div><b class="big-num">${rc.done}</b><span class="small">befejezve</span></div>
+      </div>
+      ${rc.top.length ? `<div class="card"><div class="small" style="margin-bottom:6px">🏆 Amit a legtöbbet nézted</div><div class="top3">${rc.top.map((t, i) => `<div data-id="${t.id}"><img src="${esc(t.cover)}" alt="">${['🥇', '🥈', '🥉'][i]} ${esc(t.title)}<br><span class="small">${t.n} rész</span></div>`).join('')}</div></div>` : ''}
+      <div class="card">
+        ${rc.fav ? `<p style="margin-top:0">💖 <b>A ${S.yearMode === 'year' ? 'év' : 'hónap'} kedvence:</b> ${esc(rc.fav.title)}${rc.fav.score ? ` (⭐ ${rc.fav.score})` : ''}</p>` : ''}
+        ${rc.genres.length ? `<p>🎭 <b>Fő műfaj:</b> ${rc.genres.map(([k]) => esc(g(k))).join(', ')}</p>` : ''}
+        <p>📅 <b>${rc.activeDays}</b> napon néztél animét${rc.bestDay ? ` · a legdurvább napod: <b>${new Date(rc.bestDay[0]).toLocaleDateString('hu-HU', { month: 'long', day: 'numeric' })}</b> (${rc.bestDay[1]} rész)` : ''}</p>
+        <button class="btn hot full" id="shareYear">📤 Megosztható kép</button>
+      </div>` : `<div class="card"><p class="small" style="margin:0">Ebben az időszakban még nincs naplózott nézés. Ha a listádon a +1 gombbal léptetsz, vagy befejezel egy animét, az ide kerül. (A korábbi nézéseid és a MAL-import nem számít bele.)</p></div>`}`;
+  const sh = $('shareYear');
+  if (sh) sh.onclick = () => shareYear(r, rc);
+}
+$('meOut').addEventListener('click', e => {
+  const ym = e.target.closest('[data-ym]'), yo = e.target.closest('[data-yo]');
+  if (ym) { S.yearMode = ym.dataset.ym; S.yearOff = 0; save(); renderYear(); }
+  if (yo) { S.yearOff = Math.min(0, (S.yearOff || 0) + +yo.dataset.yo); save(); renderYear(); }
 });
+async function shareYear(r, rc) {
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+  const x = c.getContext('2d');
+  const gr = x.createLinearGradient(0, 0, 1080, 1350); gr.addColorStop(0, '#3a1b5c'); gr.addColorStop(1, '#0f0c1d');
+  x.fillStyle = gr; x.fillRect(0, 0, 1080, 1350);
+  x.textAlign = 'center';
+  x.fillStyle = '#ff6fb5'; x.font = '800 50px system-ui'; x.fillText('🌸 Anime-évkönyv', 540, 120);
+  x.fillStyle = '#f3efff'; x.font = '900 80px system-ui'; x.fillText(r.label, 540, 230);
+  [[rc.eps, 'rész'], [rc.hours, 'óra'], [rc.done, 'befejezve']].forEach(([v, l], i) => {
+    const bx = 90 + i * 310;
+    x.fillStyle = 'rgba(255,255,255,.07)'; x.fillRect(bx, 300, 280, 190);
+    x.fillStyle = '#f3efff'; x.font = '900 84px system-ui'; x.fillText(String(v), bx + 140, 410);
+    x.fillStyle = '#a79fcb'; x.font = '600 32px system-ui'; x.fillText(l, bx + 140, 460);
+  });
+  x.fillStyle = '#a79fcb'; x.font = '600 34px system-ui'; x.fillText('Amit a legtöbbet néztem', 540, 590);
+  rc.top.forEach((t, i) => {
+    x.fillStyle = '#f3efff'; x.font = '800 44px system-ui';
+    const label = `${['🥇', '🥈', '🥉'][i]} ${t.title.length > 30 ? t.title.slice(0, 29) + '…' : t.title}`;
+    x.fillText(label, 540, 670 + i * 80);
+    x.fillStyle = '#a79fcb'; x.font = '500 28px system-ui'; x.fillText(`${t.n} rész`, 540, 705 + i * 80);
+  });
+  if (rc.fav) { x.fillStyle = '#ff6fb5'; x.font = '700 36px system-ui'; x.fillText(`💖 Kedvenc: ${rc.fav.title.slice(0, 34)}`, 540, 1010); }
+  if (rc.genres.length) { x.fillStyle = '#f3efff'; x.font = '600 34px system-ui'; x.fillText(`🎭 ${rc.genres.map(([k]) => g(k)).join(' · ')}`, 540, 1080); }
+  x.fillStyle = '#a79fcb'; x.font = '500 32px system-ui'; x.fillText(`📅 ${rc.activeDays} napon néztem animét`, 540, 1150);
+  x.font = '500 26px system-ui'; x.fillText('Anime Hub', 540, 1300);
+  await shareCanvas(c, `anime-evkonyv-${r.short}.png`, 'Az anime-évkönyvem');
+}
+
+// ---------- Kihívások (havonta új, a napló alapján) ----------
+const CH_GENRES = ['Mystery', 'Romance', 'Sports', 'Horror', 'Sci-Fi', 'Comedy', 'Fantasy', 'Psychological', 'Slice of Life'];
+function chHash(str) { let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function monthChallenges(key) {
+  let seed = chHash(key);
+  const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed / 4294967296; };
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const gen = pick(CH_GENRES);
+  const pool = [
+    { id: 'finish', ico: '✅', goal: pick([2, 3]), txt: n => `Fejezz be ${n} animét` },
+    { id: 'eps', ico: '📺', goal: pick([20, 30, 50]), txt: n => `Nézz meg ${n} részt` },
+    { id: 'days', ico: '📅', goal: pick([5, 8, 12]), txt: n => `Nézz animét ${n} különböző napon` },
+    { id: 'movie', ico: '🎬', goal: 1, txt: () => 'Nézz meg egy anime filmet' },
+    { id: 'classic', ico: '📼', goal: 1, txt: () => 'Nézz bele egy 2005 előtti klasszikusba' },
+    { id: 'genre', ico: '🎭', goal: 3, gen, txt: n => `Nézz meg ${n} részt egy ${g(gen).toLowerCase()} animéből` },
+    { id: 'start', ico: '🆕', goal: 2, txt: n => `Kezdj bele ${n} új animébe` },
+    { id: 'score', ico: '⭐', goal: 3, txt: n => `Pontozz ${n} animét` },
+  ];
+  const out = [];
+  while (out.length < 4) { const c = pick(pool); if (!out.find(o => o.id === c.id)) out.push(c); }
+  return out;
+}
+function chProgress(c, ev) {
+  const eps = ev.filter(x => x.type === 'ep' && x.n > 0), L = id => S.list[id] || {};
+  switch (c.id) {
+    case 'finish': return new Set(ev.filter(x => x.type === 'done').map(x => x.id)).size;
+    case 'eps': return eps.reduce((s, x) => s + x.n, 0);
+    case 'days': return new Set(eps.map(x => new Date(x.t).toDateString())).size;
+    case 'movie': return new Set(ev.filter(x => x.type === 'done' && L(x.id).format === 'MOVIE').map(x => x.id)).size;
+    case 'classic': return eps.some(x => L(x.id).year && L(x.id).year < 2005) ? 1 : 0;
+    case 'genre': return eps.filter(x => (L(x.id).genres || []).includes(c.gen)).reduce((s, x) => s + x.n, 0);
+    case 'start': return new Set(ev.filter(x => x.type === 'start').map(x => x.id)).size;
+    case 'score': return new Set(ev.filter(x => x.type === 'score').map(x => x.id)).size;
+  }
+  return 0;
+}
+const CH_RANKS = [[0, '🌱 Újonc'], [300, '📖 Otaku-tanonc'], [800, '🎌 Otaku'], [1500, '🍥 Senpai'], [3000, '🧙 Sensei'], [5000, '👑 Anime-legenda']];
+function renderChallenges() {
+  const now = new Date();
+  const key = `${now.getFullYear()}-${now.getMonth() + 1}`;
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).getTime(), to = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+  const ev = (S.log || []).filter(x => x.t >= from && x.t < to);
+  S.chDone = S.chDone || {}; S.chDone[key] = S.chDone[key] || {};
+  const list = monthChallenges(key).map(c => ({ c, cur: Math.min(c.goal, chProgress(c, ev)) }));
+  let fresh = 0;
+  for (const { c, cur } of list) if (cur >= c.goal && !S.chDone[key][c.id]) { S.chDone[key][c.id] = 1; fresh++; }
+  if (fresh) { save(); toast(`🎯 Kihívás teljesítve! +${fresh * 100} pont`); }
+  const pts = Object.values(S.chDone).reduce((s, m) => s + Object.keys(m).length * 100, 0);
+  let ri = 0; while (ri + 1 < CH_RANKS.length && pts >= CH_RANKS[ri + 1][0]) ri++;
+  const next = CH_RANKS[ri + 1];
+  const daysLeft = Math.ceil((to - Date.now()) / 86400000);
+  $('meOut').innerHTML = `
+    <div class="card persona"><span class="small">A rangod</span><b>${CH_RANKS[ri][1]}</b><p class="small" style="color:var(--text);margin-bottom:0">${pts} pont${next ? ` · ${next[0] - pts} kell a(z) „${next[1]}” rangig` : ' · elérted a csúcsot!'}</p></div>
+    <h2>🎯 ${MONTHS[now.getMonth()][0].toUpperCase() + MONTHS[now.getMonth()].slice(1)} kihívásai <span class="small">még ${daysLeft} nap</span></h2>
+    <div class="card">${list.map(({ c, cur }) => `
+      <div class="ch ${cur >= c.goal ? 'ok' : ''}">
+        <b>${cur >= c.goal ? '✅' : c.ico} ${esc(c.txt(c.goal))}</b> <span class="small">· 100 pont</span>
+        <div class="prog"><i style="width:${cur / c.goal * 100}%"></i></div>
+        <span class="small">${cur} / ${c.goal}</span>
+      </div>`).join('')}</div>
+    <p class="small">Minden hónapban 4 új kihívás jön. A haladást a +1 gombos nézésekből, a befejezésekből és a pontozásokból számolja (ebben a hónapban).</p>`;
+}
+
+// ---------- Csata: saját kedvenc-rangsor párosításokból ----------
+let battlePair = null;
+function battlePool() { return Object.values(S.list).filter(x => x.status !== 'plan' && (x.progress > 0 || x.status === 'done')); }
+function newPair() {
+  const pool = battlePool();
+  if (pool.length < 2) return null;
+  // A kevesebbet csatázók előnyben, hogy mindenki sorra kerüljön.
+  const w = x => 1 / (1 + ((S.battles || {})[x.id] || 0));
+  const pickW = (arr) => { const tot = arr.reduce((s, x) => s + w(x), 0); let r = Math.random() * tot; for (const x of arr) { r -= w(x); if (r <= 0) return x; } return arr[arr.length - 1]; };
+  const a = pickW(pool), b = pickW(pool.filter(x => x.id !== a.id));
+  return [a.id, b.id];
+}
+function renderBattle() {
+  S.elo = S.elo || {}; S.battles = S.battles || {};
+  if (!battlePair || !S.list[battlePair[0]] || !S.list[battlePair[1]]) battlePair = newPair();
+  const ranked = battlePool().filter(x => S.battles[x.id]).sort((a, b) => (S.elo[b.id] || 1000) - (S.elo[a.id] || 1000));
+  const total = Object.values(S.battles).reduce((s, n) => s + n, 0) / 2;
+  $('meOut').innerHTML = battlePair ? `
+    <h2>⚔️ Melyik a jobb?</h2>
+    <div class="card"><div class="vs">
+      ${[0, 1].map(i => { const x = S.list[battlePair[i]]; return `<div class="side" data-win="${i}"><img src="${esc(x.cover)}" alt=""><b>${esc(x.title)}</b></div>`; }).join('<div class="mid">VS</div>')}
+    </div><button class="btn full" id="skipBattle">🤷 Nem tudok dönteni</button></div>
+    <h2>🏆 A te rangsorod <span class="small">${Math.round(total)} csata</span></h2>
+    <div class="card">${ranked.length ? ranked.slice(0, 25).map((x, i) => `<div class="rank-row" data-id="${x.id}"><b style="width:28px">${i + 1}.</b><img src="${esc(x.cover)}" alt=""><span class="grow">${esc(x.title)}</span><span class="small">${Math.round(S.elo[x.id] || 1000)}</span></div>`).join('') : '<p class="small" style="margin:0">Csatázz néhányat, és kialakul a saját kedvenc-rangsorod!</p>'}
+    ${ranked.length ? '<button class="btn full" id="resetBattle" style="color:#ff8095">Rangsor nullázása</button>' : ''}</div>`
+    : '<div class="card"><p class="small" style="margin:0">Legalább 2 olyan anime kell a listádra, amit már (legalább részben) láttál.</p></div>';
+  $('meOut').querySelectorAll('[data-win]').forEach(el => el.onclick = () => {
+    const win = battlePair[+el.dataset.win], lose = battlePair[1 - +el.dataset.win];
+    const ra = S.elo[win] || 1000, rb = S.elo[lose] || 1000;
+    const ea = 1 / (1 + Math.pow(10, (rb - ra) / 400));
+    S.elo[win] = ra + 32 * (1 - ea); S.elo[lose] = rb - 32 * (1 - ea);
+    S.battles[win] = (S.battles[win] || 0) + 1; S.battles[lose] = (S.battles[lose] || 0) + 1;
+    save(); battlePair = newPair(); renderBattle();
+  });
+  const sk = $('skipBattle'); if (sk) sk.onclick = () => { battlePair = newPair(); renderBattle(); };
+  const rs = $('resetBattle'); if (rs) rs.onclick = () => { if (confirm('Nullázod a rangsort?')) { S.elo = {}; S.battles = {}; save(); renderBattle(); } };
+}
+
+// ---------- Mit nézzek utána? (befejezéskor) ----------
+async function nextPopup(id) {
+  const e = S.list[id];
+  if (!e) return;
+  const modal = $('modal');
+  modal.innerHTML = `<div class="dbody" style="text-align:center"><div style="font-size:50px">🎉</div><h2 style="justify-content:center">Befejezted: ${esc(e.title)}!</h2><p class="loading">Keresem, mit nézz utána…</p></div>`;
+  $('modalBg').classList.add('show');
+  let m;
+  try { m = (await gql(`query($id: Int) { Media(id: $id) { id relations { edges { relationType node { ${CARD} type } } } recommendations(perPage: 8, sort: RATING_DESC) { nodes { mediaRecommendation { ${CARD} } } } } }`, { id }, 60 * 60 * 1000)).Media; }
+  catch (err) { modal.innerHTML = `<div class="dbody" style="text-align:center"><div style="font-size:50px">🎉</div><h2 style="justify-content:center">Befejezted: ${esc(e.title)}!</h2><p class="small">${esc(err.message)}</p><button class="btn full" data-close>Bezár</button></div>`; return; }
+  const seq = (m.relations.edges || []).filter(r => r.node.type === 'ANIME' && r.relationType === 'SEQUEL').map(r => r.node);
+  const recs = (m.recommendations.nodes || []).map(n => n.mediaRecommendation).filter(r => r && !seq.find(s => s.id === r.id)).slice(0, 6);
+  modal.innerHTML = `<div class="dbody">
+    <div style="text-align:center;font-size:50px">🎉</div>
+    <h2 style="justify-content:center;text-align:center">Befejezted: ${esc(e.title)}!</h2>
+    ${!e.score ? `<p class="small" style="text-align:center">Ne felejtsd el pontozni – koppints rá a listádon.</p>` : ''}
+    ${seq.length ? `<h2>➡️ Van folytatása!</h2><div class="shelf">${seq.map(poster).join('')}</div>` : ''}
+    ${recs.length ? `<h2>⏭️ Mit nézz utána?</h2><div class="shelf">${recs.map(poster).join('')}</div>` : ''}
+    ${!seq.length && !recs.length ? '<p class="small">Erre most nincs ajánlásom – nézz körül a 🎲 Mit nézzek? fülön!</p>' : ''}
+    <button class="btn full" data-close>Bezár</button></div>`;
+}
 
 // ---------- MyAnimeList import ----------
 // A MAL nyilvános listája egy JSON-címen olvasható; ezt a felhasználó bemásolja, így nincs szükség MAL-fiókos engedélyre.
@@ -750,7 +977,7 @@ async function importMal(items) {
       found.add(m.idMal);
       const cur = S.list[m.id];
       if (!cur) {
-        S.list[m.id] = Object.assign(snapshot(m), { status: x.status, progress: x.progress, score: x.score, rewatch: x.rewatch, note: x.note, added: Date.now(), updated: Date.now(), tier: '' });
+        S.list[m.id] = Object.assign(snapshot(m), { status: x.status, progress: x.progress, score: x.score, rewatch: x.rewatch, note: x.note, added: Date.now(), updated: Date.now() });
         added++;
       } else if (x.progress > cur.progress || (x.status === 'done' && cur.status !== 'done')) {
         Object.assign(cur, { status: x.status, progress: Math.max(x.progress, cur.progress), updated: Date.now() });
@@ -795,7 +1022,7 @@ $('malFile').addEventListener('change', e => {
 
 // ---------- Mentés ----------
 $('expBtn').onclick = () => {
-  const blob = new Blob([JSON.stringify({ app: 'anime-hub', version: 1, date: new Date().toISOString(), list: S.list })], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'anime-hub', version: 2, date: new Date().toISOString(), list: S.list, log: S.log || [], elo: S.elo || {}, battles: S.battles || {}, chDone: S.chDone || {} })], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `anime-hub-mentes-${new Date().toISOString().slice(0, 10)}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   toast('Mentve a Letöltések közé 💾');
@@ -808,7 +1035,12 @@ $('impIn').addEventListener('change', async e => {
     const d = JSON.parse(await f.text());
     if (d.app !== 'anime-hub') throw new Error();
     if (!confirm('Visszaállítod? A mentésben lévő animék hozzáadódnak a listádhoz.')) return;
-    Object.assign(S.list, d.list); save(); refresh(); toast('Visszaállítva ✅');
+    Object.assign(S.list, d.list);
+    if (d.log) { const seen = new Set((S.log || []).map(x => x.t + ':' + x.id + ':' + x.type)); S.log = (S.log || []).concat(d.log.filter(x => !seen.has(x.t + ':' + x.id + ':' + x.type))).sort((a, b) => a.t - b.t); }
+    if (d.elo) S.elo = Object.assign({}, d.elo, S.elo);
+    if (d.battles) S.battles = Object.assign({}, d.battles, S.battles);
+    if (d.chDone) for (const k of Object.keys(d.chDone)) S.chDone = Object.assign(S.chDone || {}, { [k]: Object.assign({}, d.chDone[k], (S.chDone || {})[k]) });
+    save(); refresh(); toast('Visszaállítva ✅');
   } catch (err) { toast('Ez nem egy Anime Hub mentés.'); }
 });
 
