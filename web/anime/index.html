@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Csak az AniList adatbázisa érhető el (keresés, adatok, borítóképek); a listád a telefonon marad. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st; connect-src 'self' https://graphql.anilist.co; frame-src 'none'; object-src 'none'; base-uri 'self'">
+<!-- Csak az AniList (keresés, adatok, borítók) és a MyMemory fordító (csak az anime-leírás szövege) érhető el; a listád a telefonon marad. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st; connect-src 'self' https://graphql.anilist.co https://api.mymemory.translated.net; frame-src 'none'; object-src 'none'; base-uri 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0f0c1d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -157,7 +157,7 @@ a { color: var(--accent-2); }
 </style>
 </head>
 <body>
-<header><h1>🌸 Anime Hub</h1><span class="small">🔒 a listád csak nálad</span></header>
+<header><button class="btn" id="backBtn" style="visibility:hidden;padding:6px 12px;margin-right:8px">‹ Vissza</button><h1 style="flex:1">🌸 Anime Hub</h1><span class="small">🔒 a listád csak nálad</span></header>
 
 <main>
   <!-- FELFEDEZÉS -->
@@ -329,7 +329,7 @@ async function renderHome() {
        <h2>🍂 ${SEASON_HU[season]} ${year} – ebben a szezonban</h2><div class="shelf">${d.season.media.map(poster).join('')}</div>
        ${d.next.media.length ? `<h2>🌱 Jövő szezon: ${SEASON_HU[nx.season]} ${nx.year} <button class="btn" id="nextAll" style="padding:4px 10px;font-size:12px">Mind ›</button></h2><div class="shelf">${d.next.media.map(poster).join('')}</div>` : ''}
        <h2>👑 Minden idők legjobbjai</h2><div class="shelf">${d.top.media.map(poster).join('')}</div>`;
-    const na = $('nextAll'); if (na) na.onclick = openNextSeason;
+    const na = $('nextAll'); if (na) na.onclick = () => openNextSeason();
   } catch (e) { out.innerHTML = errHtml(e); }
 }
 // Premier: ha ismert az 1. rész pontos ideje, azt használjuk, különben a kezdő dátumot.
@@ -346,9 +346,10 @@ function premiereTxt(m) {
   const date = new Date(p.t).toLocaleDateString('hu-HU', p.exact ? { month: 'long', day: 'numeric' } : { year: 'numeric', month: 'long' });
   return days > 0 ? `${date} · ${p.exact ? '' : 'kb. '}${days} nap múlva` : `${date} · már elindult`;
 }
-async function openNextSeason() {
+async function openNextSeason(fromHistory) {
   const nx = nextSeason(), modal = $('modal');
   modal.innerHTML = '<p class="loading">Betöltés…</p>';
+  if (!fromHistory) pushNav({ modal: 'next' });
   $('modalBg').classList.add('show');
   let list = [];
   try {
@@ -413,9 +414,10 @@ function markDone(e) {
   setTimeout(() => nextPopup(e.id), 400);
 }
 const STATUSES = [['watching', '▶️ Nézem'], ['plan', '📌 Tervezem'], ['done', '✅ Befejeztem'], ['paused', '⏸️ Szüneteltetem'], ['dropped', '🗑️ Abbahagytam']];
-async function openAnime(id) {
+async function openAnime(id, fromHistory) {
   const modal = $('modal');
   modal.innerHTML = '<p class="loading">Betöltés…</p>';
+  if (!fromHistory) pushNav({ modal: 'anime', id });
   $('modalBg').classList.add('show');
   let m;
   try { m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media; }
@@ -444,7 +446,10 @@ async function openAnime(id) {
 
       <div class="card" style="border-color:${accent}">${listEditor(m, e)}</div>
 
-      ${desc ? `<p class="desc clamp" id="desc">${esc(desc).replace(/\n/g, '<br>')}</p><button class="btn" id="more" style="padding:4px 10px;font-size:12px">Több ▾</button> <span class="small">(angolul, az AniListről)</span>` : ''}
+      ${desc ? `<p class="desc clamp" id="desc">${esc(desc).replace(/\n/g, '<br>')}</p><div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn" id="more" style="padding:4px 10px;font-size:12px">Több ▾</button>
+        <button class="btn" id="trBtn" style="padding:4px 10px;font-size:12px">🇭🇺 Magyarul</button>
+        <label class="small" style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="trAuto" ${S.autoHu ? 'checked' : ''}> mindig magyarul</label></div>
+        <p class="small" id="trNote" style="margin:4px 0 0"></p>` : ''}
       ${chars.length ? `<h2>Szereplők</h2><div class="chars">${chars.map(c => `<div><img src="${esc(c.node.image.medium)}" alt="" loading="lazy">${esc(c.node.name.full)}${c.role === 'MAIN' ? '<br><span class="small">főszereplő</span>' : ''}</div>`).join('')}</div>` : ''}
       ${rels.length ? `<h2>Kapcsolódó</h2><div class="shelf">${rels.map(r => poster(r.node).replace('<div class="t">', `<div class="small">${REL[r.relationType]}</div><div class="t">`)).join('')}</div>` : ''}
       ${recs.length ? `<h2>Ha ez tetszett…</h2><div class="shelf">${recs.map(poster).join('')}</div>` : ''}
@@ -457,6 +462,11 @@ async function openAnime(id) {
   const more = $('more');
   if (more) more.onclick = () => { $('desc').classList.toggle('clamp'); more.textContent = $('desc').classList.contains('clamp') ? 'Több ▾' : 'Kevesebb ▴'; };
   bindEditor(m);
+  if ($('trBtn')) {
+    $('trBtn').onclick = () => toggleHu(m.id, desc);
+    $('trAuto').onchange = () => { S.autoHu = $('trAuto').checked; save(); if (S.autoHu && !$('desc').dataset.hu) toggleHu(m.id, desc); };
+    if (S.autoHu || trCache()[m.id]) toggleHu(m.id, desc);
+  }
   modal.scrollTop = 0;
 }
 function listEditor(m, e) {
@@ -473,6 +483,80 @@ function listEditor(m, e) {
     <div class="small" style="margin-top:10px">Saját jegyzet (kedvenc jelenet, gondolatok…)</div>
     <textarea id="note" placeholder="pl. a 12. rész vége 😭">${esc(e.note || '')}</textarea>
     <button class="btn full" id="rmList" style="color:#ff8095">Törlés a listáról</button>`;
+}
+// ---------- Leírás fordítása magyarra ----------
+// 1) A Chrome beépített, telefonon futó fordítója, ha elérhető; 2) különben a MyMemory ingyenes fordító
+// (csak a leírás szövege megy ki); 3) ha egyik sem megy, Google Fordító link. Az eredményt megjegyezzük.
+const TR_KEY = 'anime-hub-tr';
+function trCache() { try { return JSON.parse(localStorage.getItem(TR_KEY)) || {}; } catch (e) { return {}; } }
+function trSave(id, text) {
+  const c = trCache(); c[id] = text;
+  const keys = Object.keys(c); if (keys.length > 400) keys.slice(0, keys.length - 400).forEach(k => delete c[k]);
+  try { localStorage.setItem(TR_KEY, JSON.stringify(c)); } catch (e) {}
+}
+function chunks(text, max = 450) {
+  const out = []; let cur = '';
+  for (const part of text.split(/(?<=[.!?])\s+|\n+/)) {
+    if (!part.trim()) continue;
+    if ((cur + ' ' + part).length > max && cur) { out.push(cur); cur = ''; }
+    if (part.length > max) { for (let i = 0; i < part.length; i += max) out.push(part.slice(i, i + max)); continue; }
+    cur = cur ? cur + ' ' + part : part;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+async function translateHu(text) {
+  // A beépített fordítót csak akkor használjuk, ha a nyelvi csomag már a telefonon van (különben a letöltésre várna).
+  if ('Translator' in self) {
+    try {
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+      const local = (async () => {
+        const av = await Translator.availability({ sourceLanguage: 'en', targetLanguage: 'hu' });
+        if (av !== 'available') return null;
+        const tr = await Translator.create({ sourceLanguage: 'en', targetLanguage: 'hu' });
+        const parts = [];
+        for (const para of text.split(/\n+/)) parts.push(para.trim() ? await tr.translate(para) : '');
+        return parts.join('\n\n');
+      })();
+      const res = await Promise.race([local, timeout]);
+      if (res) return res;
+    } catch (e) { /* tovább az online fordítóra */ }
+  }
+  const paras = text.split(/\n{2,}/).filter(p => p.trim());
+  const outParas = [];
+  for (const para of paras) {
+    const outParts = [];
+    for (const c of chunks(para)) {
+      let r;
+      try { r = await fetch('https://api.mymemory.translated.net/get?langpair=en|hu&q=' + encodeURIComponent(c)); } catch (e) { throw new Error('Nem érem el a fordítót. Van internet?'); }
+      const j = await r.json().catch(() => ({}));
+      const t = j.responseData && j.responseData.translatedText;
+      if (!r.ok || !t || j.quotaFinished || /MYMEMORY WARNING/i.test(t)) throw new Error('A mai ingyenes fordítási keret elfogyott.');
+      outParts.push(t);
+    }
+    outParas.push(outParts.join(' '));
+  }
+  return outParas.join('\n\n');
+}
+async function toggleHu(id, original) {
+  const el = $('desc'), btn = $('trBtn'), note = $('trNote');
+  if (!el) return;
+  const show = t => { el.innerHTML = esc(t).replace(/\n/g, '<br>'); };
+  if (el.dataset.hu) { show(original); delete el.dataset.hu; btn.textContent = '🇭🇺 Magyarul'; note.textContent = ''; return; }
+  let hu = trCache()[id];
+  if (!hu) {
+    btn.disabled = true; btn.textContent = '⏳ Fordítás…';
+    try { hu = await translateHu(original); trSave(id, hu); }
+    catch (e) {
+      btn.disabled = false; btn.textContent = '🇭🇺 Magyarul';
+      note.innerHTML = `⚠️ ${esc(e.message)} <a href="https://translate.google.com/?sl=en&tl=hu&op=translate&text=${encodeURIComponent(original.slice(0, 4500))}" target="_blank" rel="noopener noreferrer">Megnyitás a Google Fordítóban ↗</a>`;
+      return;
+    }
+    btn.disabled = false;
+    if (!$('desc') || $('desc') !== el) return; // közben bezárták vagy másik animét nyitottak
+  }
+  show(hu); el.dataset.hu = '1'; btn.textContent = '🇬🇧 Eredeti';
+  note.textContent = 'Gépi fordítás – lehetnek benne pontatlanságok.';
 }
 function bindEditor(m) {
   const modal = $('modal');
@@ -514,7 +598,9 @@ function bumpEp(e, dlt, after) {
   e.updated = Date.now(); save();
   if (after) after();
 }
-function closeModal() { $('modalBg').classList.remove('show'); refresh(); }
+// Ha a felugró ablak az előzményekben van, a bezárás egy „vissza” lépés – így a telefon vissza gombjával is egyezik.
+function closeModal() { if (history.state && history.state.modal) history.back(); else hideModal(); }
+function hideModal() { const was = $('modalBg').classList.contains('show'); $('modalBg').classList.remove('show'); if (was) refresh(); }
 $('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg' || e.target.closest('[data-close]')) closeModal(); });
 
 // ---------- Listám ----------
@@ -716,7 +802,7 @@ function renderMe() {
   $('meOut').style.display = S.meTab === 'data' ? 'none' : '';
   ({ dna: renderDna, time: renderTime, year: renderYear, ch: renderChallenges, battle: renderBattle, data: () => {} })[S.meTab]();
 }
-$('meTabs').addEventListener('click', e => { const c = e.target.closest('[data-me]'); if (c) { S.meTab = c.dataset.me; save(); renderMe(); } });
+$('meTabs').addEventListener('click', e => { const c = e.target.closest('[data-me]'); if (c && c.dataset.me !== S.meTab) { S.meTab = c.dataset.me; save(); renderMe(); pushNav(); } });
 function renderDna() {
   const st = stats();
   const top = st.genres[0] && PERSONA[st.genres[0][0]];
@@ -1018,11 +1104,12 @@ function renderBattle() {
 }
 
 // ---------- Mit nézzek utána? (befejezéskor) ----------
-async function nextPopup(id) {
+async function nextPopup(id, fromHistory) {
   const e = S.list[id];
   if (!e) return;
   const modal = $('modal');
   modal.innerHTML = `<div class="dbody" style="text-align:center"><div style="font-size:50px">🎉</div><h2 style="justify-content:center">Befejezted: ${esc(e.title)}!</h2><p class="loading">Keresem, mit nézz utána…</p></div>`;
+  if (!fromHistory) pushNav({ modal: 'after', id });
   $('modalBg').classList.add('show');
   let m;
   try { m = (await gql(`query($id: Int) { Media(id: $id) { id relations { edges { relationType node { ${CARD} type } } } recommendations(perPage: 8, sort: RATING_DESC) { nodes { mediaRecommendation { ${CARD} } } } } }`, { id }, 60 * 60 * 1000)).Media; }
@@ -1160,12 +1247,49 @@ $('impIn').addEventListener('change', async e => {
 // ---------- Navigáció ----------
 const RENDER = { 'v-home': renderHome, 'v-list': renderList, 'v-cal': renderCal, 'v-pick': renderPickUI, 'v-me': renderMe };
 function refresh() { const v = document.querySelector('.view.active').id; if (v !== 'v-home' || !$('q').value.trim()) RENDER[v](); }
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === b.dataset.view));
-  RENDER[b.dataset.view]();
+function curView() { return document.querySelector('.view.active').id; }
+function showView(view) {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.view === view));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
+  RENDER[view]();
   window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  if (b.dataset.view === curView()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  showView(b.dataset.view); pushNav();
 });
+
+// ---------- Vissza gomb (képernyőn és a telefonon) ----------
+// Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
+// A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
+const MODALS = { anime: id => openAnime(id, true), next: () => openNextSeason(true), after: id => nextPopup(id, true) };
+let exitTimer = null;
+function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
+function updateBack() {
+  const st = history.state || {};
+  $('backBtn').style.visibility = !st.root && (st.v !== 'v-home' || st.modal) ? 'visible' : 'hidden';
+}
+$('backBtn').onclick = () => history.back();
+window.addEventListener('popstate', e => {
+  const st = e.state || { root: true };
+  if (st.root) {
+    hideModal();
+    if (curView() !== 'v-home') showView('v-home');
+    toast('Nyomd meg még egyszer a kilépéshez');
+    clearTimeout(exitTimer);
+    exitTimer = setTimeout(() => { if (history.state && history.state.root) { history.pushState({ v: 'v-home' }, ''); updateBack(); } }, 2000);
+    updateBack();
+    return;
+  }
+  clearTimeout(exitTimer);
+  if (st.me && st.me !== S.meTab) { S.meTab = st.me; save(); if (curView() === 'v-me' && st.v === 'v-me') renderMe(); }
+  if (curView() !== st.v) showView(st.v);
+  if (st.modal) MODALS[st.modal](st.id); else hideModal();
+  updateBack();
+});
+history.replaceState({ v: 'v-home', root: true }, '');
+history.pushState({ v: 'v-home' }, '');
+updateBack();
 
 renderHome();
 syncAiring();

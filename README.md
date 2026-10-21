@@ -78,8 +78,10 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **🌴 Sötét Utas** (`web/sotet/`) – Dexter-szerű kettős élet szimulátor, nyomozás nélkül, ezért más, mint A Kód. Minden nap 4 napszakból áll, és mindegyikre választasz egy akciót: munka, futás, megfigyelés, idő Lilivel, előkészítés, lecsapás, takarítás, pihenés. Négy mérőt kell egyensúlyban tartani: a Sötét Utas éhségét, a gyanút, a kapcsolatot és az energiát. Közben véletlen helyzetek jönnek két választással, minden lecsapás után pedig egy takarítós reflexjáték. A játék végtelen, napszámlálóval és top 10-es helyi ranglistával.
 
-- **🌸 Anime Hub** (`web/anime/`) – saját anime-központ az [AniList](https://anilist.co) nyilvános API-jával. A lista, a pontozás és a jegyzetek **csak a telefonon** vannak. Az AniList felé csak keresések és azonosítók mennek, a CSP mást nem enged.
+- **🌸 Anime Hub** (`web/anime/`) – saját anime-központ az [AniList](https://anilist.co) nyilvános API-jával. A lista, a pontozás és a jegyzetek **csak a telefonon** vannak. Az AniList felé csak keresések és azonosítók mennek, a fordítóhoz csak az anime-leírás; a CSP mást nem enged.
   - **Felfedezés:** felkapott, idei szezon, jövő szezon (premierlista dátummal és visszaszámlálással, 📌 gombbal a Tervezem listára), minden idők legjobbjai, kereső; részletes adatlap bannerrel, szereplőkkel, kapcsolódó részekkel és ajánlásokkal.
+  - **🇭🇺 Magyar leírás:** az adatlapon egy gomb (vagy a „mindig magyarul” kapcsoló) lefordítja a leírást. Ha a Chrome beépített, telefonon futó fordítója már elérhető, azt használja; különben a MyMemory ingyenes fordítót (csak a leírás szövege megy ki). A fordítást megjegyzi, és ha elfogy a napi keret, Google Fordító linket ad.
+  - **Vissza gomb:** a telefon vissza gombja az appon belül lép vissza (fülek, adatlapok, ablakok), fent „‹ Vissza” gomb is van, a kezdőképernyőn pedig dupla nyomás kell a kilépéshez.
   - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig.
   - **Műsor:** heti vetítési naptár, a listádon lévők kiemelésével.
   - **Mit nézzek?** Hangulat (8 féle) és rendelkezésre álló idő szerinti ajánló a „Tervezem” listából vagy újdonságokból, plusz egy „még egy rész” alvás-kalkulátor.
