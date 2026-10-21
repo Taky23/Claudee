@@ -284,6 +284,11 @@ const STATUS_AL = { FINISHED: 'Befejezett', RELEASING: 'Fut', NOT_YET_RELEASED: 
 const GENRE_HU = { Action: 'Akció', Adventure: 'Kaland', Comedy: 'Vígjáték', Drama: 'Dráma', Ecchi: 'Ecchi', Fantasy: 'Fantasy', Horror: 'Horror', 'Mahou Shoujo': 'Varázslólány', Mecha: 'Mecha', Music: 'Zene', Mystery: 'Rejtély', Psychological: 'Pszichológiai', Romance: 'Romantika', 'Sci-Fi': 'Sci-fi', 'Slice of Life': 'Hétköznapi', Sports: 'Sport', Supernatural: 'Természetfeletti', Thriller: 'Thriller' };
 const g = x => GENRE_HU[x] || x;
 const SEASON_HU = { WINTER: 'Tél', SPRING: 'Tavasz', SUMMER: 'Nyár', FALL: 'Ősz' };
+function nextSeason() {
+  const { season, year } = curSeason();
+  const order = ['WINTER', 'SPRING', 'SUMMER', 'FALL'], i = order.indexOf(season);
+  return i === 3 ? { season: 'WINTER', year: year + 1 } : { season: order[i + 1], year };
+}
 function curSeason() { const d = new Date(), m = d.getMonth(); return { season: ['WINTER', 'WINTER', 'WINTER', 'SPRING', 'SPRING', 'SPRING', 'SUMMER', 'SUMMER', 'SUMMER', 'FALL', 'FALL', 'FALL'][m], year: d.getFullYear() }; }
 function untilTxt(sec) {
   if (sec <= 0) return 'most';
@@ -306,19 +311,71 @@ document.addEventListener('click', e => {
 async function renderHome() {
   const out = $('homeOut');
   const { season, year } = curSeason();
+  const nx = nextSeason();
   try {
-    const d = await gql(`query($season: MediaSeason, $year: Int) {
+    const d = await gql(`query($season: MediaSeason, $year: Int, $ns: MediaSeason, $ny: Int) {
+      next: Page(perPage: 15) { media(type: ANIME, season: $ns, seasonYear: $ny, sort: POPULARITY_DESC, isAdult: false) { ${CARD} startDate { year month day } } }
       trending: Page(perPage: 15) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${CARD} } }
       season: Page(perPage: 15) { media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false) { ${CARD} } }
       top: Page(perPage: 15) { media(type: ANIME, sort: SCORE_DESC, isAdult: false, format_in: [TV, MOVIE, ONA]) { ${CARD} } }
-    }`, { season, year });
+    }`, { season, year, ns: nx.season, ny: nx.year });
     const watching = Object.values(S.list).filter(x => x.status === 'watching').sort((a, b) => b.updated - a.updated);
     out.innerHTML =
       (watching.length ? `<h2>▶️ Folytasd</h2><div class="shelf">${watching.map(x => poster(x)).join('')}</div>` : '') +
       `<h2>🔥 Most felkapott</h2><div class="shelf">${d.trending.media.map(poster).join('')}</div>
        <h2>🍂 ${SEASON_HU[season]} ${year} – ebben a szezonban</h2><div class="shelf">${d.season.media.map(poster).join('')}</div>
+       ${d.next.media.length ? `<h2>🌱 Jövő szezon: ${SEASON_HU[nx.season]} ${nx.year} <button class="btn" id="nextAll" style="padding:4px 10px;font-size:12px">Mind ›</button></h2><div class="shelf">${d.next.media.map(poster).join('')}</div>` : ''}
        <h2>👑 Minden idők legjobbjai</h2><div class="shelf">${d.top.media.map(poster).join('')}</div>`;
+    const na = $('nextAll'); if (na) na.onclick = openNextSeason;
   } catch (e) { out.innerHTML = errHtml(e); }
+}
+// Premier: ha ismert az 1. rész pontos ideje, azt használjuk, különben a kezdő dátumot.
+function premiere(m) {
+  if (m.nextAiringEpisode && m.nextAiringEpisode.episode === 1) return { t: m.nextAiringEpisode.airingAt * 1000, exact: true };
+  const sd = m.startDate || {};
+  if (sd.year && sd.month) return { t: new Date(sd.year, sd.month - 1, sd.day || 1).getTime(), exact: !!sd.day };
+  return null;
+}
+function premiereTxt(m) {
+  const p = premiere(m);
+  if (!p) return 'Időpont még nincs';
+  const days = Math.ceil((p.t - Date.now()) / 86400000);
+  const date = new Date(p.t).toLocaleDateString('hu-HU', p.exact ? { month: 'long', day: 'numeric' } : { year: 'numeric', month: 'long' });
+  return days > 0 ? `${date} · ${p.exact ? '' : 'kb. '}${days} nap múlva` : `${date} · már elindult`;
+}
+async function openNextSeason() {
+  const nx = nextSeason(), modal = $('modal');
+  modal.innerHTML = '<p class="loading">Betöltés…</p>';
+  $('modalBg').classList.add('show');
+  let list = [];
+  try {
+    for (let page = 1; page <= 2; page++) {
+      const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
+        media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false) { ${CARD} startDate { year month day } } } }`, { s: nx.season, y: nx.year, p: page }, 60 * 60 * 1000);
+      list = list.concat(d.Page.media);
+      if (!d.Page.pageInfo.hasNextPage) break;
+    }
+  } catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
+  list.sort((a, b) => ((premiere(a) || { t: 9e15 }).t) - ((premiere(b) || { t: 9e15 }).t));
+  const draw = () => {
+    modal.innerHTML = `<div class="dbody"><h2>🌱 ${SEASON_HU[nx.season]} ${nx.year} – premierek</h2>
+      <p class="small" style="margin-top:0">Premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
+      ${list.map(m => `<div class="entry">
+        <img src="${esc(cover(m))}" alt="" loading="lazy">
+        <div class="info" data-id="${m.id}"><b>${esc(title(m))}</b>
+          <div class="small">${FORMAT[m.format] || ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''} · ${m.genres.slice(0, 3).map(g).join(', ')}</div>
+          <div class="next">🗓️ ${premiereTxt(m)}</div></div>
+        ${S.list[m.id] ? '<span class="small">✓ listán</span>' : `<button class="btn" data-plan="${m.id}">📌</button>`}
+      </div>`).join('') || '<p class="small">Még nincs bejelentett anime erre a szezonra.</p>'}
+      <button class="btn full" data-close>Bezár</button></div>`;
+    modal.querySelectorAll('[data-plan]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation();
+      const m = list.find(x => x.id === +b.dataset.plan);
+      S.list[m.id] = Object.assign(snapshot(m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() });
+      save(); toast('📌 Felkerült a Tervezem listádra'); const top = modal.scrollTop; draw(); modal.scrollTop = top;
+    });
+  };
+  draw();
 }
 let searchT;
 $('q').addEventListener('input', e => {
@@ -646,13 +703,13 @@ function stats() {
     genres: Object.entries(gc).sort((a, b) => b[1] - a[1]), studios: Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 5),
   };
 }
-const ME_TABS = [['dna', '🧬 DNS'], ['year', '📆 Évkönyv'], ['ch', '🎯 Kihívások'], ['battle', '⚔️ Csata'], ['data', '⚙️ Import & mentés']];
+const ME_TABS = [['dna', '🧬 DNS'], ['time', '⏱️ Idő'], ['year', '📆 Évkönyv'], ['ch', '🎯 Kihívások'], ['battle', '⚔️ Csata'], ['data', '⚙️ Import & mentés']];
 function renderMe() {
   S.meTab = S.meTab || 'dna';
   $('meTabs').innerHTML = ME_TABS.map(([k, n]) => `<button class="chip ${S.meTab === k ? 'on' : ''}" data-me="${k}">${n}</button>`).join('');
   $('meData').style.display = S.meTab === 'data' ? '' : 'none';
   $('meOut').style.display = S.meTab === 'data' ? 'none' : '';
-  ({ dna: renderDna, year: renderYear, ch: renderChallenges, battle: renderBattle, data: () => {} })[S.meTab]();
+  ({ dna: renderDna, time: renderTime, year: renderYear, ch: renderChallenges, battle: renderBattle, data: () => {} })[S.meTab]();
 }
 $('meTabs').addEventListener('click', e => { const c = e.target.closest('[data-me]'); if (c) { S.meTab = c.dataset.me; save(); renderMe(); } });
 function renderDna() {
@@ -720,6 +777,57 @@ function wrap(x, text, cx, y, maxW, lh) {
   }
   x.fillText(line, cx, y);
 }
+// ---------- Időmérleg: az összes megnézett rész órákban, lebontva ----------
+const fmtH = min => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} ó ${m} p` : `${m} p`; };
+let timeShowAll = false;
+function renderTime() {
+  const rows = Object.values(S.list).map(x => {
+    const views = 1 + (x.rewatch || 0), dur = x.duration || 24;
+    return { x, eps: (x.progress || 0) * views, min: (x.progress || 0) * dur * views, dur, views };
+  }).filter(r => r.min > 0).sort((a, b) => b.min - a.min);
+  const total = rows.reduce((s, r) => s + r.min, 0), eps = rows.reduce((s, r) => s + r.eps, 0);
+  if (!rows.length) { $('meOut').innerHTML = '<div class="card"><p class="small" style="margin:0">Még nincs megnézett rész a listádon. Léptesd a részeket a +1 gombbal, vagy importáld a MAL-listádat!</p></div>'; return; }
+  const group = key => {
+    const m = {};
+    for (const r of rows) for (const k of [].concat(key(r.x))) if (k) m[k] = (m[k] || 0) + r.min;
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  };
+  const bars = (list, label = k => k) => { const max = list[0] ? list[0][1] : 1; return list.map(([k, v]) => `<div class="bar"><span>${esc(label(k))}</span><span class="b"><i style="width:${v / max * 100}%"></i></span><b style="min-width:62px;text-align:right">${Math.round(v / 60)} ó</b></div>`).join(''); };
+  const STATUS_NAME = Object.fromEntries(STATUSES);
+  const hours = total / 60;
+  const fun = [
+    ['😴', `${(hours / 8).toFixed(0)} teljes éjszakai alvás (8 óra)`],
+    ['💼', `${(hours / 8).toFixed(0)} munkanap`],
+    ['🎬', `${Math.round(hours / 2)} átlagos mozifilm`],
+    ['✈️', `${Math.round(hours / 13)}× repülés Budapestről Tokióba`],
+    ['📖', `kb. ${Math.round(hours / 10)} regény elolvasása`],
+  ];
+  $('meOut').innerHTML = `
+    <div class="card persona">
+      <span class="small">Összesen ennyi animét néztél</span>
+      <b class="big-num" style="display:block">${Math.floor(hours).toLocaleString('hu-HU')} óra ${Math.round(total % 60)} perc</b>
+      <p class="small" style="color:var(--text);margin-bottom:0">${eps.toLocaleString('hu-HU')} rész · ${(hours / 24).toFixed(1)} nap egyhuzamban · ${(hours / 24 / 7).toFixed(1)} hét</p>
+    </div>
+    <div class="card"><div class="small" style="margin-bottom:6px">Ennyi idő alatt akár…</div>${fun.map(([e, t]) => `<p style="margin:4px 0">${e} ${t}</p>`).join('')}</div>
+    <h2>📺 Animénként</h2>
+    <div class="card">${(timeShowAll ? rows : rows.slice(0, 15)).map(r => `
+      <div class="rank-row" data-id="${r.x.id}"><img src="${esc(r.x.cover)}" alt="">
+        <span class="grow"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.x.title)}</b>
+        <span class="small">${r.x.progress} rész × ${r.dur} perc${r.views > 1 ? ` × ${r.views} megnézés` : ''}</span></span>
+        <b style="white-space:nowrap">${fmtH(r.min)}</b></div>`).join('')}
+      ${rows.length > 15 ? `<button class="btn full" id="timeMore">${timeShowAll ? 'Kevesebb ▴' : `Mind a ${rows.length} mutatása ▾`}</button>` : ''}</div>
+    <h2>🎭 Műfajonként</h2>
+    <div class="card">${bars(group(x => x.genres || []).slice(0, 10), g)}<p class="small" style="margin-bottom:0">Egy anime több műfajba is beletartozhat, ezért ezek összege több lehet az összesnél.</p></div>
+    <h2>🎞️ Formátum szerint</h2>
+    <div class="card">${bars(group(x => FORMAT[x.format] || x.format || 'Egyéb'))}</div>
+    <h2>📋 Listánként</h2>
+    <div class="card">${bars(group(x => x.status), k => STATUS_NAME[k] || k)}</div>
+    <h2>🎬 Stúdiónként</h2>
+    <div class="card">${bars(group(x => x.studios || []).slice(0, 8))}</div>
+    <p class="small">A számítás a listádon lévő haladásból jön (rész × egy rész hossza × hányszor nézted meg). Az import után is pontos, mert az epizódhosszakat az AniListről veszi.</p>`;
+  const more = $('timeMore'); if (more) more.onclick = () => { timeShowAll = !timeShowAll; renderTime(); };
+}
+
 // ---------- Évkönyv ----------
 const MONTHS = ['január', 'február', 'március', 'április', 'május', 'június', 'július', 'augusztus', 'szeptember', 'október', 'november', 'december'];
 function yearRange() {
