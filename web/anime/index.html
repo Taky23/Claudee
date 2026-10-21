@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Csak az AniList adatbázisa érhető el (keresés, adatok, borítóképek); a listád a telefonon marad. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st; connect-src 'self' https://graphql.anilist.co; frame-src 'none'; object-src 'none'; base-uri 'self'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0f0c1d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Anime Hub">
+<title>Anime Hub</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #0f0c1d;
+  --card: #1a1530;
+  --card-2: #251e44;
+  --text: #f3efff;
+  --muted: #a79fcb;
+  --accent: #ff6fb5;
+  --accent-2: #8f7bff;
+  --ok: #5ee0a0;
+  --warn: #ffc857;
+  --line: #322a5a;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: radial-gradient(120% 50% at 50% -10%, #2a1b55 0%, var(--bg) 60%) fixed, var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom));
+}
+header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; }
+header h1 { font-size: 20px; margin: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+main { max-width: 680px; margin: 0 auto; padding: 0 12px; }
+.view { display: none; }
+.view.active { display: block; }
+h2 { font-size: 17px; margin: 18px 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin: 10px 0; }
+.small { font-size: 12px; color: var(--muted); }
+.muted { color: var(--muted); }
+input[type=search], input[type=text], input[type=number], input[type=time], textarea, select {
+  width: 100%; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card-2); color: var(--text); font: inherit; font-size: 16px;
+}
+textarea { min-height: 70px; resize: vertical; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex-shrink: 0; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 7px 12px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.chip.on { background: var(--accent); color: #2a0718; border-color: transparent; }
+.btn { border: 1px solid var(--line); background: var(--card-2); color: var(--text); border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+.btn.full { width: 100%; display: block; margin-top: 8px; text-align: center; }
+.btn.hot { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+.btn:disabled { opacity: .4; }
+.row { display: flex; gap: 8px; align-items: center; }
+.grow { flex: 1; min-width: 0; }
+/* Borító-rács */
+.shelf { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; }
+.shelf::-webkit-scrollbar { display: none; }
+.poster { width: 118px; flex-shrink: 0; cursor: pointer; }
+.poster .img { position: relative; aspect-ratio: 2/3; border-radius: 12px; overflow: hidden; background: var(--card-2); }
+.poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.poster .score { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.7); font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
+.poster .mine { position: absolute; top: 6px; right: 6px; background: var(--accent); color: #2a0718; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 6px; }
+.poster .t { font-size: 13px; font-weight: 650; margin-top: 5px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.grid .poster { width: auto; }
+/* Lista */
+.entry { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.entry:last-child { border-bottom: 0; }
+.entry img { width: 52px; height: 74px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--card-2); }
+.entry .info { flex: 1; min-width: 0; cursor: pointer; }
+.entry .info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog { height: 5px; background: var(--card-2); border-radius: 99px; overflow: hidden; margin-top: 5px; }
+.prog i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.plus { font-size: 16px; padding: 12px 14px; }
+.new { color: var(--ok); font-weight: 700; font-size: 12px; }
+.next { color: var(--warn); font-size: 12px; }
+/* Naptár */
+.day h3 { font-size: 14px; margin: 14px 0 4px; color: var(--accent); }
+.air { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px dashed var(--line); cursor: pointer; }
+.air:last-child { border-bottom: 0; }
+.air img { width: 38px; height: 54px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.air .time { font-weight: 800; font-variant-numeric: tabular-nums; width: 46px; flex-shrink: 0; }
+.air.mine { background: linear-gradient(90deg, rgba(255,111,181,.15), transparent); border-radius: 8px; }
+/* Részletek */
+.modal-bg { position: fixed; inset: 0; background: rgba(5,3,14,.75); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+.modal-bg.show { display: flex; }
+.modal { background: var(--card); width: 100%; max-width: 680px; border-radius: 22px 22px 0 0; max-height: 92dvh; overflow: auto; animation: up .22s ease; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+@keyframes up { from { transform: translateY(100%); } to { transform: none; } }
+.banner { height: 140px; background: var(--card-2) center/cover; position: relative; }
+.banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 30%, var(--card)); }
+.dhead { display: flex; gap: 12px; padding: 0 16px; margin-top: -60px; position: relative; z-index: 1; }
+.dhead img { width: 100px; aspect-ratio: 2/3; object-fit: cover; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.5); flex-shrink: 0; }
+.dhead .ttl { align-self: flex-end; }
+.dhead .ttl b { font-size: 18px; line-height: 1.2; display: block; }
+.dbody { padding: 8px 16px; }
+.tags { display: flex; gap: 5px; flex-wrap: wrap; margin: 8px 0; }
+.tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; background: var(--card-2); border: 1px solid var(--line); }
+.desc { font-size: 14px; color: #d8d2f2; }
+.desc.clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.chars { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+.chars div { width: 74px; flex-shrink: 0; font-size: 11px; text-align: center; }
+.chars img { width: 74px; height: 96px; object-fit: cover; border-radius: 10px; }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper button { width: 42px; height: 42px; font-size: 20px; padding: 0; }
+.stepper .val { font-size: 20px; font-weight: 800; min-width: 80px; text-align: center; }
+.stars { display: flex; gap: 2px; flex-wrap: wrap; }
+.stars button { border: 0; background: var(--card-2); color: var(--muted); border-radius: 8px; width: 30px; height: 32px; font-weight: 800; cursor: pointer; }
+.stars button.on { background: var(--warn); color: #2a1a00; }
+/* Profil */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.stats b { display: block; font-size: 22px; }
+.bar { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; }
+.bar span:first-child { width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .b { flex: 1; height: 10px; background: var(--card-2); border-radius: 99px; overflow: hidden; }
+.bar .b i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 99px; }
+.persona { text-align: center; padding: 18px 12px; background: linear-gradient(135deg, rgba(255,111,181,.25), rgba(143,123,255,.25)); }
+.persona .e { font-size: 50px; }
+.persona b { font-size: 20px; display: block; margin-top: 4px; }
+.tier { display: flex; gap: 8px; align-items: stretch; margin: 6px 0; }
+.tier .lbl { width: 46px; border-radius: 10px; display: grid; place-items: center; font-weight: 900; font-size: 20px; color: #1a0f00; flex-shrink: 0; }
+.tier .items { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; background: var(--card-2); border-radius: 10px; padding: 6px; min-height: 72px; align-items: center; }
+.tier .items img { width: 42px; height: 60px; object-fit: cover; border-radius: 6px; cursor: pointer; }
+.tier .add { width: 42px; height: 60px; border: 2px dashed var(--line); border-radius: 6px; display: grid; place-items: center; color: var(--muted); cursor: pointer; font-size: 20px; background: none; }
+.mood { font-size: 15px; padding: 10px 14px; }
+.pick { text-align: center; }
+.pick img { width: 160px; aspect-ratio: 2/3; object-fit: cover; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.5); cursor: pointer; }
+.pick b { display: block; font-size: 19px; margin-top: 10px; }
+.err { color: #ff8095; font-weight: 650; }
+.loading { color: var(--muted); padding: 16px 0; text-align: center; }
+.toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translate(-50%, -160%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 700; transition: transform .3s; z-index: 30; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { transform: translate(-50%, 0); }
+nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; z-index: 10; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+nav button { flex: 1; border: 0; background: none; color: var(--muted); padding: 8px 0 10px; font-size: 11px; font-weight: 650; cursor: pointer; }
+nav button span { display: block; font-size: 21px; }
+nav button.active { color: var(--accent); }
+a { color: var(--accent-2); }
+</style>
+</head>
+<body>
+<header><h1>🌸 Anime Hub</h1><span class="small">🔒 a listád csak nálad</span></header>
+
+<main>
+  <!-- FELFEDEZÉS -->
+  <section class="view active" id="v-home">
+    <input type="search" id="q" placeholder="Anime keresése…" autocomplete="off" style="margin-top:8px">
+    <div id="searchOut"></div>
+    <div id="homeOut"><p class="loading">Betöltés…</p></div>
+  </section>
+
+  <!-- LISTÁM -->
+  <section class="view" id="v-list">
+    <div class="chips" id="stChips"></div>
+    <div class="card" id="listOut"></div>
+  </section>
+
+  <!-- NAPTÁR -->
+  <section class="view" id="v-cal">
+    <div class="chips"><button class="chip on" id="calMine">⭐ Csak a listámon lévők</button></div>
+    <div id="calOut"><p class="loading">Betöltés…</p></div>
+  </section>
+
+  <!-- MIT NÉZZEK -->
+  <section class="view" id="v-pick">
+    <div class="card">
+      <b>Milyen hangulatban vagy?</b>
+      <div class="chips" id="moodChips" style="flex-wrap:wrap"></div>
+      <div class="small" style="margin-top:8px">Mennyi időd van?</div>
+      <div class="chips" id="timeChips"></div>
+      <div class="small" style="margin-top:8px">Honnan?</div>
+      <div class="chips" id="srcChips"></div>
+      <button class="btn hot full" id="pickBtn">🎲 Mutass valamit!</button>
+    </div>
+    <div id="pickOut"></div>
+    <div class="card">
+      <b>⏰ „Még egy rész” kalkulátor</b>
+      <div class="row" style="margin-top:8px"><span class="grow small">Mikor kell aludni?</span><input type="time" id="bed" value="23:30" style="width:130px"></div>
+      <div class="row" style="margin-top:6px"><span class="grow small">Egy rész hossza (perc)</span><input type="number" id="epLen" value="24" min="1" style="width:130px"></div>
+      <p id="bedOut" style="font-weight:700;margin-bottom:0"></p>
+    </div>
+  </section>
+
+  <!-- PROFIL -->
+  <section class="view" id="v-me">
+    <div id="meOut"></div>
+    <h2>🏆 Saját tier list</h2>
+    <div class="card" id="tierOut"></div>
+    <h2>💾 Mentés</h2>
+    <div class="card">
+      <p class="small" style="margin-top:0">A listád csak ezen a telefonon van. Időnként készíts mentést – ha törlöd a böngésző adatait, abból visszaállíthatod.</p>
+      <button class="btn hot full" id="expBtn">⬇️ Mentés fájlba</button>
+      <button class="btn full" id="impBtn">⬆️ Visszaállítás fájlból</button>
+      <input type="file" id="impIn" accept=".json,application/json" hidden>
+      <p class="small">Adatok és képek: <a href="https://anilist.co" target="_blank" rel="noopener noreferrer">AniList</a>. Csak a keresett cím és az anime azonosítója megy ki hozzájuk.</p>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="active" data-view="v-home"><span>🔥</span>Felfedezés</button>
+  <button data-view="v-list"><span>📋</span>Listám</button>
+  <button data-view="v-cal"><span>📅</span>Műsor</button>
+  <button data-view="v-pick"><span>🎲</span>Mit nézzek?</button>
+  <button data-view="v-me"><span>🧬</span>Én</button>
+</nav>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://graphql.anilist.co';
+const STORE = 'anime-hub-v1';
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const R = a => a[Math.floor(Math.random() * a.length)];
+let toastT;
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
+
+function loadState() { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { return {}; } }
+const S = Object.assign({ list: {}, calMine: true, mood: 'fun', time: 'any', src: 'mine' }, loadState());
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { toast('Nem sikerült menteni (tele a tárhely?)'); } }
+
+// ---------- AniList ----------
+const mem = new Map();
+async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
+  const key = query + JSON.stringify(variables);
+  const hit = mem.get(key);
+  if (hit && Date.now() - hit.t < ttl) return hit.d;
+  let res;
+  try {
+    res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ query, variables }) });
+  } catch (e) { throw new Error('Nem sikerült elérni az AniListet. Van internet?'); }
+  if (res.status === 429) throw new Error('Túl sok kérés – várj egy percet.');
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Az AniList most nem válaszol (' + res.status + ').');
+  mem.set(key, { t: Date.now(), d: j.data });
+  return j.data;
+}
+const errHtml = e => `<div class="card"><p class="err">⚠️ ${esc(e.message)}</p><button class="btn full" data-retry>🔄 Újra</button></div>`;
+
+const CARD = `id title { romaji english } coverImage { large color } averageScore episodes duration format genres seasonYear status nextAiringEpisode { episode airingAt }`;
+const FULL = `${CARD} bannerImage description(asHtml: false) season studios(isMain: true) { nodes { name } } popularity siteUrl trailer { id site }
+  characters(perPage: 10, sort: [ROLE, RELEVANCE]) { edges { role node { name { full } image { medium } } } }
+  recommendations(perPage: 8, sort: RATING_DESC) { nodes { mediaRecommendation { ${CARD} } } }
+  relations { edges { relationType node { ${CARD} type } } }`;
+
+const title = m => (m.title && (m.title.english || m.title.romaji)) || m.title || '?';
+const cover = m => (m.coverImage && m.coverImage.large) || m.cover || '';
+const FORMAT = { TV: 'TV', TV_SHORT: 'Rövid TV', MOVIE: 'Film', SPECIAL: 'Special', OVA: 'OVA', ONA: 'ONA', MUSIC: 'Zene' };
+const STATUS_AL = { FINISHED: 'Befejezett', RELEASING: 'Fut', NOT_YET_RELEASED: 'Hamarosan', CANCELLED: 'Törölve', HIATUS: 'Szünetel' };
+const GENRE_HU = { Action: 'Akció', Adventure: 'Kaland', Comedy: 'Vígjáték', Drama: 'Dráma', Ecchi: 'Ecchi', Fantasy: 'Fantasy', Horror: 'Horror', 'Mahou Shoujo': 'Varázslólány', Mecha: 'Mecha', Music: 'Zene', Mystery: 'Rejtély', Psychological: 'Pszichológiai', Romance: 'Romantika', 'Sci-Fi': 'Sci-fi', 'Slice of Life': 'Hétköznapi', Sports: 'Sport', Supernatural: 'Természetfeletti', Thriller: 'Thriller' };
+const g = x => GENRE_HU[x] || x;
+const SEASON_HU = { WINTER: 'Tél', SPRING: 'Tavasz', SUMMER: 'Nyár', FALL: 'Ősz' };
+function curSeason() { const d = new Date(), m = d.getMonth(); return { season: ['WINTER', 'WINTER', 'WINTER', 'SPRING', 'SPRING', 'SPRING', 'SUMMER', 'SUMMER', 'SUMMER', 'FALL', 'FALL', 'FALL'][m], year: d.getFullYear() }; }
+function untilTxt(sec) {
+  if (sec <= 0) return 'most';
+  const dd = Math.floor(sec / 86400), h = Math.floor(sec / 3600) % 24, m = Math.floor(sec / 60) % 60;
+  return dd ? `${dd} nap ${h} óra` : h ? `${h} óra ${m} perc` : `${m} perc`;
+}
+function poster(m) {
+  const mine = S.list[m.id];
+  return `<div class="poster" data-id="${m.id}"><div class="img"><img src="${esc(cover(m))}" alt="" loading="lazy">
+    ${m.averageScore ? `<span class="score">⭐ ${(m.averageScore / 10).toFixed(1)}</span>` : ''}${mine ? '<span class="mine">✓</span>' : ''}</div>
+    <div class="t">${esc(title(m))}</div></div>`;
+}
+document.addEventListener('click', e => {
+  const p = e.target.closest('[data-id]');
+  if (p) { openAnime(+p.dataset.id); return; }
+  if (e.target.closest('[data-retry]')) { closeModal(); refresh(); }
+});
+
+// ---------- Felfedezés ----------
+async function renderHome() {
+  const out = $('homeOut');
+  const { season, year } = curSeason();
+  try {
+    const d = await gql(`query($season: MediaSeason, $year: Int) {
+      trending: Page(perPage: 15) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${CARD} } }
+      season: Page(perPage: 15) { media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false) { ${CARD} } }
+      top: Page(perPage: 15) { media(type: ANIME, sort: SCORE_DESC, isAdult: false, format_in: [TV, MOVIE, ONA]) { ${CARD} } }
+    }`, { season, year });
+    const watching = Object.values(S.list).filter(x => x.status === 'watching').sort((a, b) => b.updated - a.updated);
+    out.innerHTML =
+      (watching.length ? `<h2>▶️ Folytasd</h2><div class="shelf">${watching.map(x => poster(x)).join('')}</div>` : '') +
+      `<h2>🔥 Most felkapott</h2><div class="shelf">${d.trending.media.map(poster).join('')}</div>
+       <h2>🍂 ${SEASON_HU[season]} ${year} – ebben a szezonban</h2><div class="shelf">${d.season.media.map(poster).join('')}</div>
+       <h2>👑 Minden idők legjobbjai</h2><div class="shelf">${d.top.media.map(poster).join('')}</div>`;
+  } catch (e) { out.innerHTML = errHtml(e); }
+}
+let searchT;
+$('q').addEventListener('input', e => {
+  clearTimeout(searchT);
+  const q = e.target.value.trim();
+  if (q.length < 2) { $('searchOut').innerHTML = ''; $('homeOut').style.display = ''; return; }
+  searchT = setTimeout(async () => {
+    $('homeOut').style.display = 'none';
+    $('searchOut').innerHTML = '<p class="loading">Keresés…</p>';
+    try {
+      const d = await gql(`query($s: String) { Page(perPage: 24) { media(search: $s, type: ANIME, isAdult: false, sort: SEARCH_MATCH) { ${CARD} } } }`, { s: q });
+      if ($('q').value.trim() !== q) return;
+      $('searchOut').innerHTML = d.Page.media.length ? `<h2>Találatok</h2><div class="grid">${d.Page.media.map(poster).join('')}</div>` : '<p class="small">Nincs találat. Próbáld angol vagy japán címmel.</p>';
+    } catch (err) { $('searchOut').innerHTML = errHtml(err); }
+  }, 400);
+});
+
+// ---------- Részletek ----------
+function snapshot(m) {
+  return { id: m.id, title: title(m), cover: cover(m), episodes: m.episodes || null, duration: m.duration || 24, genres: m.genres || [], format: m.format, airing: m.nextAiringEpisode || null, alStatus: m.status, studios: m.studios ? m.studios.nodes.map(n => n.name) : [] };
+}
+const STATUSES = [['watching', '▶️ Nézem'], ['plan', '📌 Tervezem'], ['done', '✅ Befejeztem'], ['paused', '⏸️ Szüneteltetem'], ['dropped', '🗑️ Abbahagytam']];
+async function openAnime(id) {
+  const modal = $('modal');
+  modal.innerHTML = '<p class="loading">Betöltés…</p>';
+  $('modalBg').classList.add('show');
+  let m;
+  try { m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media; }
+  catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
+  // A listában lévő pillanatképet frissítjük (új rész, epizódszám).
+  if (S.list[id]) { Object.assign(S.list[id], snapshot(m)); save(); }
+  const e = S.list[id];
+  const accent = (m.coverImage && m.coverImage.color) || '#ff6fb5';
+  const desc = (m.description || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  const chars = (m.characters && m.characters.edges) || [];
+  const recs = (m.recommendations.nodes || []).map(n => n.mediaRecommendation).filter(Boolean);
+  const rels = (m.relations.edges || []).filter(r => r.node.type === 'ANIME' && ['SEQUEL', 'PREQUEL', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'PARENT'].includes(r.relationType));
+  const REL = { SEQUEL: 'Folytatás', PREQUEL: 'Előzmény', SIDE_STORY: 'Mellékszál', SPIN_OFF: 'Spin-off', ALTERNATIVE: 'Alternatív', PARENT: 'Fő mű' };
+  modal.innerHTML = `
+    <div class="banner" style="background-image:url('${esc(m.bannerImage || cover(m))}')"></div>
+    <div class="dhead"><img src="${esc(cover(m))}" alt=""><div class="ttl"><b>${esc(title(m))}</b>
+      <div class="small">${m.title.romaji && m.title.english ? esc(m.title.romaji) + ' · ' : ''}${FORMAT[m.format] || m.format || ''}${m.seasonYear ? ' · ' + m.seasonYear : ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''}</div></div></div>
+    <div class="dbody">
+      <div class="tags">
+        ${m.averageScore ? `<span class="tag" style="border-color:${accent}">⭐ ${(m.averageScore / 10).toFixed(1)}</span>` : ''}
+        <span class="tag">${STATUS_AL[m.status] || m.status}</span>
+        ${m.studios.nodes.length ? `<span class="tag">🎬 ${esc(m.studios.nodes.map(n => n.name).join(', '))}</span>` : ''}
+        ${m.genres.map(x => `<span class="tag">${esc(g(x))}</span>`).join('')}
+      </div>
+      ${m.nextAiringEpisode ? `<p class="next">⏳ ${m.nextAiringEpisode.episode}. rész: ${untilTxt(m.nextAiringEpisode.airingAt - Date.now() / 1000)} múlva</p>` : ''}
+
+      <div class="card" style="border-color:${accent}">${listEditor(m, e)}</div>
+
+      ${desc ? `<p class="desc clamp" id="desc">${esc(desc).replace(/\n/g, '<br>')}</p><button class="btn" id="more" style="padding:4px 10px;font-size:12px">Több ▾</button> <span class="small">(angolul, az AniListről)</span>` : ''}
+      ${chars.length ? `<h2>Szereplők</h2><div class="chars">${chars.map(c => `<div><img src="${esc(c.node.image.medium)}" alt="" loading="lazy">${esc(c.node.name.full)}${c.role === 'MAIN' ? '<br><span class="small">főszereplő</span>' : ''}</div>`).join('')}</div>` : ''}
+      ${rels.length ? `<h2>Kapcsolódó</h2><div class="shelf">${rels.map(r => poster(r.node).replace('<div class="t">', `<div class="small">${REL[r.relationType]}</div><div class="t">`)).join('')}</div>` : ''}
+      ${recs.length ? `<h2>Ha ez tetszett…</h2><div class="shelf">${recs.map(poster).join('')}</div>` : ''}
+      <div class="row" style="margin-top:12px">
+        ${m.trailer && m.trailer.site === 'youtube' ? `<a class="btn grow" style="text-align:center;text-decoration:none" href="https://www.youtube.com/watch?v=${encodeURIComponent(m.trailer.id)}" target="_blank" rel="noopener noreferrer">▶️ Előzetes</a>` : ''}
+        <a class="btn grow" style="text-align:center;text-decoration:none" href="${esc(m.siteUrl)}" target="_blank" rel="noopener noreferrer">AniList ↗</a>
+      </div>
+      <button class="btn full" data-close>Bezár</button>
+    </div>`;
+  const more = $('more');
+  if (more) more.onclick = () => { $('desc').classList.toggle('clamp'); more.textContent = $('desc').classList.contains('clamp') ? 'Több ▾' : 'Kevesebb ▴'; };
+  bindEditor(m);
+  modal.scrollTop = 0;
+}
+function listEditor(m, e) {
+  if (!e) return `<b>Még nincs a listádon</b><div class="chips" style="flex-wrap:wrap">${STATUSES.slice(0, 3).map(([k, n]) => `<button class="chip" data-add="${k}">${n}</button>`).join('')}</div>`;
+  return `
+    <div class="chips" style="flex-wrap:wrap;padding-top:0">${STATUSES.map(([k, n]) => `<button class="chip ${e.status === k ? 'on' : ''}" data-st="${k}">${n}</button>`).join('')}</div>
+    <div class="row" style="margin-top:8px;justify-content:space-between">
+      <span class="small">Hányadik résznél tartasz?</span>
+      <div class="stepper"><button class="btn" data-ep="-1">−</button><span class="val" id="epVal">${e.progress}${e.episodes ? ' / ' + e.episodes : ''}</span><button class="btn hot" data-ep="1">+</button></div>
+    </div>
+    <div class="small" style="margin-top:10px">Saját pontszám</div>
+    <div class="stars" id="stars">${Array.from({ length: 10 }, (_, i) => `<button class="${e.score >= i + 1 ? 'on' : ''}" data-sc="${i + 1}">${i + 1}</button>`).join('')}</div>
+    <div class="row" style="margin-top:10px"><span class="grow small">Hányszor néztem újra?</span><div class="stepper"><button class="btn" data-rw="-1">−</button><span class="val" style="min-width:30px" id="rwVal">${e.rewatch || 0}</span><button class="btn" data-rw="1">+</button></div></div>
+    <div class="small" style="margin-top:10px">Saját jegyzet (kedvenc jelenet, gondolatok…)</div>
+    <textarea id="note" placeholder="pl. a 12. rész vége 😭">${esc(e.note || '')}</textarea>
+    <button class="btn full" id="rmList" style="color:#ff8095">Törlés a listáról</button>`;
+}
+function bindEditor(m) {
+  const modal = $('modal');
+  const rerender = () => { const box = modal.querySelector('.card'); box.innerHTML = listEditor(m, S.list[m.id]); bindEditor(m); };
+  modal.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+    S.list[m.id] = Object.assign(snapshot(m), { status: b.dataset.add, progress: b.dataset.add === 'done' ? (m.episodes || 0) : 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now(), tier: '' });
+    save(); toast('Hozzáadva a listádhoz 🌸'); rerender();
+  });
+  const e = S.list[m.id];
+  if (!e) return;
+  const touch = () => { e.updated = Date.now(); save(); };
+  modal.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+    e.status = b.dataset.st;
+    if (e.status === 'done' && e.episodes) e.progress = e.episodes;
+    touch(); rerender();
+  });
+  modal.querySelectorAll('[data-ep]').forEach(b => b.onclick = () => bumpEp(e, +b.dataset.ep, rerender));
+  modal.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { e.score = e.score === +b.dataset.sc ? 0 : +b.dataset.sc; touch(); rerender(); });
+  modal.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => { e.rewatch = Math.max(0, (e.rewatch || 0) + +b.dataset.rw); touch(); rerender(); });
+  $('note').onchange = () => { e.note = $('note').value; touch(); toast('Jegyzet mentve'); };
+  $('rmList').onclick = () => { if (confirm('Törlöd a listádról?')) { delete S.list[m.id]; save(); rerender(); } };
+}
+function bumpEp(e, dlt, after) {
+  e.progress = Math.max(0, e.progress + dlt);
+  if (e.episodes) e.progress = Math.min(e.episodes, e.progress);
+  if (dlt > 0 && e.status === 'plan') e.status = 'watching';
+  if (e.episodes && e.progress >= e.episodes && e.status !== 'done') { e.status = 'done'; toast('🎉 Befejezted! Ne felejts el pontozni.'); }
+  e.updated = Date.now(); save();
+  if (after) after();
+}
+function closeModal() { $('modalBg').classList.remove('show'); refresh(); }
+$('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg' || e.target.closest('[data-close]')) closeModal(); });
+
+// ---------- Listám ----------
+let stFilter = 'watching';
+function aired(x) { return x.airing ? x.airing.episode - 1 : x.episodes; }
+function renderList() {
+  const all = Object.values(S.list);
+  $('stChips').innerHTML = STATUSES.map(([k, n]) => `<button class="chip ${stFilter === k ? 'on' : ''}" data-f="${k}">${n} (${all.filter(x => x.status === k).length})</button>`).join('');
+  const now = Date.now() / 1000;
+  const list = all.filter(x => x.status === stFilter).map(x => {
+    const a = aired(x);
+    return { x, behind: a != null ? Math.max(0, a - x.progress) : 0 };
+  }).sort((a, b) => b.behind - a.behind || (a.x.airing ? a.x.airing.airingAt : 1e12) - (b.x.airing ? b.x.airing.airingAt : 1e12) || b.x.updated - a.x.updated);
+  $('listOut').innerHTML = list.length ? list.map(({ x, behind }) => `
+    <div class="entry">
+      <img src="${esc(x.cover)}" alt="" loading="lazy">
+      <div class="info" data-id="${x.id}">
+        <b>${esc(x.title)}</b>
+        <div class="small">${x.progress}${x.episodes ? ' / ' + x.episodes : ''} rész${x.score ? ' · ⭐ ' + x.score : ''}${x.rewatch ? ' · 🔁 ' + x.rewatch : ''}</div>
+        ${behind ? `<div class="new">🔔 ${behind} új rész vár rád</div>` : x.airing && x.airing.airingAt > now ? `<div class="next">⏳ ${x.airing.episode}. rész ${untilTxt(x.airing.airingAt - now)} múlva</div>` : ''}
+        ${x.episodes ? `<div class="prog"><i style="width:${Math.min(100, x.progress / x.episodes * 100)}%"></i></div>` : ''}
+      </div>
+      ${x.status === 'watching' || x.status === 'plan' ? `<button class="btn hot plus" data-plus="${x.id}">+1</button>` : ''}
+    </div>`).join('') : `<p class="small" style="margin:0">Itt még üres. Keress egy animét a Felfedezés fülön, és add hozzá!</p>`;
+}
+$('stChips').addEventListener('click', e => { const c = e.target.closest('[data-f]'); if (c) { stFilter = c.dataset.f; renderList(); } });
+$('listOut').addEventListener('click', e => {
+  const p = e.target.closest('[data-plus]');
+  if (p) { e.stopPropagation(); bumpEp(S.list[p.dataset.plus], 1, renderList); }
+}, true);
+// A futó animék adatait (új részek) a háttérben frissítjük.
+let lastSync = 0;
+async function syncAiring() {
+  const ids = Object.values(S.list).filter(x => ['watching', 'plan', 'paused'].includes(x.status) && x.alStatus !== 'FINISHED').map(x => x.id);
+  if (!ids.length || Date.now() - lastSync < 15 * 60 * 1000) return;
+  lastSync = Date.now();
+  try {
+    for (let i = 0; i < ids.length; i += 50) {
+      const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids) { id episodes status nextAiringEpisode { episode airingAt } } } }`, { ids: ids.slice(i, i + 50) });
+      for (const m of d.Page.media) { const x = S.list[m.id]; if (x) { x.episodes = m.episodes || x.episodes; x.alStatus = m.status; x.airing = m.nextAiringEpisode; } }
+    }
+    save(); refresh();
+  } catch (e) { /* offline: a mentett adatokkal megy tovább */ }
+}
+
+// ---------- Műsor ----------
+const DAYS = ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'];
+async function renderCal() {
+  $('calMine').classList.toggle('on', S.calMine);
+  const out = $('calOut');
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const from = Math.floor(start / 1000), to = from + 7 * 86400;
+  try {
+    let all = [], page = 1, more = true;
+    while (more && page <= 5) {
+      const d = await gql(`query($from: Int, $to: Int, $page: Int) { Page(page: $page, perPage: 50) { pageInfo { hasNextPage }
+        airingSchedules(airingAt_greater: $from, airingAt_lesser: $to, sort: TIME) { episode airingAt media { ${CARD} isAdult } } } }`, { from, to, page }, 30 * 60 * 1000);
+      all = all.concat(d.Page.airingSchedules);
+      more = d.Page.pageInfo.hasNextPage; page++;
+    }
+    all = all.filter(a => a.media && !a.media.isAdult && (!S.calMine || S.list[a.media.id]));
+    if (!all.length) { out.innerHTML = `<div class="card"><p class="small" style="margin:0">${S.calMine ? 'A héten nem jön új rész a listádon lévő animékből. Kapcsold ki a szűrőt, hogy lásd a teljes heti műsort!' : 'Nincs adat.'}</p></div>`; return; }
+    const byDay = {};
+    for (const a of all) { const k = new Date(a.airingAt * 1000).toDateString(); (byDay[k] = byDay[k] || []).push(a); }
+    out.innerHTML = Object.keys(byDay).map(k => {
+      const d = new Date(k);
+      const isToday = d.toDateString() === new Date().toDateString();
+      return `<div class="card day"><h3>${isToday ? '📍 Ma' : DAYS[d.getDay()]}, ${d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}</h3>
+        ${byDay[k].map(a => `<div class="air ${S.list[a.media.id] ? 'mine' : ''}" data-id="${a.media.id}">
+          <span class="time">${new Date(a.airingAt * 1000).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}</span>
+          <img src="${esc(cover(a.media))}" alt="" loading="lazy">
+          <span class="grow"><b>${esc(title(a.media))}</b><br><span class="small">${a.episode}. rész${S.list[a.media.id] ? ' · ⭐ a listádon' : ''}</span></span></div>`).join('')}</div>`;
+    }).join('');
+  } catch (e) { out.innerHTML = errHtml(e); }
+}
+$('calMine').onclick = () => { S.calMine = !S.calMine; save(); renderCal(); };
+
+// ---------- Mit nézzek? ----------
+const MOODS = {
+  fun: ['😂 Nevetni akarok', ['Comedy', 'Slice of Life']],
+  cry: ['😭 Sírni akarok', ['Drama', 'Romance']],
+  hype: ['🔥 Pörgést!', ['Action', 'Sports']],
+  brain: ['🧠 Agyalós', ['Mystery', 'Psychological', 'Thriller']],
+  scary: ['😱 Félni akarok', ['Horror', 'Supernatural']],
+  love: ['💘 Romantika', ['Romance']],
+  world: ['🌌 Másik világ', ['Fantasy', 'Adventure', 'Sci-Fi']],
+  chill: ['😌 Chill', ['Slice of Life', 'Music']],
+};
+const TIMES = { any: '🤷 Mindegy', movie: '🎬 Egy film', short: '⚡ Rövid sorozat (≤13 rész)', long: '🍿 Darálós (25+ rész)' };
+const SRCS = { mine: '📌 A „Tervezem” listámról', new: '✨ Valami újat' };
+function renderPickUI() {
+  $('moodChips').innerHTML = Object.entries(MOODS).map(([k, v]) => `<button class="chip mood ${S.mood === k ? 'on' : ''}" data-mood="${k}">${v[0]}</button>`).join('');
+  $('timeChips').innerHTML = Object.entries(TIMES).map(([k, v]) => `<button class="chip ${S.time === k ? 'on' : ''}" data-time="${k}">${v}</button>`).join('');
+  $('srcChips').innerHTML = Object.entries(SRCS).map(([k, v]) => `<button class="chip ${S.src === k ? 'on' : ''}" data-src="${k}">${v}</button>`).join('');
+  calcBed();
+}
+$('v-pick').addEventListener('click', e => {
+  const m = e.target.closest('[data-mood]'), t = e.target.closest('[data-time]'), s = e.target.closest('[data-src]');
+  if (m) S.mood = m.dataset.mood; else if (t) S.time = t.dataset.time; else if (s) S.src = s.dataset.src; else return;
+  save(); renderPickUI();
+});
+const timeOk = (format, eps) => S.time === 'any' || (S.time === 'movie' ? format === 'MOVIE' : S.time === 'short' ? format !== 'MOVIE' && eps && eps <= 13 : format !== 'MOVIE' && eps && eps >= 25);
+let pickRolls = 0;
+$('pickBtn').onclick = async () => {
+  const out = $('pickOut');
+  const genres = MOODS[S.mood][1];
+  pickRolls++;
+  if (S.src === 'mine') {
+    const pool = Object.values(S.list).filter(x => x.status === 'plan' && x.genres.some(gg => genres.includes(gg)) && timeOk(x.format, x.episodes));
+    if (pool.length) { showPick(R(pool), 'A „Tervezem” listádról'); return; }
+    out.innerHTML = '<div class="card"><p class="small" style="margin:0">A „Tervezem” listádon nincs ilyen. Keresek valami újat…</p></div>';
+  } else out.innerHTML = '<p class="loading">Keresgélek…</p>';
+  try {
+    const formats = S.time === 'movie' ? ['MOVIE'] : S.time === 'any' ? ['TV', 'MOVIE', 'ONA'] : ['TV', 'ONA'];
+    const eps = S.time === 'short' ? { episodes_lesser: 14 } : S.time === 'long' ? { episodes_greater: 24 } : {};
+    const d = await gql(`query($g: [String], $f: [MediaFormat], $p: Int, $el: Int, $eg: Int) { Page(page: $p, perPage: 25) {
+      media(type: ANIME, genre_in: $g, format_in: $f, isAdult: false, sort: POPULARITY_DESC, averageScore_greater: 68, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} } } }`,
+      { g: genres, f: formats, p: 1 + Math.floor(Math.random() * 4), el: eps.episodes_lesser, eg: eps.episodes_greater }, 60 * 60 * 1000);
+    const pool = d.Page.media.filter(m => !S.list[m.id]);
+    if (!pool.length) { out.innerHTML = '<div class="card"><p class="small" style="margin:0">Ezeket már mind ismered! Próbáld újra, vagy válassz más hangulatot.</p></div>'; return; }
+    showPick(snapshot(R(pool)), 'Új neked');
+  } catch (e) { out.innerHTML = errHtml(e); }
+};
+const PICK_QUIPS = ['', '', 'Nem tetszik? Itt egy másik.', 'Válogatós vagy ma… 😏', 'Már az ötödik. Nézd meg ezt, és kész!', 'Oké, ez az utolsó ajánlatom. (Nem.)'];
+function showPick(x, from) {
+  $('pickOut').innerHTML = `<div class="card pick">
+    <div class="small">${from} · ${MOODS[S.mood][0]}</div>
+    <img src="${esc(x.cover)}" alt="" data-id="${x.id}" style="margin-top:8px">
+    <b>${esc(x.title)}</b>
+    <div class="small">${FORMAT[x.format] || ''}${x.episodes ? ' · ' + x.episodes + ' rész' : ''} · ${x.genres.slice(0, 3).map(g).join(', ')}</div>
+    <p style="color:var(--warn);font-weight:650;margin:8px 0 0">${PICK_QUIPS[Math.min(pickRolls - 1, PICK_QUIPS.length - 1)]}</p>
+    <button class="btn full" data-id="${x.id}">Részletek</button></div>`;
+}
+function calcBed() {
+  const [h, m] = ($('bed').value || '23:30').split(':').map(Number);
+  const len = Math.max(1, +$('epLen').value || 24);
+  const now = new Date(), bed = new Date(); bed.setHours(h, m, 0, 0);
+  if (bed <= now) bed.setDate(bed.getDate() + 1);
+  const mins = Math.floor((bed - now) / 60000);
+  const n = Math.floor(mins / len);
+  $('bedOut').textContent = n <= 0 ? '😴 Egy rész sem fér bele. Irány aludni!'
+    : n > 12 ? `🍿 Még ${n} rész belefér… de tényleg ennyit akarsz? 😅`
+    : `▶️ Még ${n} rész fér bele, aztán alvás! (${Math.floor(mins / 60)} óra ${mins % 60} perced van)`;
+}
+$('bed').addEventListener('input', calcBed);
+$('epLen').addEventListener('input', calcBed);
+
+// ---------- Én: statisztika, anime-személyiség, tier list ----------
+const PERSONA = {
+  Action: ['⚔️', 'Shonen harcos', 'Neked a harc, az erő és a nagy csaták jelentik az animét.'],
+  Adventure: ['🗺️', 'Világjáró kalandor', 'Mindig új világokat és nagy utazásokat keresel.'],
+  Comedy: ['😂', 'A társaság bohóca', 'Ha nem nevetsz legalább ötször egy részen, nem is anime.'],
+  Drama: ['🎭', 'Érzelmi hullámvasutas', 'Szereted, ha egy történet a szívedig hatol.'],
+  Fantasy: ['🧙', 'Isekai-utazó', 'Ha átkerülhetnél egy másik világba, már pakolnál is.'],
+  Horror: ['🩸', 'Rettenthetetlen', 'Ami másnak rémálom, neked esti mese.'],
+  Mystery: ['🕵️', 'Anime-detektív', 'Te már az első részben tudod, ki a tettes.'],
+  Psychological: ['🧠', 'Elmeolvasó', 'A csavaros, elgondolkodtató történetek a tieid.'],
+  Romance: ['💘', 'Romantikus lélek', 'Három rész óta drukkolsz, hogy végre összejöjjenek.'],
+  'Sci-Fi': ['🚀', 'Jövőkutató', 'Robotok, űr és technológia – a jövő a te műfajod.'],
+  'Slice of Life': ['🍵', 'Nyugis lélek', 'Egy csésze tea, egy kedves sorozat – ennyi a boldogság.'],
+  Sports: ['🏐', 'Csapatkapitány', 'Ha egy sportanime meccsén nem kiabálsz, nem is nézted.'],
+  Supernatural: ['👻', 'Szellemlátó', 'A természetfeletti és a rejtélyes erők vonzanak.'],
+  Thriller: ['🔪', 'Feszültségfüggő', 'Akkor jó egy anime, ha végig a széle szélén ülsz.'],
+};
+function stats() {
+  const all = Object.values(S.list);
+  const eps = all.reduce((s, x) => s + (x.progress || 0) * (1 + (x.rewatch || 0)), 0);
+  const mins = all.reduce((s, x) => s + (x.progress || 0) * (x.duration || 24) * (1 + (x.rewatch || 0)), 0);
+  const gc = {}, sc = {};
+  for (const x of all.filter(x => x.status !== 'plan')) {
+    const w = 1 + (x.score ? x.score / 5 : 0);
+    x.genres.forEach(gg => gc[gg] = (gc[gg] || 0) + w);
+    (x.studios || []).forEach(s => sc[s] = (sc[s] || 0) + 1);
+  }
+  const scored = all.filter(x => x.score);
+  return {
+    total: all.length, done: all.filter(x => x.status === 'done').length, eps, hours: Math.round(mins / 60),
+    mean: scored.length ? (scored.reduce((s, x) => s + x.score, 0) / scored.length).toFixed(1) : '–',
+    genres: Object.entries(gc).sort((a, b) => b[1] - a[1]), studios: Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 5),
+  };
+}
+function renderMe() {
+  const st = stats();
+  const top = st.genres[0] && PERSONA[st.genres[0][0]];
+  const maxG = st.genres[0] ? st.genres[0][1] : 1;
+  $('meOut').innerHTML = `
+    <h2>🧬 Anime-DNS</h2>
+    ${top ? `<div class="card persona"><div class="e">${top[0]}</div><span class="small">Az anime-személyiséged</span><b>${top[1]}</b><p class="small" style="color:var(--text)">${top[2]}</p>
+      <button class="btn" id="shareCard">📤 Megosztható kártya</button></div>` : '<div class="card"><p class="small" style="margin:0">Adj hozzá néhány animét a listádhoz, és kiderül az anime-személyiséged!</p></div>'}
+    <div class="card stats">
+      <div><b>${st.total}</b><span class="small">anime a listán</span></div>
+      <div><b>${st.eps}</b><span class="small">megnézett rész</span></div>
+      <div><b>${st.hours}</b><span class="small">óra anime</span></div>
+      <div><b>${st.done}</b><span class="small">befejezve</span></div>
+      <div><b>${st.mean}</b><span class="small">átlag pontszám</span></div>
+      <div><b>${(st.hours / 24).toFixed(1)}</b><span class="small">nap egyhuzamban</span></div>
+    </div>
+    ${st.genres.length ? `<div class="card"><div class="small" style="margin-bottom:4px">Kedvenc műfajaid</div>${st.genres.slice(0, 7).map(([k, v]) => `<div class="bar"><span>${esc(g(k))}</span><span class="b"><i style="width:${v / maxG * 100}%"></i></span></div>`).join('')}</div>` : ''}
+    ${st.studios.length ? `<div class="card"><div class="small" style="margin-bottom:4px">Kedvenc stúdióid</div>${st.studios.map(([k, v]) => `<div class="bar"><span>${esc(k)}</span><b>${v}</b></div>`).join('')}</div>` : ''}`;
+  const sh = $('shareCard');
+  if (sh) sh.onclick = () => shareCard(st, top);
+  renderTiers();
+}
+async function shareCard(st, top) {
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+  const x = c.getContext('2d');
+  const gr = x.createLinearGradient(0, 0, 1080, 1350); gr.addColorStop(0, '#2a1b55'); gr.addColorStop(1, '#0f0c1d');
+  x.fillStyle = gr; x.fillRect(0, 0, 1080, 1350);
+  x.textAlign = 'center'; x.fillStyle = '#ff6fb5'; x.font = '800 54px system-ui'; x.fillText('🌸 Az anime-DNS-em', 540, 130);
+  x.font = '180px system-ui'; x.fillText(top[0], 540, 360);
+  x.fillStyle = '#f3efff'; x.font = '900 76px system-ui'; x.fillText(top[1], 540, 480);
+  x.fillStyle = '#a79fcb'; x.font = '500 34px system-ui'; wrap(x, top[2], 540, 545, 900, 44);
+  const boxes = [[st.eps, 'rész'], [st.hours, 'óra'], [st.done, 'befejezve']];
+  boxes.forEach(([v, l], i) => {
+    const bx = 90 + i * 310;
+    x.fillStyle = 'rgba(255,255,255,.07)'; x.fillRect(bx, 650, 280, 170);
+    x.fillStyle = '#f3efff'; x.font = '900 70px system-ui'; x.fillText(String(v), bx + 140, 745);
+    x.fillStyle = '#a79fcb'; x.font = '600 30px system-ui'; x.fillText(l, bx + 140, 795);
+  });
+  x.textAlign = 'left';
+  const maxG = st.genres[0][1];
+  st.genres.slice(0, 5).forEach(([k, v], i) => {
+    const y = 900 + i * 72;
+    x.fillStyle = '#f3efff'; x.font = '700 32px system-ui'; x.fillText(g(k), 90, y + 28);
+    x.fillStyle = 'rgba(255,255,255,.08)'; x.fillRect(400, y, 590, 34);
+    const bg = x.createLinearGradient(400, 0, 990, 0); bg.addColorStop(0, '#ff6fb5'); bg.addColorStop(1, '#8f7bff');
+    x.fillStyle = bg; x.fillRect(400, y, 590 * v / maxG, 34);
+  });
+  x.textAlign = 'center'; x.fillStyle = '#a79fcb'; x.font = '500 26px system-ui'; x.fillText('Anime Hub', 540, 1300);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  const file = new File([blob], 'anime-dns.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'Az anime-DNS-em' }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'anime-dns.png'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Elmentve a Letöltések közé 📥');
+}
+function wrap(x, text, cx, y, maxW, lh) {
+  let line = '';
+  for (const w of text.split(' ')) {
+    const t = line ? line + ' ' + w : w;
+    if (x.measureText(t).width > maxW && line) { x.fillText(line, cx, y); line = w; y += lh; } else line = t;
+  }
+  x.fillText(line, cx, y);
+}
+const TIERS = [['S', '#ff6f91'], ['A', '#ffb36b'], ['B', '#ffe66b'], ['C', '#9be36b'], ['D', '#6bc6ff']];
+function renderTiers() {
+  const all = Object.values(S.list);
+  $('tierOut').innerHTML = TIERS.map(([t, c]) => `
+    <div class="tier"><div class="lbl" style="background:${c}">${t}</div>
+      <div class="items">${all.filter(x => x.tier === t).map(x => `<img src="${esc(x.cover)}" alt="" title="${esc(x.title)}" data-tierx="${x.id}">`).join('')}<button class="add" data-tadd="${t}">+</button></div></div>`).join('') +
+    '<p class="small" style="margin-bottom:0">Koppints a +-ra egy anime besorolásához, vagy egy borítóra az áthelyezéshez.</p>';
+}
+$('tierOut').addEventListener('click', e => {
+  const add = e.target.closest('[data-tadd]'), it = e.target.closest('[data-tierx]');
+  if (add) {
+    const pool = Object.values(S.list).filter(x => x.status !== 'plan' && x.tier !== add.dataset.tadd).sort((a, b) => (b.score || 0) - (a.score || 0));
+    $('modal').innerHTML = `<div class="dbody"><h2>${add.dataset.tadd} szintre</h2>${pool.length ? `<div class="grid">${pool.map(x => `<div class="poster" data-setier="${x.id}"><div class="img"><img src="${esc(x.cover)}" alt=""></div><div class="t">${esc(x.title)}</div></div>`).join('')}</div>` : '<p class="small">Előbb adj hozzá animéket, amiket már néztél.</p>'}<button class="btn full" data-close>Mégse</button></div>`;
+    $('modalBg').classList.add('show');
+    $('modal').querySelectorAll('[data-setier]').forEach(p => p.onclick = ev => { ev.stopPropagation(); S.list[p.dataset.setier].tier = add.dataset.tadd; save(); closeModal(); });
+  } else if (it) {
+    const x = S.list[it.dataset.tierx];
+    $('modal').innerHTML = `<div class="dbody"><h2>${esc(x.title)}</h2><div class="chips" style="flex-wrap:wrap">${TIERS.map(([t, c]) => `<button class="chip" data-mv="${t}" style="${x.tier === t ? `background:${c};color:#1a0f00` : ''}">${t}</button>`).join('')}<button class="chip" data-mv="">✕ Kivesz</button></div><button class="btn full" data-close>Mégse</button></div>`;
+    $('modalBg').classList.add('show');
+    $('modal').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { x.tier = b.dataset.mv; save(); closeModal(); });
+  }
+});
+
+// ---------- Mentés ----------
+$('expBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify({ app: 'anime-hub', version: 1, date: new Date().toISOString(), list: S.list })], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `anime-hub-mentes-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('Mentve a Letöltések közé 💾');
+};
+$('impBtn').onclick = () => $('impIn').click();
+$('impIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'anime-hub') throw new Error();
+    if (!confirm('Visszaállítod? A mentésben lévő animék hozzáadódnak a listádhoz.')) return;
+    Object.assign(S.list, d.list); save(); refresh(); toast('Visszaállítva ✅');
+  } catch (err) { toast('Ez nem egy Anime Hub mentés.'); }
+});
+
+// ---------- Navigáció ----------
+const RENDER = { 'v-home': renderHome, 'v-list': renderList, 'v-cal': renderCal, 'v-pick': renderPickUI, 'v-me': renderMe };
+function refresh() { const v = document.querySelector('.view.active').id; if (v !== 'v-home' || !$('q').value.trim()) RENDER[v](); }
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === b.dataset.view));
+  RENDER[b.dataset.view]();
+  window.scrollTo(0, 0);
+});
+
+renderHome();
+syncAiring();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
