@@ -157,7 +157,7 @@ a { color: var(--accent-2); }
 </style>
 </head>
 <body>
-<header><h1>🌸 Anime Hub</h1><span class="small">🔒 a listád csak nálad</span></header>
+<header><button class="btn" id="backBtn" style="visibility:hidden;padding:6px 12px;margin-right:8px">‹ Vissza</button><h1 style="flex:1">🌸 Anime Hub</h1><span class="small">🔒 a listád csak nálad</span></header>
 
 <main>
   <!-- FELFEDEZÉS -->
@@ -329,7 +329,7 @@ async function renderHome() {
        <h2>🍂 ${SEASON_HU[season]} ${year} – ebben a szezonban</h2><div class="shelf">${d.season.media.map(poster).join('')}</div>
        ${d.next.media.length ? `<h2>🌱 Jövő szezon: ${SEASON_HU[nx.season]} ${nx.year} <button class="btn" id="nextAll" style="padding:4px 10px;font-size:12px">Mind ›</button></h2><div class="shelf">${d.next.media.map(poster).join('')}</div>` : ''}
        <h2>👑 Minden idők legjobbjai</h2><div class="shelf">${d.top.media.map(poster).join('')}</div>`;
-    const na = $('nextAll'); if (na) na.onclick = openNextSeason;
+    const na = $('nextAll'); if (na) na.onclick = () => openNextSeason();
   } catch (e) { out.innerHTML = errHtml(e); }
 }
 // Premier: ha ismert az 1. rész pontos ideje, azt használjuk, különben a kezdő dátumot.
@@ -346,9 +346,10 @@ function premiereTxt(m) {
   const date = new Date(p.t).toLocaleDateString('hu-HU', p.exact ? { month: 'long', day: 'numeric' } : { year: 'numeric', month: 'long' });
   return days > 0 ? `${date} · ${p.exact ? '' : 'kb. '}${days} nap múlva` : `${date} · már elindult`;
 }
-async function openNextSeason() {
+async function openNextSeason(fromHistory) {
   const nx = nextSeason(), modal = $('modal');
   modal.innerHTML = '<p class="loading">Betöltés…</p>';
+  if (!fromHistory) pushNav({ modal: 'next' });
   $('modalBg').classList.add('show');
   let list = [];
   try {
@@ -413,9 +414,10 @@ function markDone(e) {
   setTimeout(() => nextPopup(e.id), 400);
 }
 const STATUSES = [['watching', '▶️ Nézem'], ['plan', '📌 Tervezem'], ['done', '✅ Befejeztem'], ['paused', '⏸️ Szüneteltetem'], ['dropped', '🗑️ Abbahagytam']];
-async function openAnime(id) {
+async function openAnime(id, fromHistory) {
   const modal = $('modal');
   modal.innerHTML = '<p class="loading">Betöltés…</p>';
+  if (!fromHistory) pushNav({ modal: 'anime', id });
   $('modalBg').classList.add('show');
   let m;
   try { m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media; }
@@ -514,7 +516,9 @@ function bumpEp(e, dlt, after) {
   e.updated = Date.now(); save();
   if (after) after();
 }
-function closeModal() { $('modalBg').classList.remove('show'); refresh(); }
+// Ha a felugró ablak az előzményekben van, a bezárás egy „vissza” lépés – így a telefon vissza gombjával is egyezik.
+function closeModal() { if (history.state && history.state.modal) history.back(); else hideModal(); }
+function hideModal() { const was = $('modalBg').classList.contains('show'); $('modalBg').classList.remove('show'); if (was) refresh(); }
 $('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg' || e.target.closest('[data-close]')) closeModal(); });
 
 // ---------- Listám ----------
@@ -716,7 +720,7 @@ function renderMe() {
   $('meOut').style.display = S.meTab === 'data' ? 'none' : '';
   ({ dna: renderDna, time: renderTime, year: renderYear, ch: renderChallenges, battle: renderBattle, data: () => {} })[S.meTab]();
 }
-$('meTabs').addEventListener('click', e => { const c = e.target.closest('[data-me]'); if (c) { S.meTab = c.dataset.me; save(); renderMe(); } });
+$('meTabs').addEventListener('click', e => { const c = e.target.closest('[data-me]'); if (c && c.dataset.me !== S.meTab) { S.meTab = c.dataset.me; save(); renderMe(); pushNav(); } });
 function renderDna() {
   const st = stats();
   const top = st.genres[0] && PERSONA[st.genres[0][0]];
@@ -1018,11 +1022,12 @@ function renderBattle() {
 }
 
 // ---------- Mit nézzek utána? (befejezéskor) ----------
-async function nextPopup(id) {
+async function nextPopup(id, fromHistory) {
   const e = S.list[id];
   if (!e) return;
   const modal = $('modal');
   modal.innerHTML = `<div class="dbody" style="text-align:center"><div style="font-size:50px">🎉</div><h2 style="justify-content:center">Befejezted: ${esc(e.title)}!</h2><p class="loading">Keresem, mit nézz utána…</p></div>`;
+  if (!fromHistory) pushNav({ modal: 'after', id });
   $('modalBg').classList.add('show');
   let m;
   try { m = (await gql(`query($id: Int) { Media(id: $id) { id relations { edges { relationType node { ${CARD} type } } } recommendations(perPage: 8, sort: RATING_DESC) { nodes { mediaRecommendation { ${CARD} } } } } }`, { id }, 60 * 60 * 1000)).Media; }
@@ -1160,12 +1165,49 @@ $('impIn').addEventListener('change', async e => {
 // ---------- Navigáció ----------
 const RENDER = { 'v-home': renderHome, 'v-list': renderList, 'v-cal': renderCal, 'v-pick': renderPickUI, 'v-me': renderMe };
 function refresh() { const v = document.querySelector('.view.active').id; if (v !== 'v-home' || !$('q').value.trim()) RENDER[v](); }
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === b.dataset.view));
-  RENDER[b.dataset.view]();
+function curView() { return document.querySelector('.view.active').id; }
+function showView(view) {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.view === view));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === view));
+  RENDER[view]();
   window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  if (b.dataset.view === curView()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  showView(b.dataset.view); pushNav();
 });
+
+// ---------- Vissza gomb (képernyőn és a telefonon) ----------
+// Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
+// A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
+const MODALS = { anime: id => openAnime(id, true), next: () => openNextSeason(true), after: id => nextPopup(id, true) };
+let exitTimer = null;
+function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
+function updateBack() {
+  const st = history.state || {};
+  $('backBtn').style.visibility = !st.root && (st.v !== 'v-home' || st.modal) ? 'visible' : 'hidden';
+}
+$('backBtn').onclick = () => history.back();
+window.addEventListener('popstate', e => {
+  const st = e.state || { root: true };
+  if (st.root) {
+    hideModal();
+    if (curView() !== 'v-home') showView('v-home');
+    toast('Nyomd meg még egyszer a kilépéshez');
+    clearTimeout(exitTimer);
+    exitTimer = setTimeout(() => { if (history.state && history.state.root) { history.pushState({ v: 'v-home' }, ''); updateBack(); } }, 2000);
+    updateBack();
+    return;
+  }
+  clearTimeout(exitTimer);
+  if (st.me && st.me !== S.meTab) { S.meTab = st.me; save(); if (curView() === 'v-me' && st.v === 'v-me') renderMe(); }
+  if (curView() !== st.v) showView(st.v);
+  if (st.modal) MODALS[st.modal](st.id); else hideModal();
+  updateBack();
+});
+history.replaceState({ v: 'v-home', root: true }, '');
+history.pushState({ v: 'v-home' }, '');
+updateBack();
 
 renderHome();
 syncAiring();
