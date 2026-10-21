@@ -327,10 +327,11 @@ async function renderHome() {
     out.innerHTML =
       (watching.length ? `<h2>▶️ Folytasd</h2><div class="shelf">${watching.map(x => poster(x)).join('')}</div>` : '') +
       `<h2>🔥 Most felkapott</h2><div class="shelf">${d.trending.media.map(poster).join('')}</div>
-       <h2>🍂 ${SEASON_HU[season]} ${year} – ebben a szezonban</h2><div class="shelf">${d.season.media.map(poster).join('')}</div>
+       <h2>🍂 ${SEASON_HU[season]} ${year} – ebben a szezonban <button class="btn" id="curAll" style="padding:4px 10px;font-size:12px">Mind ›</button></h2><div class="shelf">${d.season.media.map(poster).join('')}</div>
        ${d.next.media.length ? `<h2>🌱 Jövő szezon: ${SEASON_HU[nx.season]} ${nx.year} <button class="btn" id="nextAll" style="padding:4px 10px;font-size:12px">Mind ›</button></h2><div class="shelf">${d.next.media.map(poster).join('')}</div>` : ''}
        <h2>👑 Minden idők legjobbjai</h2><div class="shelf">${d.top.media.map(poster).join('')}</div>`;
-    const na = $('nextAll'); if (na) na.onclick = () => openNextSeason();
+    const na = $('nextAll'); if (na) na.onclick = () => openSeason('next');
+    $('curAll').onclick = () => openSeason('cur');
   } catch (e) { out.innerHTML = errHtml(e); }
 }
 // Premier: ha ismert az 1. rész pontos ideje, azt használjuk, különben a kezdő dátumot.
@@ -347,34 +348,57 @@ function premiereTxt(m) {
   const date = new Date(p.t).toLocaleDateString('hu-HU', p.exact ? { month: 'long', day: 'numeric' } : { year: 'numeric', month: 'long' });
   return days > 0 ? `${date} · ${p.exact ? '' : 'kb. '}${days} nap múlva` : `${date} · már elindult`;
 }
-async function openNextSeason(fromHistory) {
-  const nx = nextSeason(), modal = $('modal');
-  modal.innerHTML = '<p class="loading">Betöltés…</p>';
-  if (!fromHistory) pushNav({ modal: 'next' });
+// Teljes szezonlista listanézetben (idei vagy jövő szezon), rendezhetően.
+const seasonMem = {};
+const SEASON_SORTS = [['pop', '🔥 Népszerűség'], ['date', '🗓️ Premier'], ['score', '⭐ Pontszám'], ['az', '🔤 ABC']];
+async function openSeason(kind, fromHistory) {
+  const sn = kind === 'next' ? nextSeason() : curSeason(), modal = $('modal');
+  const key = `${sn.season}-${sn.year}`;
+  if (!fromHistory) pushNav({ modal: 'season', id: kind });
   $('modalBg').classList.add('show');
-  let list = [];
-  try {
-    // Az összes bejelentett anime, oldalanként 50 (biztonsági felső korlát: 600).
-    for (let page = 1; page <= 12; page++) {
-      if (page > 1) modal.innerHTML = `<p class="loading">Betöltés… (${list.length} anime eddig)</p>`;
-      const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
-        media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: nx.season, y: nx.year, p: page }, 60 * 60 * 1000);
-      list = list.concat(d.Page.media);
-      if (!d.Page.pageInfo.hasNextPage) break;
-    }
-  } catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
-  list.sort((a, b) => ((premiere(a) || { t: 9e15 }).t) - ((premiere(b) || { t: 9e15 }).t));
+  let list = seasonMem[key];
+  if (!list) {
+    modal.innerHTML = '<p class="loading">Betöltés…</p>';
+    list = [];
+    try {
+      // Az összes anime a szezonból, oldalanként 50 (biztonsági felső korlát: 600).
+      for (let page = 1; page <= 12; page++) {
+        if (page > 1) modal.innerHTML = `<p class="loading">Betöltés… (${list.length} anime eddig)</p>`;
+        const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
+          media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: sn.season, y: sn.year, p: page }, 60 * 60 * 1000);
+        list = list.concat(d.Page.media);
+        if (!d.Page.pageInfo.hasNextPage) break;
+      }
+    } catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
+    list.forEach((m, i) => { m.popRank = i; });
+    seasonMem[key] = list;
+  }
+  S.seasonSort = S.seasonSort || {};
+  let sortBy = S.seasonSort[kind] || (kind === 'next' ? 'date' : 'pop');
+  const nowS = Date.now() / 1000;
+  const sorters = {
+    pop: (a, b) => a.popRank - b.popRank,
+    date: (a, b) => ((premiere(a) || { t: 9e15 }).t) - ((premiere(b) || { t: 9e15 }).t),
+    score: (a, b) => (b.averageScore || 0) - (a.averageScore || 0) || a.popRank - b.popRank,
+    az: (a, b) => title(a).localeCompare(title(b)),
+  };
+  const info = m => kind === 'next' ? `🗓️ ${premiereTxt(m)}`
+    : m.nextAiringEpisode ? `⏳ ${m.nextAiringEpisode.episode}. rész ${untilTxt(m.nextAiringEpisode.airingAt - nowS)} múlva` : `📺 ${STATUS_AL[m.status] || ''}`;
   const draw = () => {
-    modal.innerHTML = `<div class="dbody"><h2>🌱 ${SEASON_HU[nx.season]} ${nx.year} – premierek</h2>
-      <p class="small" style="margin-top:0">Mind a ${list.length} bejelentett japán anime – sorozatok, filmek és OVA-k (klipek, rövidkék és ismeretlen címek nélkül), premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
-      ${list.map(m => `<div class="entry">
+    const shown = list.slice().sort(sorters[sortBy]);
+    modal.innerHTML = `<div class="dbody"><h2>${kind === 'next' ? '🌱' : '🍂'} ${SEASON_HU[sn.season]} ${sn.year}${kind === 'next' ? ' – jövő szezon' : ' – idei szezon'}</h2>
+      <p class="small" style="margin-top:0">Mind a ${list.length} japán anime – sorozatok, filmek, OVA-k és netes sorozatok (klipek, rövidkék és ismeretlen címek nélkül). A 📌 gombbal felteheted a Tervezem listádra.</p>
+      <div class="chips">${SEASON_SORTS.map(([k, n]) => `<button class="chip ${sortBy === k ? 'on' : ''}" data-ss="${k}">${n}</button>`).join('')}</div>
+      ${shown.map((m, i) => `<div class="entry">
+        <b style="width:24px;text-align:center;color:var(--muted);font-size:12px">${i + 1}</b>
         <img src="${esc(cover(m))}" alt="" loading="lazy">
         <div class="info" data-id="${m.id}"><b>${esc(title(m))}</b>
-          <div class="small">${FORMAT[m.format] || ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''} · ${m.genres.slice(0, 3).map(g).join(', ')}</div>
-          <div class="next">🗓️ ${premiereTxt(m)}</div></div>
+          <div class="small">${FORMAT[m.format] || ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''}${m.averageScore ? ' · ⭐ ' + (m.averageScore / 10).toFixed(1) : ''} · ${m.genres.slice(0, 3).map(g).join(', ')}</div>
+          <div class="next">${info(m)}</div></div>
         ${S.list[m.id] ? '<span class="small">✓ listán</span>' : `<button class="btn" data-plan="${m.id}">📌</button>`}
-      </div>`).join('') || '<p class="small">Még nincs bejelentett anime erre a szezonra.</p>'}
+      </div>`).join('') || '<p class="small">Még nincs anime erre a szezonra.</p>'}
       <button class="btn full" data-close>Bezár</button></div>`;
+    modal.querySelectorAll('[data-ss]').forEach(b => b.onclick = () => { sortBy = b.dataset.ss; S.seasonSort[kind] = sortBy; save(); draw(); modal.scrollTop = 0; });
     modal.querySelectorAll('[data-plan]').forEach(b => b.onclick = ev => {
       ev.stopPropagation();
       const m = list.find(x => x.id === +b.dataset.plan);
@@ -421,7 +445,7 @@ async function openAnime(id, fromHistory) {
   if (!fromHistory) pushNav({ modal: 'anime', id });
   $('modalBg').classList.add('show');
   let m;
-  try { m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media; }
+  try { m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media; if (!m) throw new Error('Ezt az animét nem találom az AniListen.'); }
   catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
   // A listában lévő pillanatképet frissítjük (új rész, epizódszám).
   if (S.list[id]) { Object.assign(S.list[id], snapshot(m)); save(); }
@@ -1408,7 +1432,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { anime: id => openAnime(id, true), next: () => openNextSeason(true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
+const MODALS = { anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {
