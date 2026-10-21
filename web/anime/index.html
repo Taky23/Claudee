@@ -261,6 +261,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
     <div class="row" style="margin-top:8px"><input class="grow" type="search" id="q" placeholder="Anime keresése…" autocomplete="off"><button class="btn" id="traceBtn" title="Melyik anime ez?">📸</button></div>
     <input type="file" id="traceIn" accept="image/*,video/*" hidden>
     <div id="searchOut"></div>
+    <div id="quickOut"></div>
     <div id="homeOut"><p class="loading">Betöltés…</p></div>
   </section>
 
@@ -268,6 +269,9 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
   <section class="view" id="v-list">
     <div id="seqBanner"></div>
     <div class="chips" id="stChips"></div>
+    <div class="row" style="margin-top:6px"><input class="grow" type="search" id="listQ" placeholder="Keresés a listádban…" autocomplete="off"></div>
+    <div class="chips" id="listSort"></div>
+    <div id="gapBanner"></div>
     <div class="card" id="listOut"></div>
     <button class="btn full" id="clearSt" style="color:#ff8095"></button>
   </section>
@@ -356,6 +360,12 @@ const mem = new Map();
 // Az AniList percenként korlátozza a kéréseket (túllépéskor kb. egy percre letilt), ezért a kéréseket
 // sorba állítjuk: legfeljebb 25 / perc, köztük legalább 400 ms. Hálózati hibánál vagy 429/5xx esetén kétszer újrapróbáljuk.
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Időkorlátos fetch: ha a szerver nem válaszol (a kapcsolat „lóg”), a kérés adott idő után hibával leáll – nincs végtelen „Betöltés…”.
+function fetchT(url, opts = {}, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).finally(() => clearTimeout(t));
+}
 const reqTimes = [];
 let reqChain = Promise.resolve();
 function throttle() {
@@ -385,8 +395,13 @@ async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
     await throttle();
     let res;
     try {
-      res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body });
-    } catch (e) { lastErr = new Error('Az AniList most nem érhető el (lehet, hogy túl sok kérés ment ki, és egy percre letiltott). Várj egy kicsit, és próbáld újra.'); continue; }
+      res = await fetchT(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body }, 8000);
+    } catch (e) {
+      // Időtúllépésnél nem várakozunk újra: az AniList valószínűleg le van állva.
+      if (e.name === 'AbortError') throw new Error('Az AniList 8 másodperc alatt sem válaszolt – valószínűleg most nem elérhető. Próbáld újra kicsit később.');
+      lastErr = new Error('Az AniList most nem érhető el (lehet, hogy túl sok kérés ment ki, és egy percre letiltott). Várj egy kicsit, és próbáld újra.');
+      continue;
+    }
     if (res.status === 429) {
       const ra = +res.headers.get('Retry-After') || 60;
       blockedUntil = Date.now() + ra * 1000;
@@ -437,13 +452,33 @@ function poster(m) {
     <div class="t">${esc(title(m))}</div></div>`;
 }
 document.addEventListener('click', e => {
+  const hp = e.target.closest('[data-hplus]');
+  if (hp) { const x = S.list[hp.dataset.hplus]; if (x) { bumpEp(x, 1, renderQuick); toast(`▶️ ${x.title}: ${x.progress}. rész`); } return; }
   const p = e.target.closest('[data-id]');
   if (p) { openAnime(+p.dataset.id); return; }
   if (e.target.closest('[data-retry]')) { closeModal(); refresh(); }
 });
 
 // ---------- Felfedezés ----------
+// A kezdőképernyő saját része: a telefonon tárolt listából, azonnal (az AniList válaszára sem kell várni).
+function renderQuick() {
+  const now = Date.now() / 1000, all = Object.values(S.list);
+  const end = new Date(); end.setHours(0, 0, 0, 0); const todayEnd = end.getTime() / 1000 + 86400, tomorrowEnd = todayEnd + 86400;
+  const soon = all.filter(x => ['watching', 'plan', 'paused'].includes(x.status) && x.airing && x.airing.airingAt > now - 3600 && x.airing.airingAt < tomorrowEnd)
+    .sort((a, b) => a.airing.airingAt - b.airing.airingAt);
+  const waiting = all.filter(x => x.status === 'watching' && x.airing && x.airing.episode - 1 > x.progress).length;
+  const watching = all.filter(x => x.status === 'watching').sort((a, b) => b.updated - a.updated);
+  const hm = t => new Date(t * 1000).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
+  $('quickOut').innerHTML =
+    (soon.length ? `<div class="card" style="margin-top:12px"><div class="small" style="margin-bottom:4px">⏰ Ma és holnap jön</div>${soon.map(x => `
+      <div class="air" data-id="${x.id}"><span class="time">${x.airing.airingAt < todayEnd ? hm(x.airing.airingAt) : 'holnap'}</span>
+        <img src="${esc(x.cover)}" alt="" loading="lazy"><span class="grow"><b>${esc(x.title)}</b><br><span class="small">${x.airing.episode}. rész${x.airing.airingAt <= now ? ' · már kint van!' : ''}</span></span></div>`).join('')}</div>` : '') +
+    (waiting ? `<button class="btn full" id="qWaiting" style="margin-top:8px">🔔 ${waiting} animédnél új rész vár rád ›</button>` : '') +
+    (watching.length ? `<h2>▶️ Folytasd</h2><div class="shelf">${watching.map(x => `<div style="position:relative">${poster(x)}<button class="btn hot" data-hplus="${x.id}" style="position:absolute;right:6px;top:${x.episodes ? 128 : 136}px;padding:6px 10px;font-size:13px">+1</button></div>`).join('')}</div>` : '');
+  const qw = $('qWaiting'); if (qw) qw.onclick = () => { stFilter = 'watching'; showView('v-list'); pushNav(); };
+}
 async function renderHome() {
+  renderQuick();
   const out = $('homeOut');
   const { season, year } = curSeason();
   const nx = nextSeason();
@@ -462,9 +497,7 @@ async function renderHome() {
       setTimeout(() => toast('Nincs kapcsolat az AniListtel – a legutóbb mentett oldalt látod'), 300);
       return c.d;
     });
-    const watching = Object.values(S.list).filter(x => x.status === 'watching').sort((a, b) => b.updated - a.updated);
     out.innerHTML =
-      (watching.length ? `<h2>▶️ Folytasd</h2><div class="shelf">${watching.map(x => poster(x)).join('')}</div>` : '') +
       `<h2>🔥 Most felkapott</h2><div class="shelf">${d.trending.media.map(poster).join('')}</div>
        <h2>🍂 ${SEASON_HU[season]} ${year} – ebben a szezonban <button class="btn" id="curAll" style="padding:4px 10px;font-size:12px">Mind ›</button></h2><div class="shelf">${d.season.media.map(poster).join('')}</div>
        ${d.next.media.length ? `<h2>🌱 Jövő szezon: ${SEASON_HU[nx.season]} ${nx.year} <button class="btn" id="nextAll" style="padding:4px 10px;font-size:12px">Mind ›</button></h2><div class="shelf">${d.next.media.map(poster).join('')}</div>` : ''}
@@ -663,7 +696,7 @@ async function loadThemes(m) {
   let themes = themesMem[m.id];
   if (!themes) {
     try {
-      const r = await fetch(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=AniList&filter[external_id]=${m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
+      const r = await fetchT(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=AniList&filter[external_id]=${m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
       if (!r.ok) throw new Error();
       const j = await r.json();
       themes = ((j.anime && j.anime[0] && j.anime[0].animethemes) || []).filter(t => t.type === 'OP' || t.type === 'ED')
@@ -760,7 +793,7 @@ $('traceIn').addEventListener('change', async e => {
   showTrace(!!(history.state && history.state.modal === 'trace'));
   try {
     const fd = new FormData(); fd.append('image', f);
-    const r = await fetch('https://api.trace.moe/search?anilistInfo&cutBorders', { method: 'POST', body: fd });
+    const r = await fetchT('https://api.trace.moe/search?anilistInfo&cutBorders', { method: 'POST', body: fd }, 45000);
     const j = await r.json().catch(() => ({}));
     if (r.status === 402 || r.status === 429) throw new Error('Elfogyott a havi ingyenes keresési keret, vagy túl gyorsan kerestél. Próbáld később.');
     if (!r.ok || j.error) throw new Error(j.error || 'A képkereső most nem válaszol.');
@@ -838,7 +871,7 @@ async function translateHu(text) {
     const outParts = [];
     for (const c of chunks(para)) {
       let r;
-      try { r = await fetch('https://api.mymemory.translated.net/get?langpair=en|hu&q=' + encodeURIComponent(c)); } catch (e) { throw new Error('Nem érem el a fordítót. Van internet?'); }
+      try { r = await fetchT('https://api.mymemory.translated.net/get?langpair=en|hu&q=' + encodeURIComponent(c), {}, 10000); } catch (e) { throw new Error('Nem érem el a fordítót. Van internet?'); }
       const j = await r.json().catch(() => ({}));
       const t = j.responseData && j.responseData.translatedText;
       if (!r.ok || !t || j.quotaFinished || /MYMEMORY WARNING/i.test(t)) throw new Error('A mai ingyenes fordítási keret elfogyott.');
@@ -999,10 +1032,22 @@ function renderList() {
   $('clearSt').textContent = `🗑️ Az összes (${cnt}) törlése erről a listáról`;
   $('stChips').innerHTML = STATUSES.map(([k, n]) => `<button class="chip ${stFilter === k ? 'on' : ''}" data-f="${k}">${n} (${all.filter(x => x.status === k).length})</button>`).join('');
   const now = Date.now() / 1000;
-  const list = all.filter(x => x.status === stFilter).map(x => {
+  S.listSort = S.listSort || 'smart';
+  $('listSort').innerHTML = LIST_SORTS.map(([k, n]) => `<button class="chip ${S.listSort === k ? 'on' : ''}" data-ls="${k}">${n}</button>`).join('');
+  renderGapBanner();
+  const q = ($('listQ').value || '').trim().toLowerCase();
+  const left = x => (x.episodes ? x.episodes - x.progress : 9999);
+  const sorters = {
+    smart: (a, b) => b.behind - a.behind || (a.x.airing ? a.x.airing.airingAt : 1e12) - (b.x.airing ? b.x.airing.airingAt : 1e12) || b.x.updated - a.x.updated,
+    recent: (a, b) => b.x.updated - a.x.updated,
+    title: (a, b) => a.x.title.localeCompare(b.x.title),
+    score: (a, b) => (b.x.score || 0) - (a.x.score || 0) || a.x.title.localeCompare(b.x.title),
+    left: (a, b) => left(a.x) - left(b.x) || a.x.title.localeCompare(b.x.title),
+  };
+  const list = all.filter(x => x.status === stFilter && (!q || x.title.toLowerCase().includes(q) || (x.note || '').toLowerCase().includes(q))).map(x => {
     const a = aired(x);
     return { x, behind: a != null ? Math.max(0, a - x.progress) : 0 };
-  }).sort((a, b) => b.behind - a.behind || (a.x.airing ? a.x.airing.airingAt : 1e12) - (b.x.airing ? b.x.airing.airingAt : 1e12) || b.x.updated - a.x.updated);
+  }).sort(sorters[S.listSort] || sorters.smart);
   $('listOut').innerHTML = list.length ? list.map(({ x, behind }) => `
     <div class="entry">
       <img src="${esc(x.cover)}" alt="" loading="lazy">
@@ -1013,7 +1058,86 @@ function renderList() {
         ${x.episodes ? `<div class="prog"><i style="width:${Math.min(100, x.progress / x.episodes * 100)}%"></i></div>` : ''}
       </div>
       ${x.status === 'watching' || x.status === 'plan' ? `<button class="btn hot plus" data-plus="${x.id}">+1</button>` : ''}
-    </div>`).join('') : `<p class="small" style="margin:0">Itt még üres. Keress egy animét a Felfedezés fülön, és add hozzá!</p>`;
+    </div>`).join('') : `<p class="small" style="margin:0">${q ? 'Nincs találat a listádban.' : 'Itt még üres. Keress egy animét a Felfedezés fülön, és add hozzá!'}</p>`;
+}
+const LIST_SORTS = [['smart', '✨ Okos'], ['recent', '🕒 Legutóbbi'], ['title', '🔤 Cím'], ['score', '⭐ Pontszám'], ['left', '⏳ Kevés van hátra']];
+$('listSort').addEventListener('click', e => { const c = e.target.closest('[data-ls]'); if (c) { S.listSort = c.dataset.ls; save(); renderList(); } });
+let listQT;
+$('listQ').addEventListener('input', () => { clearTimeout(listQT); listQT = setTimeout(renderList, 150); });
+
+// ---------- 3. Hiányzó évadok ----------
+// A listán lévő (nem csak tervezett) animék előzmény/folytatás kapcsolataiból keresi, mi maradt ki:
+// „lyuk” = két listás rész között hiányzó rész; „előzmény” = amit a nézett/befejezett rész előtt kellett volna látni.
+const GAP_KEY = 'anime-hub-gaps';
+const GAP_FORMATS = ['TV', 'MOVIE', 'OVA', 'ONA'];
+function gapCache() { try { return JSON.parse(localStorage.getItem(GAP_KEY)) || null; } catch (e) { return null; } }
+function gapPending() {
+  const c = gapCache(); if (!c) return [];
+  S.gapIgnore = S.gapIgnore || {};
+  return c.items.filter(x => !S.list[x.m.id] && !S.gapIgnore[x.m.id]);
+}
+function renderGapBanner() {
+  const n = gapPending().length, c = gapCache();
+  $('gapBanner').innerHTML = n ? `<button class="btn full" id="gapOpen">🧩 ${n} hiányzó évad / rész a sorozataidból ›</button>`
+    : `<button class="btn full" id="gapOpen" style="font-size:13px">🧩 Hiányzó évadok keresése${c ? ' (nincs találat)' : ''}</button>`;
+  $('gapOpen').onclick = () => openGaps();
+}
+async function findGaps() {
+  const own = Object.values(S.list).filter(x => x.status !== 'plan' && x.id > 0);
+  const ids = own.map(x => x.id);
+  const info = new Map();
+  for (let i = 0; i < ids.length; i += 50) {
+    const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { id
+      relations { edges { relationType node { ${CARD} type startDate { year month day } } } } } } }`, { ids: ids.slice(i, i + 50) }, 60 * 60 * 1000);
+    for (const m of d.Page.media) for (const e of m.relations.edges) {
+      const n = e.node;
+      if (n.type !== 'ANIME' || !GAP_FORMATS.includes(n.format) || S.list[n.id] || n.status === 'NOT_YET_RELEASED' || n.status === 'CANCELLED') continue;
+      if (e.relationType !== 'SEQUEL' && e.relationType !== 'PREQUEL') continue;
+      const it = info.get(n.id) || { m: n, after: [], before: [] };
+      // n az m folytatása → m után jön; n az m előzménye → m előtt jön.
+      if (e.relationType === 'SEQUEL') it.after.push(S.list[m.id].title); else it.before.push(S.list[m.id].title);
+      info.set(n.id, it);
+    }
+  }
+  const items = [...info.values()].filter(x => x.before.length).map(x => ({ m: x.m, kind: x.after.length ? 'gap' : 'prequel', after: x.after[0] || '', before: x.before[0] }));
+  try { localStorage.setItem(GAP_KEY, JSON.stringify({ t: Date.now(), items })); } catch (e) {}
+}
+async function openGaps(fromHistory) {
+  if (!fromHistory) pushNav({ modal: 'gaps' });
+  showModalBg();
+  const modal = $('modal');
+  const c = gapCache();
+  if (!c || (!fromHistory && Date.now() - c.t > 6 * 3600 * 1000)) {
+    modal.innerHTML = '<div class="dbody"><h2>🧩 Hiányzó évadok</h2><p class="loading">A sorozataid átnézése…</p></div>';
+    try { await findGaps(); } catch (e) { modal.innerHTML = '<div class="dbody">' + errHtml(e) + '<button class="btn full" data-close>Bezár</button></div>'; return; }
+  }
+  const items = gapPending();
+  const gaps = items.filter(x => x.kind === 'gap'), pre = items.filter(x => x.kind === 'prequel');
+  const row = x => `<div class="entry">
+      <img src="${esc(cover(x.m))}" alt="" loading="lazy">
+      <div class="info" data-id="${x.m.id}"><b>${esc(title(x.m))}</b>
+        <div class="small">${FORMAT[x.m.format] || ''}${x.m.episodes ? ' · ' + x.m.episodes + ' rész' : ''}${x.m.seasonYear ? ' · ' + x.m.seasonYear : ''}</div>
+        <div class="next">${x.kind === 'gap' ? `↔️ ${esc(x.after)} és ${esc(x.before)} között` : `⏮️ ${esc(x.before)} előtt jön`}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="btn" data-gplan="${x.m.id}">📌</button><button class="btn" data-gno="${x.m.id}" title="Nem érdekel">✕</button></div>
+    </div>`;
+  modal.innerHTML = `<div class="dbody"><h2>🧩 Hiányzó évadok</h2>
+    <p class="small" style="margin-top:0">A listádon lévő sorozatok kimaradt részei (csak TV, film, OVA, netes sorozat; a még meg nem jelentek nélkül).</p>
+    ${gaps.length ? `<h2>↔️ Kimaradt a sorozat közepéből</h2>${gaps.map(row).join('')}` : ''}
+    ${pre.length ? `<h2>⏮️ Előzmény, amit nem láttál</h2>${pre.map(row).join('')}` : ''}
+    ${!items.length ? '<p>🎉 Nincs kimaradt évad a sorozataidból.</p>' : ''}
+    <button class="btn full" id="gapRefresh">🔄 Újraellenőrzés most</button>
+    <button class="btn full" data-close>Bezár</button></div>`;
+  modal.querySelectorAll('[data-gplan]').forEach(b => b.onclick = () => {
+    const x = items.find(i => i.m.id === +b.dataset.gplan);
+    S.list[x.m.id] = Object.assign(snapshot(x.m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() });
+    save(); toast('📌 Felkerült a Tervezem listádra'); openGaps(true);
+  });
+  modal.querySelectorAll('[data-gno]').forEach(b => b.onclick = () => { S.gapIgnore[b.dataset.gno] = 1; save(); openGaps(true); });
+  $('gapRefresh').onclick = async () => {
+    $('gapRefresh').disabled = true; $('gapRefresh').textContent = '⏳ Ellenőrzés…';
+    try { await findGaps(); } catch (e) { toast(e.message); }
+    openGaps(true);
+  };
 }
 $('stChips').addEventListener('click', e => { const c = e.target.closest('[data-f]'); if (c) { stFilter = c.dataset.f; renderList(); } });
 // Egy állapot összes animéjének törlése (pl. a MAL-importból hozott „Nézem”/„Tervezem” lista); a többi állapot érintetlen marad.
@@ -1648,7 +1772,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
+const MODALS = { gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {

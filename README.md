@@ -86,7 +86,10 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **🇭🇺 Magyar leírás:** az adatlapon egy gomb (vagy a „mindig magyarul” kapcsoló) lefordítja a leírást. Ha a Chrome beépített, telefonon futó fordítója már elérhető, azt használja; különben a MyMemory ingyenes fordítót (csak a leírás szövege megy ki). A fordítást megjegyzi, és ha elfogy a napi keret, Google Fordító linket ad.
   - **Vissza gomb:** a telefon vissza gombja az appon belül lép vissza (fülek, adatlapok, ablakok), fent „‹ Vissza” gomb is van, a kezdőképernyőn pedig dupla nyomás kell a kilépéshez.
   - **🔔 Folytatás-figyelő:** a befejezett és szüneteltetett animék bejelentett, futó vagy már megjelent folytatásait 12 óránként ellenőrzi. A Listám tetején jelzi őket („N folytatás vár rád”), és 📌-gyel a Tervezem listára tehetők, ✕-szel elrejthetők.
-  - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig.
+  - **Gyors kezdőlap:** legfelül „⏰ Ma és holnap jön” (a listádon lévők következő részei), „🔔 N animédnél új rész vár rád” gomb és „▶️ Folytasd” polc, ahol +1 gombbal rögtön léptethetsz.
+  - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig. Kereső (cím vagy jegyzet) és rendezés (okos, legutóbbi, cím, pontszám, kevés van hátra).
+  - **🧩 Hiányzó évadok:** megkeresi, melyik évad, film vagy OVA maradt ki a sorozataidból (két látott rész között, vagy egy előzmény), 📌-gyel a Tervezem listára tehető, ✕-szel elrejthető.
+  - **Nem akad el:** ha az AniList 8 másodperc alatt nem válaszol, az app nem töltöget a végtelenségig, hanem kiírja, hogy most nem elérhető.
   - **Műsor:** heti vetítési naptár, a listádon lévők kiemelésével.
   - **Mit nézzek?** Hangulat (8 féle) és rendelkezésre álló idő szerinti ajánló a „Tervezem” listából vagy újdonságokból, plusz egy „még egy rész” alvás-kalkulátor.
   - **MyAnimeList import:** a nyilvános MAL-lista `load.json` oldalát kimásolod és beilleszted (MAL-fiókos engedély és export nélkül), vagy beolvasod a MAL export fájlt (`.xml` / `.xml.gz`). Átjön az állapot, a haladás, a pontszám, az újranézések és a megjegyzések; az AniList felé csak a MAL-azonosítók mennek.
