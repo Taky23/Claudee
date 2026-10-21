@@ -85,7 +85,6 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **🎵 Openingek és endingek:** az [AnimeThemes](https://animethemes.moe) adatbázisából, az appban lejátszható videóval, YouTube (videó) és YouTube Music (dal) kereséssel.
   - **🇭🇺 Magyar leírás:** az adatlapon egy gomb (vagy a „mindig magyarul” kapcsoló) lefordítja a leírást. Ha a Chrome beépített, telefonon futó fordítója már elérhető, azt használja; különben a MyMemory ingyenes fordítót (csak a leírás szövege megy ki). A fordítást megjegyzi, és ha elfogy a napi keret, Google Fordító linket ad.
   - **Vissza gomb:** a telefon vissza gombja az appon belül lép vissza (fülek, adatlapok, ablakok), fent „‹ Vissza” gomb is van, a kezdőképernyőn pedig dupla nyomás kell a kilépéshez.
-  - **Tartalék adatforrás:** ha az AniList nem érhető el, a Felfedezés, a keresés, a szezonlisták és az adatlapok a MyAnimeList adataiból jönnek ([Jikan](https://jikan.moe)), „⚠️ tartalék” jelzéssel. Az így felvett animéket az app az AniList visszatérésekor automatikusan átírja.
   - **🔔 Folytatás-figyelő:** a befejezett és szüneteltetett animék bejelentett, futó vagy már megjelent folytatásait 12 óránként ellenőrzi. A Listám tetején jelzi őket („N folytatás vár rád”), és 📌-gyel a Tervezem listára tehetők, ✕-szel elrejthetők.
   - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig.
   - **Műsor:** heti vetítési naptár, a listádon lévők kiemelésével.
