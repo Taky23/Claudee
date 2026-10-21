@@ -356,6 +356,13 @@ const mem = new Map();
 // Az AniList percenként korlátozza a kéréseket (túllépéskor kb. egy percre letilt), ezért a kéréseket
 // sorba állítjuk: legfeljebb 25 / perc, köztük legalább 400 ms. Hálózati hibánál vagy 429/5xx esetén kétszer újrapróbáljuk.
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Időkorlátos fetch: ha a szerver nem válaszol (a kapcsolat „lóg”), a kérés adott idő után hibával leáll,
+// így a tartalék és a mentett adatok is életbe léphetnek – nincs végtelen „Betöltés…”.
+function fetchT(url, opts = {}, ms = 8000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).finally(() => clearTimeout(t));
+}
 const reqTimes = [];
 let reqChain = Promise.resolve();
 function throttle() {
@@ -388,9 +395,9 @@ async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
     await throttle();
     let res;
     try {
-      res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body });
+      res = await fetchT(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body }, 8000);
     } catch (e) {
-      netFails++;
+      netFails += e.name === 'AbortError' ? 2 : 1;
       lastErr = new Error('Az AniList most nem érhető el (lehet, hogy leállt, vagy egy percre letiltott). Várj egy kicsit, és próbáld újra.');
       if (netFails >= 2) aniDownUntil = Date.now() + 3 * 60 * 1000;
       continue;
@@ -431,7 +438,7 @@ async function jikan(path, ttl = 10 * 60 * 1000) {
     if (wait > 0) await sleep(wait);
     jikanLast = Date.now();
     let r;
-    try { r = await fetch(JIKAN + path); } catch (e) { if (attempt < 2) { await sleep(1500); continue; } break; }
+    try { r = await fetchT(JIKAN + path, {}, 10000); } catch (e) { if (e.name !== 'AbortError' && attempt < 2) { await sleep(1500); continue; } break; }
     if (r.status === 429) { await sleep(1500); continue; }
     if (!r.ok) break;
     const j = await r.json();
@@ -551,7 +558,7 @@ async function renderHome() {
       return d;
     }).catch(err => jikanHome(season, year, nx).catch(() => {
       let c = null; try { c = JSON.parse(localStorage.getItem('anime-hub-home')); } catch (e) {}
-      if (!c) throw err;
+      if (!c) throw new Error('Sem az AniList, sem a tartalék (MyAnimeList) nem válaszol. Lehet, hogy leálltak, vagy a hálózatod blokkolja őket – próbáld ki wifin és mobilneten is.');
       setTimeout(() => toast('Nincs kapcsolat – a legutóbb mentett oldalt látod'), 300);
       return c.d;
     }));
@@ -780,7 +787,7 @@ async function loadThemes(m) {
   let themes = themesMem[m.id];
   if (!themes) {
     try {
-      const r = await fetch(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=${m.fallback ? 'MyAnimeList' : 'AniList'}&filter[external_id]=${m.fallback ? m.idMal : m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
+      const r = await fetchT(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=${m.fallback ? 'MyAnimeList' : 'AniList'}&filter[external_id]=${m.fallback ? m.idMal : m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
       if (!r.ok) throw new Error();
       const j = await r.json();
       themes = ((j.anime && j.anime[0] && j.anime[0].animethemes) || []).filter(t => t.type === 'OP' || t.type === 'ED')
@@ -877,7 +884,7 @@ $('traceIn').addEventListener('change', async e => {
   showTrace(!!(history.state && history.state.modal === 'trace'));
   try {
     const fd = new FormData(); fd.append('image', f);
-    const r = await fetch('https://api.trace.moe/search?anilistInfo&cutBorders', { method: 'POST', body: fd });
+    const r = await fetchT('https://api.trace.moe/search?anilistInfo&cutBorders', { method: 'POST', body: fd }, 45000);
     const j = await r.json().catch(() => ({}));
     if (r.status === 402 || r.status === 429) throw new Error('Elfogyott a havi ingyenes keresési keret, vagy túl gyorsan kerestél. Próbáld később.');
     if (!r.ok || j.error) throw new Error(j.error || 'A képkereső most nem válaszol.');
@@ -955,7 +962,7 @@ async function translateHu(text) {
     const outParts = [];
     for (const c of chunks(para)) {
       let r;
-      try { r = await fetch('https://api.mymemory.translated.net/get?langpair=en|hu&q=' + encodeURIComponent(c)); } catch (e) { throw new Error('Nem érem el a fordítót. Van internet?'); }
+      try { r = await fetchT('https://api.mymemory.translated.net/get?langpair=en|hu&q=' + encodeURIComponent(c), {}, 10000); } catch (e) { throw new Error('Nem érem el a fordítót. Van internet?'); }
       const j = await r.json().catch(() => ({}));
       const t = j.responseData && j.responseData.translatedText;
       if (!r.ok || !t || j.quotaFinished || /MYMEMORY WARNING/i.test(t)) throw new Error('A mai ingyenes fordítási keret elfogyott.');
