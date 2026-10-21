@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Csak az AniList (keresés, adatok, borítók) és a MyMemory fordító (csak az anime-leírás szövege) érhető el; a listád a telefonon marad. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st; connect-src 'self' https://graphql.anilist.co https://api.mymemory.translated.net; frame-src 'none'; object-src 'none'; base-uri 'self'">
+<!-- Csak az AniList (adatok), a MyMemory (leírás fordítása), a trace.moe (képkeresés, csak a feltöltött kép) és az AnimeThemes (openingek) érhető el; a listád a telefonon marad. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe; media-src 'self' blob: https://media.trace.moe https://v.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0f0c1d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -162,7 +162,8 @@ a { color: var(--accent-2); }
 <main>
   <!-- FELFEDEZÉS -->
   <section class="view active" id="v-home">
-    <input type="search" id="q" placeholder="Anime keresése…" autocomplete="off" style="margin-top:8px">
+    <div class="row" style="margin-top:8px"><input class="grow" type="search" id="q" placeholder="Anime keresése…" autocomplete="off"><button class="btn" id="traceBtn" title="Melyik anime ez?">📸</button></div>
+    <input type="file" id="traceIn" accept="image/*,video/*" hidden>
     <div id="searchOut"></div>
     <div id="homeOut"><p class="loading">Betöltés…</p></div>
   </section>
@@ -453,6 +454,8 @@ async function openAnime(id, fromHistory) {
       ${chars.length ? `<h2>Szereplők</h2><div class="chars">${chars.map(c => `<div><img src="${esc(c.node.image.medium)}" alt="" loading="lazy">${esc(c.node.name.full)}${c.role === 'MAIN' ? '<br><span class="small">főszereplő</span>' : ''}</div>`).join('')}</div>` : ''}
       ${rels.length ? `<h2>Kapcsolódó</h2><div class="shelf">${rels.map(r => poster(r.node).replace('<div class="t">', `<div class="small">${REL[r.relationType]}</div><div class="t">`)).join('')}</div>` : ''}
       ${recs.length ? `<h2>Ha ez tetszett…</h2><div class="shelf">${recs.map(poster).join('')}</div>` : ''}
+      <h2>🎵 Openingek és endingek</h2><div id="themesOut"><p class="small">Betöltés…</p></div>
+      <button class="btn full" id="orderBtn">🧭 Nézési sorrend (a teljes sorozat)</button>
       <div class="row" style="margin-top:12px">
         ${m.trailer && m.trailer.site === 'youtube' ? `<a class="btn grow" style="text-align:center;text-decoration:none" href="https://www.youtube.com/watch?v=${encodeURIComponent(m.trailer.id)}" target="_blank" rel="noopener noreferrer">▶️ Előzetes</a>` : ''}
         <a class="btn grow" style="text-align:center;text-decoration:none" href="${esc(m.siteUrl)}" target="_blank" rel="noopener noreferrer">AniList ↗</a>
@@ -462,6 +465,8 @@ async function openAnime(id, fromHistory) {
   const more = $('more');
   if (more) more.onclick = () => { $('desc').classList.toggle('clamp'); more.textContent = $('desc').classList.contains('clamp') ? 'Több ▾' : 'Kevesebb ▴'; };
   bindEditor(m);
+  $('orderBtn').onclick = () => openOrder(m.id);
+  loadThemes(m);
   if ($('trBtn')) {
     $('trBtn').onclick = () => toggleHu(m.id, desc);
     $('trAuto').onchange = () => { S.autoHu = $('trAuto').checked; save(); if (S.autoHu && !$('desc').dataset.hu) toggleHu(m.id, desc); };
@@ -484,6 +489,147 @@ function listEditor(m, e) {
     <textarea id="note" placeholder="pl. a 12. rész vége 😭">${esc(e.note || '')}</textarea>
     <button class="btn full" id="rmList" style="color:#ff8095">Törlés a listáról</button>`;
 }
+// ---------- 🎵 Openingek és endingek (AnimeThemes) ----------
+const themesMem = {};
+async function loadThemes(m) {
+  const out = () => $('themesOut');
+  const name = title(m);
+  const yt = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+  const sp = q => `https://open.spotify.com/search/${encodeURIComponent(q)}`;
+  let themes = themesMem[m.id];
+  if (!themes) {
+    try {
+      const r = await fetch(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=AniList&filter[external_id]=${m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
+      if (!r.ok) throw new Error();
+      const j = await r.json();
+      themes = ((j.anime && j.anime[0] && j.anime[0].animethemes) || []).filter(t => t.type === 'OP' || t.type === 'ED')
+        .sort((a, b) => (a.type === b.type ? (a.sequence || 1) - (b.sequence || 1) : a.type === 'OP' ? -1 : 1));
+      themesMem[m.id] = themes;
+    } catch (e) {
+      if (out()) out().innerHTML = `<p class="small">Most nem érem el a dal-adatbázist. <a href="${yt(name + ' opening')}" target="_blank" rel="noopener noreferrer">Keresés YouTube-on ↗</a></p>`;
+      return;
+    }
+  }
+  if (!out()) return;
+  if (!themes.length) { out().innerHTML = `<p class="small">Ehhez az animéhez nincs dal-adat. <a href="${yt(name + ' opening')}" target="_blank" rel="noopener noreferrer">Keresés YouTube-on ↗</a></p>`; return; }
+  out().innerHTML = '<div class="card" style="padding:4px 12px">' + themes.map((t, i) => {
+    const song = t.song || {}, artists = (song.artists || []).map(a => a.name).join(', ');
+    const video = (t.animethemeentries || []).flatMap(en => en.videos || [])[0];
+    const q = `${song.title || ''} ${artists}`.trim() || `${name} ${t.type}${t.sequence || ''}`;
+    return `<div class="song" style="padding:8px 0;border-bottom:1px solid var(--line)">
+      <b>${t.type === 'OP' ? '🎬 Opening' : '🌙 Ending'} ${t.sequence || 1}:</b> ${esc(song.title || '?')}${artists ? ` <span class="muted">– ${esc(artists)}</span>` : ''}
+      <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:6px">
+        ${video ? `<button class="btn" data-play="${i}" style="padding:5px 10px;font-size:12px">▶️ Lejátszás itt</button>` : ''}
+        <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${yt(q)}" target="_blank" rel="noopener noreferrer">YouTube</a>
+        <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${sp(q)}" target="_blank" rel="noopener noreferrer">Spotify</a>
+      </div><div data-vid="${i}"></div></div>`;
+  }).join('') + '</div><p class="small">Dal-adatok: AnimeThemes.moe</p>';
+  out().querySelectorAll('[data-play]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.play, t = themes[i];
+    const v = (t.animethemeentries || []).flatMap(en => en.videos || [])[0];
+    const box = out().querySelector(`[data-vid="${i}"]`);
+    box.innerHTML = box.innerHTML ? '' : `<video src="${esc(v.link)}" controls autoplay playsinline style="width:100%;border-radius:10px;margin-top:6px;background:#000"></video>`;
+  });
+}
+
+// ---------- 🧭 Nézési sorrend (a teljes franchise, megjelenés szerint) ----------
+// A folytatás/előzmény/mellékszál kapcsolatokon végigjárjuk a sorozatot (rétegenként egy lekérdezés), majd dátum szerint rendezünk.
+const ORDER_REL = ['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'SUMMARY'];
+const orderMem = {};
+let orderMainOnly = true;
+async function openOrder(id, fromHistory) {
+  const modal = $('modal');
+  if (!fromHistory) pushNav({ modal: 'order', id });
+  $('modalBg').classList.add('show');
+  let data = orderMem[id];
+  if (!data) {
+    modal.innerHTML = '<div class="dbody"><h2>🧭 Nézési sorrend</h2><p class="loading">A sorozat feltérképezése…</p></div>';
+    const nodes = new Map(), main = new Set([id]);
+    let frontier = [id];
+    try {
+      for (let depth = 0; depth < 10 && frontier.length && nodes.size < 60; depth++) {
+        const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { ${CARD} startDate { year month day }
+          relations { edges { relationType node { id type format } } } } } }`, { ids: frontier }, 60 * 60 * 1000);
+        const next = [];
+        for (const m of d.Page.media) {
+          nodes.set(m.id, m);
+          for (const e of m.relations.edges) {
+            if (e.node.type !== 'ANIME' || e.node.format === 'MUSIC' || !ORDER_REL.includes(e.relationType)) continue;
+            // Fő történet: csak előzmény/folytatás láncon elérhető részek.
+            if (main.has(m.id) && (e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL')) main.add(e.node.id);
+            if (!nodes.has(e.node.id) && !next.includes(e.node.id) && nodes.size + next.length < 60) next.push(e.node.id);
+          }
+        }
+        frontier = next;
+        modal.querySelector('.loading') && (modal.querySelector('.loading').textContent = `A sorozat feltérképezése… (${nodes.size} rész eddig)`);
+      }
+    } catch (e) { modal.innerHTML = '<div class="dbody">' + errHtml(e) + '<button class="btn full" data-close>Bezár</button></div>'; return; }
+    const dateKey = m => { const s = m.startDate || {}; return s.year ? s.year * 10000 + (s.month || 12) * 100 + (s.day || 28) : 99999999; };
+    data = { list: [...nodes.values()].sort((a, b) => dateKey(a) - dateKey(b)), main, start: id };
+    orderMem[id] = data;
+  }
+  const seen = x => S.list[x.id] && (S.list[x.id].status === 'done' || S.list[x.id].progress > 0);
+  const shown = data.list.filter(x => !orderMainOnly || data.main.has(x.id));
+  const doneCnt = shown.filter(seen).length;
+  modal.innerHTML = `<div class="dbody"><h2>🧭 Nézési sorrend</h2>
+    <div class="chips"><button class="chip ${orderMainOnly ? 'on' : ''}" data-om="1">Fő történet</button><button class="chip ${!orderMainOnly ? 'on' : ''}" data-om="0">Minden (filmek, OVA, mellékszálak)</button></div>
+    <p class="small">Megjelenési sorrendben – a legtöbb sorozatot így érdemes nézni. ✅ ${doneCnt} / ${shown.length} megnézve</p>
+    ${shown.map((x, i) => `<div class="entry" style="${x.id === data.start ? 'background:rgba(255,111,181,.12);border-radius:10px' : ''}">
+      <b style="width:26px;text-align:center">${seen(x) ? '✅' : i + 1}</b>
+      <img src="${esc(cover(x))}" alt="" loading="lazy">
+      <div class="info" data-id="${x.id}"><b>${esc(title(x))}</b>
+        <div class="small">${FORMAT[x.format] || x.format || ''}${x.episodes ? ' · ' + x.episodes + ' rész' : ''}${x.startDate && x.startDate.year ? ' · ' + x.startDate.year : ''}${!data.main.has(x.id) ? ' · extra' : ''}</div></div>
+    </div>`).join('')}
+    <button class="btn full" data-close>Bezár</button></div>`;
+  modal.querySelectorAll('[data-om]').forEach(b => b.onclick = () => { orderMainOnly = b.dataset.om === '1'; openOrder(id, true); });
+  modal.scrollTop = 0;
+}
+
+// ---------- 📸 Melyik anime ez? (trace.moe képkeresés) ----------
+let traceResult = null;
+$('traceBtn').onclick = () => $('traceIn').click();
+$('traceIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  if (f.size > 25 * 1024 * 1024) { toast('Túl nagy fájl (max. 25 MB)'); return; }
+  traceResult = { loading: true, preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : null };
+  showTrace(!!(history.state && history.state.modal === 'trace'));
+  try {
+    const fd = new FormData(); fd.append('image', f);
+    const r = await fetch('https://api.trace.moe/search?anilistInfo&cutBorders', { method: 'POST', body: fd });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 402 || r.status === 429) throw new Error('Elfogyott a havi ingyenes keresési keret, vagy túl gyorsan kerestél. Próbáld később.');
+    if (!r.ok || j.error) throw new Error(j.error || 'A képkereső most nem válaszol.');
+    traceResult = { preview: traceResult.preview, results: (j.result || []).filter(x => x.anilist && !x.anilist.isAdult).slice(0, 5) };
+  } catch (err) {
+    traceResult = { preview: traceResult.preview, error: err.message === 'Failed to fetch' ? 'Nem érem el a képkeresőt. Van internet?' : err.message };
+  }
+  if (history.state && history.state.modal === 'trace') showTrace(true);
+});
+const ts = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+function showTrace(fromHistory) {
+  const modal = $('modal');
+  if (!fromHistory) pushNav({ modal: 'trace' });
+  $('modalBg').classList.add('show');
+  const t = traceResult || {};
+  const best = t.results && t.results[0];
+  modal.innerHTML = `<div class="dbody"><h2>📸 Melyik anime ez?</h2>
+    ${t.preview ? `<img src="${t.preview}" alt="" style="width:100%;max-height:30vh;object-fit:contain;border-radius:12px;background:#000">` : ''}
+    ${t.loading ? '<p class="loading">Keresés a képkockák között…</p>' : ''}
+    ${t.error ? `<p class="err">⚠️ ${esc(t.error)}</p>` : ''}
+    ${t.results && !t.results.length ? '<p class="small">Nem találtam egyezést. Próbálj egy tisztább, vágatlan képkockát (szöveg és keret nélkül).</p>' : ''}
+    ${best && best.similarity < 0.87 ? '<p class="small" style="color:var(--warn)">⚠️ Nem biztos találat – lehet, hogy a kép nem animéből van, vagy túl sok rajta a szöveg/keret.</p>' : ''}
+    ${(t.results || []).map((x, i) => `<div class="card" style="${i ? '' : 'border-color:var(--accent)'}">
+      <img src="${esc(x.image)}" alt="" style="width:100%;border-radius:10px">
+      <b style="display:block;margin-top:6px">${esc(x.anilist.title.english || x.anilist.title.romaji)}</b>
+      <div class="small">${x.episode ? x.episode + '. rész · ' : ''}${ts(x.from)} körül · ${Math.round(x.similarity * 100)}% egyezés</div>
+      <button class="btn full" data-id="${x.anilist.id}">Adatlap megnyitása</button></div>`).join('')}
+    <p class="small">Képkeresés: trace.moe – csak a feltöltött kép megy ki hozzájuk.</p>
+    <button class="btn full" id="traceAgain">📸 Másik kép</button>
+    <button class="btn full" data-close>Bezár</button></div>`;
+  $('traceAgain').onclick = () => $('traceIn').click();
+}
+
 // ---------- Leírás fordítása magyarra ----------
 // 1) A Chrome beépített, telefonon futó fordítója, ha elérhető; 2) különben a MyMemory ingyenes fordító
 // (csak a leírás szövege megy ki); 3) ha egyik sem megy, Google Fordító link. Az eredményt megjegyezzük.
@@ -1262,7 +1408,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { anime: id => openAnime(id, true), next: () => openNextSeason(true), after: id => nextPopup(id, true) };
+const MODALS = { anime: id => openAnime(id, true), next: () => openNextSeason(true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {
