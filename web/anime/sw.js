@@ -1,5 +1,5 @@
 // Offline gyorsítótár: az app hálózat nélkül is elindul.
-const CACHE = 'anime-v6';
+const CACHE = 'anime-v7';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
