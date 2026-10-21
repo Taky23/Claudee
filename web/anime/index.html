@@ -285,9 +285,9 @@ const STATUS_AL = { FINISHED: 'Befejezett', RELEASING: 'Fut', NOT_YET_RELEASED: 
 const GENRE_HU = { Action: 'Akció', Adventure: 'Kaland', Comedy: 'Vígjáték', Drama: 'Dráma', Ecchi: 'Ecchi', Fantasy: 'Fantasy', Horror: 'Horror', 'Mahou Shoujo': 'Varázslólány', Mecha: 'Mecha', Music: 'Zene', Mystery: 'Rejtély', Psychological: 'Pszichológiai', Romance: 'Romantika', 'Sci-Fi': 'Sci-fi', 'Slice of Life': 'Hétköznapi', Sports: 'Sport', Supernatural: 'Természetfeletti', Thriller: 'Thriller' };
 const g = x => GENRE_HU[x] || x;
 const SEASON_HU = { WINTER: 'Tél', SPRING: 'Tavasz', SUMMER: 'Nyár', FALL: 'Ősz' };
-// Szezonos listák szűrője: csak japán TV-sorozat, film és netes sorozat (klipek, rövidkék, specialek
+// Szezonos listák szűrője: csak japán TV-sorozat, film, OVA és netes sorozat (klipek, rövidkék, specialek
 // és kínai animációk nélkül), és csak amit legalább 100 AniList-felhasználó követ (a teljesen ismeretlenek kimaradnak).
-const SEASON_FILTER = 'format_in: [TV, MOVIE, ONA], countryOfOrigin: "JP", popularity_greater: 100';
+const SEASON_FILTER = 'format_in: [TV, MOVIE, OVA, ONA], countryOfOrigin: "JP", popularity_greater: 100';
 function nextSeason() {
   const { season, year } = curSeason();
   const order = ['WINTER', 'SPRING', 'SUMMER', 'FALL'], i = order.indexOf(season);
@@ -366,7 +366,7 @@ async function openNextSeason(fromHistory) {
   list.sort((a, b) => ((premiere(a) || { t: 9e15 }).t) - ((premiere(b) || { t: 9e15 }).t));
   const draw = () => {
     modal.innerHTML = `<div class="dbody"><h2>🌱 ${SEASON_HU[nx.season]} ${nx.year} – premierek</h2>
-      <p class="small" style="margin-top:0">Mind a ${list.length} bejelentett japán anime (klipek, rövidkék és ismeretlen címek nélkül), premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
+      <p class="small" style="margin-top:0">Mind a ${list.length} bejelentett japán anime – sorozatok, filmek és OVA-k (klipek, rövidkék és ismeretlen címek nélkül), premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
       ${list.map(m => `<div class="entry">
         <img src="${esc(cover(m))}" alt="" loading="lazy">
         <div class="info" data-id="${m.id}"><b>${esc(title(m))}</b>
