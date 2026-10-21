@@ -257,19 +257,53 @@ function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch 
 
 // ---------- AniList ----------
 const mem = new Map();
+// Az AniList percenként korlátozza a kéréseket (túllépéskor kb. egy percre letilt), ezért a kéréseket
+// sorba állítjuk: legfeljebb 25 / perc, köztük legalább 400 ms. Hálózati hibánál vagy 429/5xx esetén kétszer újrapróbáljuk.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const reqTimes = [];
+let reqChain = Promise.resolve();
+function throttle() {
+  const slot = reqChain.then(async () => {
+    for (;;) {
+      const now = Date.now();
+      while (reqTimes.length && now - reqTimes[0] > 60000) reqTimes.shift();
+      const last = reqTimes[reqTimes.length - 1] || 0;
+      if (reqTimes.length < 25 && now - last >= 400) break;
+      await sleep(reqTimes.length >= 25 ? 60000 - (now - reqTimes[0]) + 100 : 400 - (now - last));
+    }
+    reqTimes.push(Date.now());
+  });
+  reqChain = slot.catch(() => {});
+  return slot;
+}
+let blockedUntil = 0;
 async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
   const key = query + JSON.stringify(variables);
   const hit = mem.get(key);
   if (hit && Date.now() - hit.t < ttl) return hit.d;
-  let res;
-  try {
-    res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ query, variables }) });
-  } catch (e) { throw new Error('Nem sikerült elérni az AniListet. Van internet?'); }
-  if (res.status === 429) throw new Error('Túl sok kérés – várj egy percet.');
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok || !j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Az AniList most nem válaszol (' + res.status + ').');
-  mem.set(key, { t: Date.now(), d: j.data });
-  return j.data;
+  const body = JSON.stringify({ query, variables });
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await sleep(attempt === 1 ? 4000 : 10000);
+    if (blockedUntil > Date.now()) await sleep(blockedUntil - Date.now());
+    await throttle();
+    let res;
+    try {
+      res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body });
+    } catch (e) { lastErr = new Error('Az AniList most nem érhető el (lehet, hogy túl sok kérés ment ki, és egy percre letiltott). Várj egy kicsit, és próbáld újra.'); continue; }
+    if (res.status === 429) {
+      const ra = +res.headers.get('Retry-After') || 60;
+      blockedUntil = Date.now() + ra * 1000;
+      lastErr = new Error(`Túl sok kérés – az AniList ${ra} másodpercre letiltott. Utána magától megy tovább.`);
+      continue;
+    }
+    if (res.status >= 500) { lastErr = new Error('Az AniList most akadozik (' + res.status + ').'); continue; }
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Az AniList most nem válaszol (' + res.status + ').');
+    mem.set(key, { t: Date.now(), d: j.data });
+    return j.data;
+  }
+  throw lastErr;
 }
 const errHtml = e => `<div class="card"><p class="err">⚠️ ${esc(e.message)}</p><button class="btn full" data-retry>🔄 Újra</button></div>`;
 
@@ -323,7 +357,15 @@ async function renderHome() {
       trending: Page(perPage: 15) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${CARD} } }
       season: Page(perPage: 15) { media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} } }
       top: Page(perPage: 15) { media(type: ANIME, sort: SCORE_DESC, isAdult: false, format_in: [TV, MOVIE, ONA]) { ${CARD} } }
-    }`, { season, year, ns: nx.season, ny: nx.year });
+    }`, { season, year, ns: nx.season, ny: nx.year }).then(d => {
+      try { localStorage.setItem('anime-hub-home', JSON.stringify({ t: Date.now(), d })); } catch (e) {}
+      return d;
+    }).catch(err => {
+      let c = null; try { c = JSON.parse(localStorage.getItem('anime-hub-home')); } catch (e) {}
+      if (!c) throw err;
+      setTimeout(() => toast('Nincs kapcsolat az AniListtel – a legutóbb mentett oldalt látod'), 300);
+      return c.d;
+    });
     const watching = Object.values(S.list).filter(x => x.status === 'watching').sort((a, b) => b.updated - a.updated);
     out.innerHTML =
       (watching.length ? `<h2>▶️ Folytasd</h2><div class="shelf">${watching.map(x => poster(x)).join('')}</div>` : '') +
@@ -1537,7 +1579,8 @@ history.pushState({ v: 'v-home' }, '');
 updateBack();
 
 renderHome();
-syncAiring();
+// A háttérfrissítés később indul, hogy ne torlódjon a kezdőoldal betöltésével.
+setTimeout(syncAiring, 8000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
