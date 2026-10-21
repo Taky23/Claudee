@@ -286,7 +286,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
   <!-- MIT NÉZZEK -->
   <section class="view" id="v-pick">
     <div class="card">
-      <b>Milyen hangulatban vagy?</b>
+      <b>Milyen hangulatban vagy?</b> <span class="small">(többet is választhatsz)</span>
       <div class="chips" id="moodChips" style="flex-wrap:wrap"></div>
       <div class="small" style="margin-top:8px">Mennyi időd van?</div>
       <div class="chips" id="timeChips"></div>
@@ -1473,46 +1473,60 @@ const MOODS = {
   love: ['💘 Romantika', ['Romance']],
   world: ['🌌 Másik világ', ['Fantasy', 'Adventure', 'Sci-Fi']],
   chill: ['😌 Chill', ['Slice of Life', 'Music']],
+  ecchi: ['🍑 Ecchi', ['Ecchi']],
 };
+// Több hangulat is kijelölhető: az ajánlatnak mindegyikbe bele kell illenie (hangulatonként legalább egy műfaj egyezzen).
+function ms() { if (!Array.isArray(S.moods)) S.moods = S.mood && MOODS[S.mood] ? [S.mood] : ['fun']; return S.moods; }
+const moodGroups = () => ms().filter(k => MOODS[k]).map(k => MOODS[k][1]);
+const moodFits = gs => moodGroups().every(grp => (gs || []).some(x => grp.includes(x)));
+const moodLabel = () => ms().length ? ms().map(k => MOODS[k][0]).join(' + ') : '🎲 Bármi';
 const TIMES = { any: '🤷 Mindegy', movie: '🎬 Egy film', short: '⚡ Rövid sorozat (≤13 rész)', long: '🍿 Darálós (25+ rész)' };
 const SRCS = { mine: '📌 A „Tervezem” listámról', new: '✨ Valami újat' };
 function renderPickUI() {
-  $('moodChips').innerHTML = Object.entries(MOODS).map(([k, v]) => `<button class="chip mood ${S.mood === k ? 'on' : ''}" data-mood="${k}">${v[0]}</button>`).join('');
+  $('moodChips').innerHTML = Object.entries(MOODS).map(([k, v]) => `<button class="chip mood ${ms().includes(k) ? 'on' : ''}" data-mood="${k}">${v[0]}</button>`).join('') +
+    (ms().length ? '<button class="chip mood" data-mood="">✕ Törlés</button>' : '');
   $('timeChips').innerHTML = Object.entries(TIMES).map(([k, v]) => `<button class="chip ${S.time === k ? 'on' : ''}" data-time="${k}">${v}</button>`).join('');
   $('srcChips').innerHTML = Object.entries(SRCS).map(([k, v]) => `<button class="chip ${S.src === k ? 'on' : ''}" data-src="${k}">${v}</button>`).join('');
   calcBed();
 }
 $('v-pick').addEventListener('click', e => {
   const m = e.target.closest('[data-mood]'), t = e.target.closest('[data-time]'), s = e.target.closest('[data-src]');
-  if (m) S.mood = m.dataset.mood; else if (t) S.time = t.dataset.time; else if (s) S.src = s.dataset.src; else return;
+  if (m) { const k = m.dataset.mood; S.moods = !k ? [] : ms().includes(k) ? ms().filter(x => x !== k) : [...ms(), k]; } else if (t) S.time = t.dataset.time; else if (s) S.src = s.dataset.src; else return;
   save(); renderPickUI();
 });
 const timeOk = (format, eps) => S.time === 'any' || (S.time === 'movie' ? format === 'MOVIE' : S.time === 'short' ? format !== 'MOVIE' && eps && eps <= 13 : format !== 'MOVIE' && eps && eps >= 25);
 let pickRolls = 0;
 $('pickBtn').onclick = async () => {
   const out = $('pickOut');
-  const genres = MOODS[S.mood][1];
+  const groups = moodGroups();
   pickRolls++;
   if (S.src === 'mine') {
-    const pool = Object.values(S.list).filter(x => x.status === 'plan' && x.genres.some(gg => genres.includes(gg)) && timeOk(x.format, x.episodes));
+    const pool = Object.values(S.list).filter(x => x.status === 'plan' && moodFits(x.genres) && timeOk(x.format, x.episodes));
     if (pool.length) { showPick(R(pool), 'A „Tervezem” listádról'); return; }
     out.innerHTML = '<div class="card"><p class="small" style="margin:0">A „Tervezem” listádon nincs ilyen. Keresek valami újat…</p></div>';
   } else out.innerHTML = '<p class="loading">Keresgélek…</p>';
   try {
     const formats = S.time === 'movie' ? ['MOVIE'] : S.time === 'any' ? ['TV', 'MOVIE', 'ONA'] : ['TV', 'ONA'];
     const eps = S.time === 'short' ? { episodes_lesser: 14 } : S.time === 'long' ? { episodes_greater: 24 } : {};
-    const d = await gql(`query($g: [String], $f: [MediaFormat], $p: Int, $el: Int, $eg: Int) { Page(page: $p, perPage: 25) {
-      media(type: ANIME, genre_in: $g, format_in: $f, isAdult: false, sort: POPULARITY_DESC, averageScore_greater: 68, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} } } }`,
-      { g: genres, f: formats, p: 1 + Math.floor(Math.random() * 4), el: eps.episodes_lesser, eg: eps.episodes_greater }, 60 * 60 * 1000);
-    const pool = d.Page.media.filter(m => !S.list[m.id]);
+    // A legszűkebb hangulat műfajaival kérdezünk, a többire a telefonon szűrünk.
+    const base = groups.length ? groups.reduce((a, b) => (b.length < a.length ? b : a)) : null;
+    const fetchPage = p => gql(`query($g: [String], $f: [MediaFormat], $p: Int, $el: Int, $eg: Int, $sc: Int) { Page(page: $p, perPage: 50) {
+      media(type: ANIME, genre_in: $g, format_in: $f, isAdult: false, sort: POPULARITY_DESC, averageScore_greater: $sc, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} } } }`,
+      { g: base, f: formats, p, el: eps.episodes_lesser, eg: eps.episodes_greater, sc: groups.length > 1 ? 60 : 68 }, 60 * 60 * 1000).then(d => d.Page.media.filter(m => !S.list[m.id]));
+    const p0 = 1 + Math.floor(Math.random() * (groups.length > 1 ? 3 : 2));
+    let all = await fetchPage(p0);
+    let pool = all.filter(m => moodFits(m.genres));
+    if (!pool.length && p0 > 1) { all = await fetchPage(1); pool = all.filter(m => moodFits(m.genres)); }
+    let note = 'Új neked';
+    if (!pool.length && all.length) { pool = all.filter(m => groups.some(grp => (m.genres || []).some(x => grp.includes(x)))); if (!pool.length) pool = all; note = 'Mindegyik hangulatba illőt nem találtam – ez legalább az egyikbe illik'; }
     if (!pool.length) { out.innerHTML = '<div class="card"><p class="small" style="margin:0">Ezeket már mind ismered! Próbáld újra, vagy válassz más hangulatot.</p></div>'; return; }
-    showPick(snapshot(R(pool)), 'Új neked');
+    showPick(snapshot(R(pool)), note);
   } catch (e) { out.innerHTML = errHtml(e); }
 };
 const PICK_QUIPS = ['', '', 'Nem tetszik? Itt egy másik.', 'Válogatós vagy ma… 😏', 'Már az ötödik. Nézd meg ezt, és kész!', 'Oké, ez az utolsó ajánlatom. (Nem.)'];
 function showPick(x, from) {
   $('pickOut').innerHTML = `<div class="card pick">
-    <div class="small">${from} · ${MOODS[S.mood][0]}</div>
+    <div class="small">${from} · ${moodLabel()}</div>
     <img src="${esc(x.cover)}" alt="" data-id="${x.id}" style="margin-top:8px">
     <b>${esc(x.title)}</b>
     <div class="small">${FORMAT[x.format] || ''}${x.episodes ? ' · ' + x.episodes + ' rész' : ''} · ${x.genres.slice(0, 3).map(g).join(', ')}</div>

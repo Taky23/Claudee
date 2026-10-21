@@ -92,7 +92,7 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **🧩 Hiányzó évadok:** megkeresi, melyik évad, film vagy OVA maradt ki a sorozataidból (két látott rész között, vagy egy előzmény), 📌-gyel a Tervezem listára tehető, ✕-szel elrejthető.
   - **Nem akad el:** ha az AniList 8 másodperc alatt nem válaszol, az app nem töltöget a végtelenségig, hanem kiírja, hogy most nem elérhető.
   - **Műsor:** heti vetítési naptár, a listádon lévők kiemelésével.
-  - **Mit nézzek?** Hangulat (8 féle) és rendelkezésre álló idő szerinti ajánló a „Tervezem” listából vagy újdonságokból, plusz egy „még egy rész” alvás-kalkulátor.
+  - **Mit nézzek?** Hangulat (9 féle, köztük 🍑 Ecchi; egyszerre több is kijelölhető, ilyenkor mindegyikbe illő animét keres, pl. Romantika + Nevetni = romkom) és rendelkezésre álló idő szerinti ajánló a „Tervezem” listából vagy újdonságokból, plusz egy „még egy rész” alvás-kalkulátor.
   - **MyAnimeList import:** a nyilvános MAL-lista `load.json` oldalát kimásolod és beilleszted (MAL-fiókos engedély és export nélkül), vagy beolvasod a MAL export fájlt (`.xml` / `.xml.gz`). Átjön az állapot, a haladás, a pontszám, az újranézések és a megjegyzések; az AniList felé csak a MAL-azonosítók mennek.
   - **Én:**
     - **⏱️ Idő:** az összes megnézett rész órákban (újranézésekkel együtt), hétköznapi összevetésekkel (alvás, munkanap, film, Budapest–Tokió repülés), és lebontva animénként, műfajonként, formátum, lista és stúdió szerint.
