@@ -79,12 +79,13 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 - **🌴 Sötét Utas** (`web/sotet/`) – Dexter-szerű kettős élet szimulátor, nyomozás nélkül, ezért más, mint A Kód. Minden nap 4 napszakból áll, és mindegyikre választasz egy akciót: munka, futás, megfigyelés, idő Lilivel, előkészítés, lecsapás, takarítás, pihenés. Négy mérőt kell egyensúlyban tartani: a Sötét Utas éhségét, a gyanút, a kapcsolatot és az energiát. Közben véletlen helyzetek jönnek két választással, minden lecsapás után pedig egy takarítós reflexjáték. A játék végtelen, napszámlálóval és top 10-es helyi ranglistával.
 
 - **🌸 Anime Hub** (`web/anime/`) – saját anime-központ az [AniList](https://anilist.co) nyilvános API-jával. A lista, a pontozás és a jegyzetek **csak a telefonon** vannak. Az AniList felé csak keresések és azonosítók mennek, a CSP mást nem enged.
-  - **Felfedezés:** felkapott, idei szezon, minden idők legjobbjai, kereső; részletes adatlap bannerrel, szereplőkkel, kapcsolódó részekkel és ajánlásokkal.
+  - **Felfedezés:** felkapott, idei szezon, jövő szezon (premierlista dátummal és visszaszámlálással, 📌 gombbal a Tervezem listára), minden idők legjobbjai, kereső; részletes adatlap bannerrel, szereplőkkel, kapcsolódó részekkel és ajánlásokkal.
   - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig.
   - **Műsor:** heti vetítési naptár, a listádon lévők kiemelésével.
   - **Mit nézzek?** Hangulat (8 féle) és rendelkezésre álló idő szerinti ajánló a „Tervezem” listából vagy újdonságokból, plusz egy „még egy rész” alvás-kalkulátor.
   - **MyAnimeList import:** a nyilvános MAL-lista `load.json` oldalát kimásolod és beilleszted (MAL-fiókos engedély és export nélkül), vagy beolvasod a MAL export fájlt (`.xml` / `.xml.gz`). Átjön az állapot, a haladás, a pontszám, az újranézések és a megjegyzések; az AniList felé csak a MAL-azonosítók mennek.
   - **Én:**
+    - **⏱️ Idő:** az összes megnézett rész órákban (újranézésekkel együtt), hétköznapi összevetésekkel (alvás, munkanap, film, Budapest–Tokió repülés), és lebontva animénként, műfajonként, formátum, lista és stúdió szerint.
     - **🧬 DNS:** statisztika (részek, órák, műfajok, stúdiók) és anime-személyiség megosztható képként.
     - **📆 Évkönyv:** havi vagy éves összefoglaló (részek, órák, befejezések, top 3, a hónap kedvence, fő műfajok, legaktívabb nap) megosztható képként.
     - **🎯 Kihívások:** havonta 4 új kihívás pontokkal és rangokkal.
