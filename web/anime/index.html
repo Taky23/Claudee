@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Csak az AniList (adatok), a MyMemory (leírás fordítása), a trace.moe (képkeresés, csak a feltöltött kép) és az AnimeThemes (openingek) érhető el; a listád a telefonon marad. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe; media-src 'self' blob: https://media.trace.moe https://v.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
+<!-- Csak az AniList (adatok), a Jikan (tartalék MyAnimeList-adatok), a MyMemory (leírás fordítása), a trace.moe (képkeresés, csak a feltöltött kép) és az AnimeThemes (openingek) érhető el; a listád a telefonon marad. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe https://cdn.myanimelist.net; media-src 'self' blob: https://media.trace.moe https://v.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://api.jikan.moe https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#07060f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -253,7 +253,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 </style>
 </head>
 <body>
-<header><button class="btn" id="backBtn" style="visibility:hidden;padding:6px 12px;margin-right:8px">‹ Vissza</button><h1 style="flex:1">🌸 Anime Hub</h1><span class="small">🔒 a listád csak nálad</span></header>
+<header><button class="btn" id="backBtn" style="visibility:hidden;padding:6px 12px;margin-right:8px">‹ Vissza</button><h1 style="flex:1">🌸 Anime Hub</h1><span class="small" id="fbBadge" style="display:none;color:var(--warn);margin-right:8px">⚠️ tartalék</span><span class="small">🔒 a listád csak nálad</span></header>
 
 <main>
   <!-- FELFEDEZÉS -->
@@ -373,20 +373,28 @@ function throttle() {
   return slot;
 }
 let blockedUntil = 0;
+let aniDownUntil = 0;
 async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
   const key = query + JSON.stringify(variables);
   const hit = mem.get(key);
   if (hit && Date.now() - hit.t < ttl) return hit.d;
+  if (aniDownUntil > Date.now()) throw new Error('Az AniList most nem érhető el.');
   const body = JSON.stringify({ query, variables });
-  let lastErr = null;
+  let lastErr = null, netFails = 0;
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await sleep(attempt === 1 ? 4000 : 10000);
+    if (attempt) await sleep(netFails ? 2000 : attempt === 1 ? 4000 : 10000);
+    if (netFails >= 2) break;
     if (blockedUntil > Date.now()) await sleep(blockedUntil - Date.now());
     await throttle();
     let res;
     try {
       res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body });
-    } catch (e) { lastErr = new Error('Az AniList most nem érhető el (lehet, hogy túl sok kérés ment ki, és egy percre letiltott). Várj egy kicsit, és próbáld újra.'); continue; }
+    } catch (e) {
+      netFails++;
+      lastErr = new Error('Az AniList most nem érhető el (lehet, hogy leállt, vagy egy percre letiltott). Várj egy kicsit, és próbáld újra.');
+      if (netFails >= 2) aniDownUntil = Date.now() + 3 * 60 * 1000;
+      continue;
+    }
     if (res.status === 429) {
       const ra = +res.headers.get('Retry-After') || 60;
       blockedUntil = Date.now() + ra * 1000;
@@ -397,13 +405,98 @@ async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Az AniList most nem válaszol (' + res.status + ').');
     mem.set(key, { t: Date.now(), d: j.data });
+    aniDownUntil = 0;
+    setFallback(false);
     return j.data;
   }
   throw lastErr;
 }
+
+// ---------- Tartalék adatforrás: Jikan (MyAnimeList) ----------
+// Ha az AniList nem érhető el, a Felfedezés, a keresés, a szezonlisták és az adatlapok a MyAnimeList adataiból jönnek.
+// Az így megjelenő animék azonosítója negatív (−MAL-azonosító); amikor az AniList visszajön, a listán lévőket átírjuk.
+const JIKAN = 'https://api.jikan.moe/v4';
+let jikanLast = 0, fbShown = false;
+function setFallback(on) {
+  $('fbBadge').style.display = on ? '' : 'none';
+  if (on && !fbShown) { fbShown = true; toast('⚠️ Az AniList nem elérhető – tartalék mód (MyAnimeList)'); }
+  if (!on) fbShown = false;
+}
+async function jikan(path, ttl = 10 * 60 * 1000) {
+  const key = 'jikan:' + path;
+  const hit = mem.get(key);
+  if (hit && Date.now() - hit.t < ttl) return hit.d;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const wait = 450 - (Date.now() - jikanLast);
+    if (wait > 0) await sleep(wait);
+    jikanLast = Date.now();
+    let r;
+    try { r = await fetch(JIKAN + path); } catch (e) { if (attempt < 2) { await sleep(1500); continue; } break; }
+    if (r.status === 429) { await sleep(1500); continue; }
+    if (!r.ok) break;
+    const j = await r.json();
+    mem.set(key, { t: Date.now(), d: j });
+    setFallback(true);
+    return j;
+  }
+  throw new Error('Az AniList és a tartalék adatforrás (MyAnimeList) sem érhető el most. Próbáld újra később.');
+}
+const J_FORMAT = { TV: 'TV', Movie: 'MOVIE', OVA: 'OVA', ONA: 'ONA', Special: 'SPECIAL', 'TV Special': 'SPECIAL', Music: 'MUSIC', PV: 'MUSIC', CM: 'MUSIC' };
+const J_STATUS = { 'Currently Airing': 'RELEASING', 'Finished Airing': 'FINISHED', 'Not yet aired': 'NOT_YET_RELEASED' };
+const J_GENRE = { Suspense: 'Thriller', 'Award Winning': null, 'Boys Love': null, 'Girls Love': null, Gourmet: null, 'Avant Garde': null };
+function jDuration(d) { const h = /(\d+)\s*hr/.exec(d || ''), m = /(\d+)\s*min/.exec(d || ''); return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0) || 24; }
+function fromJikan(a) {
+  const st = a.aired && a.aired.from ? new Date(a.aired.from) : null;
+  const img = (a.images && (a.images.webp || a.images.jpg)) || {};
+  return {
+    id: -a.mal_id, idMal: a.mal_id, fallback: true,
+    title: { english: a.title_english || a.title, romaji: a.title },
+    coverImage: { large: img.large_image_url || img.image_url || '', color: null },
+    averageScore: a.score ? Math.round(a.score * 10) : null, episodes: a.episodes || null, duration: jDuration(a.duration),
+    format: J_FORMAT[a.type] || a.type || null,
+    genres: (a.genres || []).map(x => (x.name in J_GENRE ? J_GENRE[x.name] : x.name)).filter(Boolean),
+    seasonYear: a.year || (st && st.getFullYear()) || null, status: J_STATUS[a.status] || null, nextAiringEpisode: null,
+    startDate: st ? { year: st.getFullYear(), month: st.getMonth() + 1, day: st.getDate() } : {},
+    studios: { nodes: (a.studios || []).map(x => ({ name: x.name })) }, description: a.synopsis || '', bannerImage: null,
+    siteUrl: a.url, trailer: a.trailer && a.trailer.youtube_id ? { id: a.trailer.youtube_id, site: 'youtube' } : null,
+    characters: { edges: [] }, recommendations: { nodes: [] }, relations: { edges: [] }, members: a.members || 0,
+  };
+}
+function jList(j) {
+  const seen = new Set();
+  return (j.data || []).filter(a => !seen.has(a.mal_id) && seen.add(a.mal_id)).map(fromJikan);
+}
+const J_SEASON = { WINTER: 'winter', SPRING: 'spring', SUMMER: 'summer', FALL: 'fall' };
+const okFormat = m => ['TV', 'MOVIE', 'OVA', 'ONA'].includes(m.format);
+async function jikanHome(season, year, nx) {
+  const trending = jList(await jikan('/top/anime?filter=airing&limit=15&sfw=true'));
+  const cur = jList(await jikan(`/seasons/${year}/${J_SEASON[season]}?limit=25&sfw=true`)).filter(okFormat).sort((a, b) => b.members - a.members).slice(0, 15);
+  const next = jList(await jikan(`/seasons/${nx.year}/${J_SEASON[nx.season]}?limit=25&sfw=true`)).filter(okFormat).sort((a, b) => b.members - a.members).slice(0, 15);
+  const top = jList(await jikan('/top/anime?limit=15&sfw=true'));
+  return { trending: { media: trending }, season: { media: cur }, next: { media: next }, top: { media: top } };
+}
+// Amikor az AniList újra elérhető, a tartalék módban felvett (negatív azonosítójú) animéket AniList-azonosítóra írjuk át.
+async function migrateFallbackIds() {
+  const olds = Object.values(S.list).filter(x => x.id < 0);
+  if (!olds.length) return;
+  try {
+    for (let i = 0; i < olds.length; i += 50) {
+      const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(idMal_in: $ids, type: ANIME) { ${CARD} studios(isMain: true) { nodes { name } } } } }`, { ids: olds.slice(i, i + 50).map(x => -x.id) });
+      for (const m of d.Page.media) {
+        const old = S.list[-m.idMal];
+        if (!old) continue;
+        delete S.list[-m.idMal];
+        if (!S.list[m.id]) S.list[m.id] = Object.assign(old, snapshot(m));
+        (S.log || []).forEach(x => { if (x.id === -m.idMal) x.id = m.id; });
+        for (const k of ['elo', 'battles']) if (S[k] && S[k][-m.idMal] != null) { S[k][m.id] = S[k][-m.idMal]; delete S[k][-m.idMal]; }
+      }
+    }
+    save();
+  } catch (e) { /* majd legközelebb */ }
+}
 const errHtml = e => `<div class="card"><p class="err">⚠️ ${esc(e.message)}</p><button class="btn full" data-retry>🔄 Újra</button></div>`;
 
-const CARD = `id title { romaji english } coverImage { large color } averageScore episodes duration format genres seasonYear status nextAiringEpisode { episode airingAt }`;
+const CARD = `id idMal title { romaji english } coverImage { large color } averageScore episodes duration format genres seasonYear status nextAiringEpisode { episode airingAt }`;
 const FULL = `${CARD} bannerImage description(asHtml: false) season studios(isMain: true) { nodes { name } } popularity siteUrl trailer { id site }
   characters(perPage: 10, sort: [ROLE, RELEVANCE]) { edges { role node { name { full } image { medium } } } }
   recommendations(perPage: 8, sort: RATING_DESC) { nodes { mediaRecommendation { ${CARD} } } }
@@ -456,12 +549,13 @@ async function renderHome() {
     }`, { season, year, ns: nx.season, ny: nx.year }).then(d => {
       try { localStorage.setItem('anime-hub-home', JSON.stringify({ t: Date.now(), d })); } catch (e) {}
       return d;
-    }).catch(err => {
+    }).catch(err => jikanHome(season, year, nx).catch(() => {
       let c = null; try { c = JSON.parse(localStorage.getItem('anime-hub-home')); } catch (e) {}
       if (!c) throw err;
-      setTimeout(() => toast('Nincs kapcsolat az AniListtel – a legutóbb mentett oldalt látod'), 300);
+      setTimeout(() => toast('Nincs kapcsolat – a legutóbb mentett oldalt látod'), 300);
       return c.d;
-    });
+    }));
+    if (!d.trending.media[0] || d.trending.media[0].id > 0) migrateFallbackIds();
     const watching = Object.values(S.list).filter(x => x.status === 'watching').sort((a, b) => b.updated - a.updated);
     out.innerHTML =
       (watching.length ? `<h2>▶️ Folytasd</h2><div class="shelf">${watching.map(x => poster(x)).join('')}</div>` : '') +
@@ -508,7 +602,18 @@ async function openSeason(kind, fromHistory) {
         list = list.concat(d.Page.media);
         if (!d.Page.pageInfo.hasNextPage) break;
       }
-    } catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
+    } catch (e) {
+      try {
+        list = [];
+        for (let page = 1; page <= 10; page++) {
+          modal.innerHTML = `<p class="loading">Tartalék forrás (MyAnimeList)… ${list.length} anime eddig</p>`;
+          const j = await jikan(`/seasons/${sn.year}/${J_SEASON[sn.season]}?page=${page}&sfw=true`, 60 * 60 * 1000);
+          list = list.concat(jList(j).filter(m => okFormat(m) && m.members >= 100));
+          if (!j.pagination || !j.pagination.has_next_page) break;
+        }
+        const seen = new Set(); list = list.filter(m => !seen.has(m.id) && seen.add(m.id)).sort((a, b) => b.members - a.members);
+      } catch (e2) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
+    }
     list.forEach((m, i) => { m.popRank = i; });
     seasonMem[key] = list;
   }
@@ -556,7 +661,8 @@ $('q').addEventListener('input', e => {
     $('homeOut').style.display = 'none';
     $('searchOut').innerHTML = '<p class="loading">Keresés…</p>';
     try {
-      const d = await gql(`query($s: String) { Page(perPage: 24) { media(search: $s, type: ANIME, isAdult: false, sort: SEARCH_MATCH) { ${CARD} } } }`, { s: q });
+      const d = await gql(`query($s: String) { Page(perPage: 24) { media(search: $s, type: ANIME, isAdult: false, sort: SEARCH_MATCH) { ${CARD} } } }`, { s: q })
+        .catch(async () => ({ Page: { media: jList(await jikan(`/anime?q=${encodeURIComponent(q)}&limit=24&sfw=true`)) } }));
       if ($('q').value.trim() !== q) return;
       $('searchOut').innerHTML = d.Page.media.length ? `<h2>Találatok</h2><div class="grid">${d.Page.media.map(poster).join('')}</div>` : '<p class="small">Nincs találat. Próbáld angol vagy japán címmel.</p>';
     } catch (err) { $('searchOut').innerHTML = errHtml(err); }
@@ -565,7 +671,7 @@ $('q').addEventListener('input', e => {
 
 // ---------- Részletek ----------
 function snapshot(m) {
-  return { id: m.id, title: title(m), cover: cover(m), episodes: m.episodes || null, duration: m.duration || 24, genres: m.genres || [], format: m.format, airing: m.nextAiringEpisode || null, alStatus: m.status, studios: m.studios ? m.studios.nodes.map(n => n.name) : [], year: m.seasonYear || null };
+  return { id: m.id, title: title(m), cover: cover(m), episodes: m.episodes || null, duration: m.duration || 24, genres: m.genres || [], format: m.format, airing: m.nextAiringEpisode || null, alStatus: m.status, studios: m.studios ? m.studios.nodes.map(n => n.name) : [], year: m.seasonYear || null, idMal: m.idMal || null };
 }
 // Nézési napló az évkönyvhöz és a kihívásokhoz (csak a telefonon). type: ep | start | done | score
 function logEv(type, e, n = 1) {
@@ -584,10 +690,20 @@ async function openAnime(id, fromHistory) {
   if (!fromHistory) pushNav({ modal: 'anime', id });
   showModalBg();
   let m;
-  try { m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media; if (!m) throw new Error('Ezt az animét nem találom az AniListen.'); }
-  catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
-  // A listában lévő pillanatképet frissítjük (új rész, epizódszám).
-  if (S.list[id]) { Object.assign(S.list[id], snapshot(m)); save(); }
+  try {
+    if (id < 0) throw new Error('tartalék');
+    m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media;
+    if (!m) throw new Error('Ezt az animét nem találom az AniListen.');
+  } catch (e) {
+    const malId = id < 0 ? -id : S.list[id] && S.list[id].idMal;
+    try {
+      if (!malId) throw e;
+      m = fromJikan((await jikan(`/anime/${malId}/full`, 60 * 60 * 1000)).data);
+      if (id > 0) m.id = id; // a listán lévő bejegyzés marad ugyanaz
+    } catch (e2) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
+  }
+  // A listában lévő pillanatképet frissítjük (új rész, epizódszám) – tartalék adatokkal csak a hiányzó mezőket.
+  if (S.list[id] && !m.fallback) { Object.assign(S.list[id], snapshot(m)); save(); }
   const e = S.list[id];
   const accent = (m.coverImage && m.coverImage.color) || '#ff6fb5';
   modal.style.setProperty('--dyn', accent);
@@ -598,6 +714,7 @@ async function openAnime(id, fromHistory) {
   const REL = { SEQUEL: 'Folytatás', PREQUEL: 'Előzmény', SIDE_STORY: 'Mellékszál', SPIN_OFF: 'Spin-off', ALTERNATIVE: 'Alternatív', PARENT: 'Fő mű' };
   modal.innerHTML = `
     <div class="banner" style="background-image:url('${esc(m.bannerImage || cover(m))}')"></div>
+    ${m.fallback ? '<p class="small" style="margin:6px 16px 0;color:var(--warn)">⚠️ Tartalék mód: az adatok a MyAnimeListről jönnek, mert az AniList most nem érhető el. Szereplők, ajánlások és nézési sorrend most nem látszanak.</p>' : ''}
     <div class="dhead"><img src="${esc(cover(m))}" alt=""><div class="ttl"><b>${esc(title(m))}</b>
       <div class="small">${m.title.romaji && m.title.english ? esc(m.title.romaji) + ' · ' : ''}${FORMAT[m.format] || m.format || ''}${m.seasonYear ? ' · ' + m.seasonYear : ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''}</div></div></div>
     <div class="dbody">
@@ -629,7 +746,7 @@ async function openAnime(id, fromHistory) {
   const more = $('more');
   if (more) more.onclick = () => { $('desc').classList.toggle('clamp'); more.textContent = $('desc').classList.contains('clamp') ? 'Több ▾' : 'Kevesebb ▴'; };
   bindEditor(m);
-  $('orderBtn').onclick = () => openOrder(m.id);
+  if (m.fallback) $('orderBtn').style.display = 'none'; else $('orderBtn').onclick = () => openOrder(m.id);
   loadThemes(m);
   if ($('trBtn')) {
     $('trBtn').onclick = () => toggleHu(m.id, desc);
@@ -663,7 +780,7 @@ async function loadThemes(m) {
   let themes = themesMem[m.id];
   if (!themes) {
     try {
-      const r = await fetch(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=AniList&filter[external_id]=${m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
+      const r = await fetch(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=${m.fallback ? 'MyAnimeList' : 'AniList'}&filter[external_id]=${m.fallback ? m.idMal : m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
       if (!r.ok) throw new Error();
       const j = await r.json();
       themes = ((j.anime && j.anime[0] && j.anime[0].animethemes) || []).filter(t => t.type === 'OP' || t.type === 'ED')
@@ -933,7 +1050,7 @@ function seqPending() {
 async function checkSequels(force) {
   const c = seqCache();
   if (seqLoading || (!force && c && Date.now() - c.t < 12 * 3600 * 1000)) return;
-  const ids = Object.values(S.list).filter(x => x.status === 'done' || x.status === 'paused').map(x => x.id);
+  const ids = Object.values(S.list).filter(x => (x.status === 'done' || x.status === 'paused') && x.id > 0).map(x => x.id);
   if (!ids.length) return;
   seqLoading = true;
   try {
@@ -1032,7 +1149,7 @@ $('listOut').addEventListener('click', e => {
 // A futó animék adatait (új részek) a háttérben frissítjük.
 let lastSync = 0;
 async function syncAiring() {
-  const ids = Object.values(S.list).filter(x => ['watching', 'plan', 'paused'].includes(x.status) && x.alStatus !== 'FINISHED').map(x => x.id);
+  const ids = Object.values(S.list).filter(x => ['watching', 'plan', 'paused'].includes(x.status) && x.alStatus !== 'FINISHED' && x.id > 0).map(x => x.id);
   if (!ids.length || Date.now() - lastSync < 15 * 60 * 1000) return;
   lastSync = Date.now();
   try {
@@ -1491,6 +1608,7 @@ function renderBattle() {
 
 // ---------- Mit nézzek utána? (befejezéskor) ----------
 async function nextPopup(id, fromHistory) {
+  if (id < 0) { toast('🎉 Befejezted! Ne felejts el pontozni.'); return; }
   const e = S.list[id];
   if (!e) return;
   const modal = $('modal');
