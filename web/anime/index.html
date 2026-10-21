@@ -170,6 +170,7 @@ a { color: var(--accent-2); }
 
   <!-- LISTÁM -->
   <section class="view" id="v-list">
+    <div id="seqBanner"></div>
     <div class="chips" id="stChips"></div>
     <div class="card" id="listOut"></div>
     <button class="btn full" id="clearSt" style="color:#ff8095"></button>
@@ -776,7 +777,81 @@ $('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg' || e
 // ---------- Listám ----------
 let stFilter = 'watching';
 function aired(x) { return x.airing ? x.airing.episode - 1 : x.episodes; }
+// ---------- 🔔 Folytatás-figyelő ----------
+// A befejezett (és szüneteltetett) animék folytatásait keresi az AniListen; 12 óránként frissül, a telefonon gyorsítótárazva.
+const SEQ_KEY = 'anime-hub-seq';
+const SEQ_FORMATS = ['TV', 'MOVIE', 'OVA', 'ONA'];
+let seqLoading = false;
+function seqCache() { try { return JSON.parse(localStorage.getItem(SEQ_KEY)) || null; } catch (e) { return null; } }
+function seqPending() {
+  const c = seqCache();
+  if (!c) return [];
+  S.seqIgnore = S.seqIgnore || {};
+  return c.items.filter(x => !S.list[x.m.id] && !S.seqIgnore[x.m.id]);
+}
+async function checkSequels(force) {
+  const c = seqCache();
+  if (seqLoading || (!force && c && Date.now() - c.t < 12 * 3600 * 1000)) return;
+  const ids = Object.values(S.list).filter(x => x.status === 'done' || x.status === 'paused').map(x => x.id);
+  if (!ids.length) return;
+  seqLoading = true;
+  try {
+    const found = new Map();
+    for (let i = 0; i < ids.length; i += 50) {
+      const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { id
+        relations { edges { relationType node { ${CARD} type startDate { year month day } } } } } } }`, { ids: ids.slice(i, i + 50) }, 60 * 60 * 1000);
+      for (const m of d.Page.media) for (const e of m.relations.edges) {
+        const n = e.node;
+        if (e.relationType !== 'SEQUEL' || n.type !== 'ANIME' || !SEQ_FORMATS.includes(n.format) || n.status === 'CANCELLED') continue;
+        if (!found.has(n.id)) found.set(n.id, { m: n, from: S.list[m.id] ? S.list[m.id].title : '' });
+      }
+      if (i + 50 < ids.length) await new Promise(r => setTimeout(r, 600));
+    }
+    try { localStorage.setItem(SEQ_KEY, JSON.stringify({ t: Date.now(), items: [...found.values()] })); } catch (e) {}
+  } catch (e) { /* offline: a régi eredmény marad */ }
+  seqLoading = false;
+  if (document.querySelector('.view.active').id === 'v-list') renderSeqBanner();
+}
+function renderSeqBanner() {
+  const n = seqPending().length;
+  $('seqBanner').innerHTML = n ? `<button class="btn hot full" id="seqOpen" style="margin-top:8px">🔔 ${n} folytatás vár rád ›</button>` : '';
+  if (n) $('seqOpen').onclick = () => openSequels();
+}
+function openSequels(fromHistory) {
+  if (!fromHistory) pushNav({ modal: 'seq' });
+  $('modalBg').classList.add('show');
+  const modal = $('modal');
+  const items = seqPending();
+  const nowS = Date.now() / 1000;
+  const groups = [
+    ['🟢 Most fut', items.filter(x => x.m.status === 'RELEASING')],
+    ['🗓️ Hamarosan indul', items.filter(x => x.m.status === 'NOT_YET_RELEASED').sort((a, b) => ((premiere(a.m) || { t: 9e15 }).t) - ((premiere(b.m) || { t: 9e15 }).t))],
+    ['✅ Már kint van, még nem láttad', items.filter(x => x.m.status === 'FINISHED' || x.m.status === 'HIATUS')],
+  ];
+  const c = seqCache();
+  modal.innerHTML = `<div class="dbody"><h2>🔔 Folytatások</h2>
+    <p class="small" style="margin-top:0">A befejezett animéid folytatásai, amik még nincsenek a listádon.${c ? ` Frissítve: ${new Date(c.t).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+    ${groups.filter(([, l]) => l.length).map(([h, l]) => `<h2>${h}</h2>` + l.map(x => `<div class="entry">
+      <img src="${esc(cover(x.m))}" alt="" loading="lazy">
+      <div class="info" data-id="${x.m.id}"><b>${esc(title(x.m))}</b>
+        <div class="small">${x.from ? 'Folytatása ennek: ' + esc(x.from) + ' · ' : ''}${FORMAT[x.m.format] || ''}${x.m.episodes ? ' · ' + x.m.episodes + ' rész' : ''}</div>
+        <div class="next">${x.m.status === 'NOT_YET_RELEASED' ? '🗓️ ' + premiereTxt(x.m) : x.m.nextAiringEpisode ? `⏳ ${x.m.nextAiringEpisode.episode}. rész ${untilTxt(x.m.nextAiringEpisode.airingAt - nowS)} múlva` : ''}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><button class="btn" data-seqplan="${x.m.id}">📌</button><button class="btn" data-seqno="${x.m.id}" title="Nem érdekel">✕</button></div>
+    </div>`).join('')).join('') || '<p class="small">Nincs új folytatás. 🎉</p>'}
+    <button class="btn full" id="seqRefresh">🔄 Újraellenőrzés most</button>
+    <button class="btn full" data-close>Bezár</button></div>`;
+  modal.querySelectorAll('[data-seqplan]').forEach(b => b.onclick = () => {
+    const x = items.find(i => i.m.id === +b.dataset.seqplan);
+    S.list[x.m.id] = Object.assign(snapshot(x.m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() });
+    save(); toast('📌 Felkerült a Tervezem listádra'); openSequels(true);
+  });
+  modal.querySelectorAll('[data-seqno]').forEach(b => b.onclick = () => { S.seqIgnore[b.dataset.seqno] = 1; save(); openSequels(true); });
+  $('seqRefresh').onclick = async () => { $('seqRefresh').disabled = true; $('seqRefresh').textContent = '⏳ Ellenőrzés…'; await checkSequels(true); openSequels(true); };
+}
+
 function renderList() {
+  renderSeqBanner();
+  checkSequels();
   const all = Object.values(S.list);
   const cnt = all.filter(x => x.status === stFilter).length;
   $('clearSt').style.display = cnt ? '' : 'none';
@@ -1432,7 +1507,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
+const MODALS = { seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {
