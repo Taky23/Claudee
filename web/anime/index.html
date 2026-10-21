@@ -193,6 +193,19 @@ a { color: var(--accent-2); }
     <div id="meOut"></div>
     <h2>🏆 Saját tier list</h2>
     <div class="card" id="tierOut"></div>
+    <h2>📥 MyAnimeList import</h2>
+    <div class="card">
+      <p class="small" style="margin-top:0">Hozd át a MAL-listádat! A listádnak nyilvánosnak kell lennie (alapból az).</p>
+      <b>1.</b> Írd be a MAL-felhasználóneved:
+      <div class="row" style="margin-top:6px"><input class="grow" type="text" id="malUser" placeholder="MAL felhasználónév" autocapitalize="off" autocomplete="off"></div>
+      <div id="malLinks" style="margin-top:8px"></div>
+      <p style="margin:12px 0 4px"><b>2.</b> A megnyílt oldalon hosszan nyomj a szövegre → <b>„Az összes kijelölése”</b> → <b>„Másolás”</b>. Gyere vissza, és illeszd be ide:</p>
+      <textarea id="malPaste" placeholder="Ide illeszd be…" style="min-height:90px"></textarea>
+      <button class="btn hot full" id="malGo">📥 Beolvasás</button>
+      <p class="small" style="margin-bottom:0">Van MAL export fájlod (.xml vagy .xml.gz)? <a href="#" id="malFileLink">Azt is beolvasom.</a></p>
+      <input type="file" id="malFile" accept=".xml,.gz,application/xml,text/xml,application/gzip" hidden>
+      <div id="malOut"></div>
+    </div>
     <h2>💾 Mentés</h2>
     <div class="card">
       <p class="small" style="margin-top:0">A listád csak ezen a telefonon van. Időnként készíts mentést – ha törlöd a böngésző adatait, abból visszaállíthatod.</p>
@@ -671,6 +684,100 @@ $('tierOut').addEventListener('click', e => {
     $('modalBg').classList.add('show');
     $('modal').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { x.tier = b.dataset.mv; save(); closeModal(); });
   }
+});
+
+// ---------- MyAnimeList import ----------
+// A MAL nyilvános listája egy JSON-címen olvasható; ezt a felhasználó bemásolja, így nincs szükség MAL-fiókos engedélyre.
+// Az AniList felé csak a MAL-azonosítók mennek ki, hogy a borítókat és adatokat megtaláljuk.
+const MAL_JSON_STATUS = { 1: 'watching', 2: 'done', 3: 'paused', 4: 'dropped', 6: 'plan' };
+const MAL_XML_STATUS = { 'Watching': 'watching', 'Completed': 'done', 'On-Hold': 'paused', 'Dropped': 'dropped', 'Plan to Watch': 'plan' };
+let malPage = 0;
+function renderMalLinks() {
+  const u = $('malUser').value.trim();
+  S.malUser = u; save();
+  $('malLinks').innerHTML = u ? [0, 1, 2, 3].slice(0, malPage + 1).map(i =>
+    `<a class="btn full" style="text-decoration:none" href="https://myanimelist.net/animelist/${encodeURIComponent(u)}/load.json?status=7&offset=${i * 300}" target="_blank" rel="noopener noreferrer">🔗 ${i ? `Folytatás (${i * 300 + 1}–${i * 300 + 300}. anime)` : 'Listám megnyitása'}</a>`).join('') : '';
+}
+$('malUser').value = S.malUser || '';
+$('malUser').addEventListener('input', () => { malPage = 0; renderMalLinks(); });
+renderMalLinks();
+
+function parseMalJson(text) {
+  const a = text.indexOf('['), b = text.lastIndexOf(']');
+  if (a < 0 || b < a) throw new Error('Nem találtam MAL-listát a beillesztett szövegben. Biztos, hogy az egészet kimásoltad?');
+  const arr = JSON.parse(text.slice(a, b + 1));
+  return arr.filter(x => x && x.anime_id).map(x => ({
+    malId: +x.anime_id, title: String(x.anime_title || ''), status: MAL_JSON_STATUS[x.status] || 'plan',
+    progress: +x.num_watched_episodes || 0, score: +x.score || 0, rewatch: 0, note: '',
+  }));
+}
+function parseMalXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const t = (el, tag) => (el.getElementsByTagName(tag)[0] || {}).textContent || '';
+  const list = [...doc.getElementsByTagName('anime')].map(el => ({
+    malId: +t(el, 'series_animedb_id'), title: t(el, 'series_title'), status: MAL_XML_STATUS[t(el, 'my_status')] || 'plan',
+    progress: +t(el, 'my_watched_episodes') || 0, score: +t(el, 'my_score') || 0, rewatch: +t(el, 'my_times_watched') || 0, note: t(el, 'my_comments').trim(),
+  })).filter(x => x.malId);
+  if (!list.length) throw new Error('Ez a fájl nem tűnik MAL anime-exportnak.');
+  return list;
+}
+async function importMal(items) {
+  const out = $('malOut');
+  const byMal = new Map(items.map(x => [x.malId, x]));
+  const ids = [...byMal.keys()];
+  let added = 0, updated = 0;
+  const found = new Set();
+  for (let i = 0; i < ids.length; i += 50) {
+    out.innerHTML = `<p class="loading">Feldolgozás: ${Math.min(i + 50, ids.length)} / ${ids.length}…</p>`;
+    const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(idMal_in: $ids, type: ANIME) { ${CARD} idMal studios(isMain: true) { nodes { name } } } } }`, { ids: ids.slice(i, i + 50) });
+    for (const m of d.Page.media) {
+      const x = byMal.get(m.idMal);
+      if (!x) continue;
+      if (m.episodes && x.progress > m.episodes) x.progress = m.episodes;
+      found.add(m.idMal);
+      const cur = S.list[m.id];
+      if (!cur) {
+        S.list[m.id] = Object.assign(snapshot(m), { status: x.status, progress: x.progress, score: x.score, rewatch: x.rewatch, note: x.note, added: Date.now(), updated: Date.now(), tier: '' });
+        added++;
+      } else if (x.progress > cur.progress || (x.status === 'done' && cur.status !== 'done')) {
+        Object.assign(cur, { status: x.status, progress: Math.max(x.progress, cur.progress), updated: Date.now() });
+        if (!cur.score && x.score) cur.score = x.score;
+        if (!cur.note && x.note) cur.note = x.note;
+        updated++;
+      }
+    }
+    save();
+    if (i + 50 < ids.length) await new Promise(r => setTimeout(r, 700));
+  }
+  const missing = items.filter(x => !found.has(x.malId));
+  out.innerHTML = `<div class="card" style="margin-bottom:0"><b>✅ Kész!</b><p style="margin:6px 0">${added} új anime került a listádra${updated ? `, ${updated} frissült` : ''}.</p>
+    ${missing.length ? `<details><summary class="small">${missing.length} animét nem találtam az AniListen</summary><p class="small">${missing.map(x => esc(x.title)).join(', ')}</p></details>` : ''}
+    ${items.length >= 300 * (malPage + 1) && !$('malFile').dataset.used ? `<p class="small">Úgy tűnik, több mint ${300 * (malPage + 1)} anime van a listádon – nyisd meg a folytatást fent, és illeszd be azt is!</p>` : ''}</div>`;
+  if (items.length >= 300 * (malPage + 1)) { malPage++; renderMalLinks(); }
+  toast(`${added + updated} anime importálva 🌸`);
+}
+async function runImport(getItems) {
+  const btn = $('malGo'); btn.disabled = true;
+  try { await importMal(await getItems()); return true; }
+  catch (e) { $('malOut').innerHTML = `<p class="err">⚠️ ${esc(e.message)}</p>`; return false; }
+  finally { btn.disabled = false; }
+}
+$('malGo').onclick = () => {
+  const text = $('malPaste').value;
+  if (!text.trim()) { toast('Előbb illeszd be a listát!'); return; }
+  runImport(async () => parseMalJson(text)).then(ok => { if (ok) $('malPaste').value = ''; });
+};
+$('malFileLink').onclick = e => { e.preventDefault(); $('malFile').click(); };
+$('malFile').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  $('malFile').dataset.used = '1';
+  runImport(async () => {
+    let text;
+    if (/\.gz$/i.test(f.name) && 'DecompressionStream' in window) text = await new Response(f.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    else text = await f.text();
+    return parseMalXml(text);
+  });
 });
 
 // ---------- Mentés ----------

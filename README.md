@@ -83,6 +83,7 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig.
   - **Műsor:** heti vetítési naptár, a listádon lévők kiemelésével.
   - **Mit nézzek?** Hangulat (8 féle) és rendelkezésre álló idő szerinti ajánló a „Tervezem” listából vagy újdonságokból, plusz egy „még egy rész” alvás-kalkulátor.
+  - **MyAnimeList import:** a nyilvános MAL-lista `load.json` oldalát kimásolod és beilleszted (MAL-fiókos engedély és export nélkül), vagy beolvasod a MAL export fájlt (`.xml` / `.xml.gz`). Átjön az állapot, a haladás, a pontszám, az újranézések és a megjegyzések; az AniList felé csak a MAL-azonosítók mennek.
   - **Én:** anime-DNS statisztika (részek, órák, műfajok, stúdiók), anime-személyiség megosztható képként, saját S–D tier list, mentés és visszaállítás.
 
 ### Kitenni a telefonra
