@@ -349,7 +349,9 @@ async function openNextSeason() {
   $('modalBg').classList.add('show');
   let list = [];
   try {
-    for (let page = 1; page <= 2; page++) {
+    // Az összes bejelentett anime, oldalanként 50 (biztonsági felső korlát: 600).
+    for (let page = 1; page <= 12; page++) {
+      if (page > 1) modal.innerHTML = `<p class="loading">Betöltés… (${list.length} anime eddig)</p>`;
       const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
         media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false) { ${CARD} startDate { year month day } } } }`, { s: nx.season, y: nx.year, p: page }, 60 * 60 * 1000);
       list = list.concat(d.Page.media);
@@ -359,7 +361,7 @@ async function openNextSeason() {
   list.sort((a, b) => ((premiere(a) || { t: 9e15 }).t) - ((premiere(b) || { t: 9e15 }).t));
   const draw = () => {
     modal.innerHTML = `<div class="dbody"><h2>🌱 ${SEASON_HU[nx.season]} ${nx.year} – premierek</h2>
-      <p class="small" style="margin-top:0">Premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
+      <p class="small" style="margin-top:0">Mind a ${list.length} bejelentett anime, premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
       ${list.map(m => `<div class="entry">
         <img src="${esc(cover(m))}" alt="" loading="lazy">
         <div class="info" data-id="${m.id}"><b>${esc(title(m))}</b>
