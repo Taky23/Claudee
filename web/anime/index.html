@@ -284,6 +284,9 @@ const STATUS_AL = { FINISHED: 'Befejezett', RELEASING: 'Fut', NOT_YET_RELEASED: 
 const GENRE_HU = { Action: 'Akció', Adventure: 'Kaland', Comedy: 'Vígjáték', Drama: 'Dráma', Ecchi: 'Ecchi', Fantasy: 'Fantasy', Horror: 'Horror', 'Mahou Shoujo': 'Varázslólány', Mecha: 'Mecha', Music: 'Zene', Mystery: 'Rejtély', Psychological: 'Pszichológiai', Romance: 'Romantika', 'Sci-Fi': 'Sci-fi', 'Slice of Life': 'Hétköznapi', Sports: 'Sport', Supernatural: 'Természetfeletti', Thriller: 'Thriller' };
 const g = x => GENRE_HU[x] || x;
 const SEASON_HU = { WINTER: 'Tél', SPRING: 'Tavasz', SUMMER: 'Nyár', FALL: 'Ősz' };
+// Szezonos listák szűrője: csak japán TV-sorozat, film és netes sorozat (klipek, rövidkék, specialek
+// és kínai animációk nélkül), és csak amit legalább 100 AniList-felhasználó követ (a teljesen ismeretlenek kimaradnak).
+const SEASON_FILTER = 'format_in: [TV, MOVIE, ONA], countryOfOrigin: "JP", popularity_greater: 100';
 function nextSeason() {
   const { season, year } = curSeason();
   const order = ['WINTER', 'SPRING', 'SUMMER', 'FALL'], i = order.indexOf(season);
@@ -314,9 +317,9 @@ async function renderHome() {
   const nx = nextSeason();
   try {
     const d = await gql(`query($season: MediaSeason, $year: Int, $ns: MediaSeason, $ny: Int) {
-      next: Page(perPage: 15) { media(type: ANIME, season: $ns, seasonYear: $ny, sort: POPULARITY_DESC, isAdult: false) { ${CARD} startDate { year month day } } }
+      next: Page(perPage: 15) { media(type: ANIME, season: $ns, seasonYear: $ny, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } }
       trending: Page(perPage: 15) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${CARD} } }
-      season: Page(perPage: 15) { media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false) { ${CARD} } }
+      season: Page(perPage: 15) { media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} } }
       top: Page(perPage: 15) { media(type: ANIME, sort: SCORE_DESC, isAdult: false, format_in: [TV, MOVIE, ONA]) { ${CARD} } }
     }`, { season, year, ns: nx.season, ny: nx.year });
     const watching = Object.values(S.list).filter(x => x.status === 'watching').sort((a, b) => b.updated - a.updated);
@@ -353,7 +356,7 @@ async function openNextSeason() {
     for (let page = 1; page <= 12; page++) {
       if (page > 1) modal.innerHTML = `<p class="loading">Betöltés… (${list.length} anime eddig)</p>`;
       const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
-        media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false) { ${CARD} startDate { year month day } } } }`, { s: nx.season, y: nx.year, p: page }, 60 * 60 * 1000);
+        media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: nx.season, y: nx.year, p: page }, 60 * 60 * 1000);
       list = list.concat(d.Page.media);
       if (!d.Page.pageInfo.hasNextPage) break;
     }
@@ -361,7 +364,7 @@ async function openNextSeason() {
   list.sort((a, b) => ((premiere(a) || { t: 9e15 }).t) - ((premiere(b) || { t: 9e15 }).t));
   const draw = () => {
     modal.innerHTML = `<div class="dbody"><h2>🌱 ${SEASON_HU[nx.season]} ${nx.year} – premierek</h2>
-      <p class="small" style="margin-top:0">Mind a ${list.length} bejelentett anime, premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
+      <p class="small" style="margin-top:0">Mind a ${list.length} bejelentett japán anime (klipek, rövidkék és ismeretlen címek nélkül), premier szerint rendezve. A 📌 gombbal felteheted a Tervezem listádra.</p>
       ${list.map(m => `<div class="entry">
         <img src="${esc(cover(m))}" alt="" loading="lazy">
         <div class="info" data-id="${m.id}"><b>${esc(title(m))}</b>
