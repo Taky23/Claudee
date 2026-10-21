@@ -160,6 +160,7 @@ a { color: var(--accent-2); }
   <section class="view" id="v-list">
     <div class="chips" id="stChips"></div>
     <div class="card" id="listOut"></div>
+    <button class="btn full" id="clearSt" style="color:#ff8095"></button>
   </section>
 
   <!-- NAPTÁR -->
@@ -426,6 +427,9 @@ let stFilter = 'watching';
 function aired(x) { return x.airing ? x.airing.episode - 1 : x.episodes; }
 function renderList() {
   const all = Object.values(S.list);
+  const cnt = all.filter(x => x.status === stFilter).length;
+  $('clearSt').style.display = cnt ? '' : 'none';
+  $('clearSt').textContent = `🗑️ Az összes (${cnt}) törlése erről a listáról`;
   $('stChips').innerHTML = STATUSES.map(([k, n]) => `<button class="chip ${stFilter === k ? 'on' : ''}" data-f="${k}">${n} (${all.filter(x => x.status === k).length})</button>`).join('');
   const now = Date.now() / 1000;
   const list = all.filter(x => x.status === stFilter).map(x => {
@@ -445,6 +449,15 @@ function renderList() {
     </div>`).join('') : `<p class="small" style="margin:0">Itt még üres. Keress egy animét a Felfedezés fülön, és add hozzá!</p>`;
 }
 $('stChips').addEventListener('click', e => { const c = e.target.closest('[data-f]'); if (c) { stFilter = c.dataset.f; renderList(); } });
+// Egy állapot összes animéjének törlése (pl. a MAL-importból hozott „Nézem”/„Tervezem” lista); a többi állapot érintetlen marad.
+$('clearSt').onclick = () => {
+  const ids = Object.keys(S.list).filter(id => S.list[id].status === stFilter);
+  const name = STATUSES.find(x => x[0] === stFilter)[1];
+  if (!ids.length) return;
+  if (!confirm(`Biztosan törlöd mind a ${ids.length} animét a(z) „${name}” listádról? A többi listád nem változik.`)) return;
+  ids.forEach(id => delete S.list[id]);
+  save(); renderList(); toast(`${ids.length} anime törölve`);
+};
 $('listOut').addEventListener('click', e => {
   const p = e.target.closest('[data-plus]');
   if (p) { e.stopPropagation(); bumpEp(S.list[p.dataset.plus], 1, renderList); }
