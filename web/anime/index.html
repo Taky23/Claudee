@@ -6,7 +6,7 @@
 <!-- Csak az AniList (adatok), a MyMemory (leírás fordítása), a trace.moe (képkeresés, csak a feltöltött kép) és az AnimeThemes (openingek) érhető el; a listád a telefonon marad. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe; media-src 'self' blob: https://media.trace.moe https://v.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#0f0c1d">
+<meta name="theme-color" content="#07060f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -154,6 +154,102 @@ nav button { flex: 1; border: 0; background: none; color: var(--muted); padding:
 nav button span { display: block; font-size: 21px; }
 nav button.active { color: var(--accent); }
 a { color: var(--accent-2); }
+
+/* ================= 🌌 Auróra üveg dizájn ================= */
+:root {
+  --bg: #07060f;
+  --glass: rgba(255, 255, 255, .06);
+  --glass-2: rgba(255, 255, 255, .1);
+  --glass-line: rgba(255, 255, 255, .13);
+  --card: var(--glass);
+  --card-2: var(--glass-2);
+  --line: var(--glass-line);
+  --text: #f6f3ff;
+  --muted: #b3acd6;
+  --accent: #ff7ac6;
+  --accent-2: #8c7dff;
+  --accent-3: #43e0d0;
+  --dyn: var(--accent);
+}
+body { background: var(--bg); }
+/* Mozgó auróra-fények a háttérben */
+body::before, body::after {
+  content: ""; position: fixed; z-index: -1; pointer-events: none; border-radius: 50%;
+  filter: blur(70px); opacity: .55; will-change: transform;
+}
+body::before {
+  width: 75vmax; height: 75vmax; left: -25vmax; top: -30vmax;
+  background: radial-gradient(circle at 30% 30%, #ff5fb0 0%, rgba(255, 95, 176, 0) 60%),
+              radial-gradient(circle at 70% 60%, #7c5cff 0%, rgba(124, 92, 255, 0) 60%);
+  animation: aurora1 22s ease-in-out infinite alternate;
+}
+body::after {
+  width: 70vmax; height: 70vmax; right: -30vmax; bottom: -25vmax;
+  background: radial-gradient(circle at 40% 40%, #2fd6c6 0%, rgba(47, 214, 198, 0) 60%),
+              radial-gradient(circle at 65% 70%, #4b7bff 0%, rgba(75, 123, 255, 0) 60%);
+  animation: aurora2 26s ease-in-out infinite alternate;
+}
+@keyframes aurora1 { to { transform: translate(18vmax, 22vmax) rotate(40deg) scale(1.1); } }
+@keyframes aurora2 { to { transform: translate(-20vmax, -18vmax) rotate(-35deg) scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { body::before, body::after { animation: none; } }
+
+/* Fejléc */
+header { position: sticky; top: 0; z-index: 8; padding: 10px 14px; margin-bottom: 2px;
+  background: linear-gradient(rgba(7, 6, 15, .75), rgba(7, 6, 15, .35)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+header h1 { font-size: 22px; letter-spacing: .02em; background: linear-gradient(90deg, #ffd1ec, var(--accent), var(--accent-2), var(--accent-3)); background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 8s linear infinite; }
+@keyframes shine { to { background-position: 200% 0; } }
+
+/* Üveg kártyák és vezérlők */
+.card, .modal, nav, .chip, .btn, input[type=search], input[type=text], input[type=number], input[type=time], textarea, select {
+  backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+.card { background: linear-gradient(145deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .03)); border: 1px solid var(--glass-line);
+  border-radius: 22px; box-shadow: 0 10px 40px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .08); }
+h2 { font-size: 17px; letter-spacing: .01em; }
+input[type=search], input[type=text], input[type=number], input[type=time], textarea, select {
+  background: rgba(255, 255, 255, .07); border: 1px solid var(--glass-line); border-radius: 16px; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 122, 198, .25); }
+.chip { background: rgba(255, 255, 255, .07); border-color: var(--glass-line); transition: transform .1s, background .2s; }
+.chip:active { transform: scale(.95); }
+.chip.on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 4px 18px rgba(255, 122, 198, .35); }
+.btn { background: rgba(255, 255, 255, .08); border-color: var(--glass-line); border-radius: 14px; transition: transform .1s, box-shadow .2s; }
+.btn:active { transform: scale(.97); }
+.btn.hot { background: linear-gradient(135deg, var(--accent), var(--accent-2) 60%, var(--accent-3)); box-shadow: 0 6px 24px rgba(140, 125, 255, .4); border: 0; }
+
+/* Borítók */
+.poster .img { border-radius: 18px; box-shadow: 0 8px 26px rgba(0, 0, 0, .45); transition: transform .2s; }
+.poster:active .img { transform: scale(.96); }
+.poster .img::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .12), transparent 35%); pointer-events: none; }
+.poster .score { background: rgba(10, 8, 25, .55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, .15); border-radius: 99px; }
+.poster .mine { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border-radius: 99px; }
+.entry img, .air img, .rank-row img { border-radius: 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, .4); }
+.prog, .bar .b, .meter { background: rgba(255, 255, 255, .08); }
+.prog i, .bar .b i { background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3)); box-shadow: 0 0 10px rgba(255, 122, 198, .5); }
+
+/* Lebegő üveg menüsor */
+nav { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); border-radius: 26px; padding-bottom: 0;
+  background: rgba(20, 16, 40, .55); border: 1px solid var(--glass-line); box-shadow: 0 12px 40px rgba(0, 0, 0, .5); max-width: 680px; margin: 0 auto; }
+nav button { position: relative; padding: 9px 0 9px; }
+nav button.active { color: #fff; }
+nav button.active::before { content: ""; position: absolute; inset: 5px 8px; border-radius: 18px; z-index: -1;
+  background: linear-gradient(135deg, rgba(255, 122, 198, .35), rgba(140, 125, 255, .35)); box-shadow: 0 0 18px rgba(255, 122, 198, .35); }
+body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+/* Adatlap: a borító színe adja a hangulatot */
+.modal-bg { background: rgba(4, 3, 12, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.modal { background: linear-gradient(180deg, color-mix(in srgb, var(--dyn) 22%, rgba(18, 14, 36, .92)), rgba(14, 11, 28, .94) 45%);
+  border: 1px solid var(--glass-line); border-bottom: 0; border-radius: 28px 28px 0 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, .5); }
+.modal .card { background: rgba(255, 255, 255, .06); }
+.banner::after { background: linear-gradient(transparent 20%, color-mix(in srgb, var(--dyn) 25%, rgba(18, 14, 36, .95))); }
+.dhead img { border-radius: 16px; box-shadow: 0 12px 34px color-mix(in srgb, var(--dyn) 45%, rgba(0, 0, 0, .5)); }
+.tag { background: rgba(255, 255, 255, .08); border-color: var(--glass-line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.stars button { background: rgba(255, 255, 255, .08); }
+.stars button.on { background: linear-gradient(135deg, #ffd36b, #ff9d5c); box-shadow: 0 0 12px rgba(255, 190, 90, .5); }
+.persona { background: linear-gradient(135deg, rgba(255, 122, 198, .28), rgba(140, 125, 255, .22), rgba(67, 224, 208, .18)); }
+.toast { background: rgba(255, 255, 255, .9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 16px; }
+.air.mine { background: linear-gradient(90deg, rgba(255, 122, 198, .18), transparent); }
 </style>
 </head>
 <body>
@@ -398,7 +494,7 @@ async function openSeason(kind, fromHistory) {
   const sn = kind === 'next' ? nextSeason() : curSeason(), modal = $('modal');
   const key = `${sn.season}-${sn.year}`;
   if (!fromHistory) pushNav({ modal: 'season', id: kind });
-  $('modalBg').classList.add('show');
+  showModalBg();
   let list = seasonMem[key];
   if (!list) {
     modal.innerHTML = '<p class="loading">Betöltés…</p>';
@@ -486,7 +582,7 @@ async function openAnime(id, fromHistory) {
   const modal = $('modal');
   modal.innerHTML = '<p class="loading">Betöltés…</p>';
   if (!fromHistory) pushNav({ modal: 'anime', id });
-  $('modalBg').classList.add('show');
+  showModalBg();
   let m;
   try { m = (await gql(`query($id: Int) { Media(id: $id) { ${FULL} } }`, { id }, 60 * 60 * 1000)).Media; if (!m) throw new Error('Ezt az animét nem találom az AniListen.'); }
   catch (e) { modal.innerHTML = errHtml(e) + '<button class="btn full" data-close>Bezár</button>'; return; }
@@ -494,6 +590,7 @@ async function openAnime(id, fromHistory) {
   if (S.list[id]) { Object.assign(S.list[id], snapshot(m)); save(); }
   const e = S.list[id];
   const accent = (m.coverImage && m.coverImage.color) || '#ff6fb5';
+  modal.style.setProperty('--dyn', accent);
   const desc = (m.description || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
   const chars = (m.characters && m.characters.edges) || [];
   const recs = (m.recommendations.nodes || []).map(n => n.mediaRecommendation).filter(Boolean);
@@ -607,7 +704,7 @@ let orderMainOnly = true;
 async function openOrder(id, fromHistory) {
   const modal = $('modal');
   if (!fromHistory) pushNav({ modal: 'order', id });
-  $('modalBg').classList.add('show');
+  showModalBg();
   let data = orderMem[id];
   if (!data) {
     modal.innerHTML = '<div class="dbody"><h2>🧭 Nézési sorrend</h2><p class="loading">A sorozat feltérképezése…</p></div>';
@@ -677,7 +774,7 @@ const ts = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padSta
 function showTrace(fromHistory) {
   const modal = $('modal');
   if (!fromHistory) pushNav({ modal: 'trace' });
-  $('modalBg').classList.add('show');
+  showModalBg();
   const t = traceResult || {};
   const best = t.results && t.results[0];
   modal.innerHTML = `<div class="dbody"><h2>📸 Melyik anime ez?</h2>
@@ -812,6 +909,8 @@ function bumpEp(e, dlt, after) {
   if (after) after();
 }
 // Ha a felugró ablak az előzményekben van, a bezárás egy „vissza” lépés – így a telefon vissza gombjával is egyezik.
+// Ablak megnyitása; a borító szerinti színt csak az adatlap állítja be.
+function showModalBg() { $('modal').style.removeProperty('--dyn'); $('modalBg').classList.add('show'); }
 function closeModal() { if (history.state && history.state.modal) history.back(); else hideModal(); }
 function hideModal() { const was = $('modalBg').classList.contains('show'); $('modalBg').classList.remove('show'); if (was) refresh(); }
 $('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg' || e.target.closest('[data-close]')) closeModal(); });
@@ -861,7 +960,7 @@ function renderSeqBanner() {
 }
 function openSequels(fromHistory) {
   if (!fromHistory) pushNav({ modal: 'seq' });
-  $('modalBg').classList.add('show');
+  showModalBg();
   const modal = $('modal');
   const items = seqPending();
   const nowS = Date.now() / 1000;
@@ -1397,7 +1496,7 @@ async function nextPopup(id, fromHistory) {
   const modal = $('modal');
   modal.innerHTML = `<div class="dbody" style="text-align:center"><div style="font-size:50px">🎉</div><h2 style="justify-content:center">Befejezted: ${esc(e.title)}!</h2><p class="loading">Keresem, mit nézz utána…</p></div>`;
   if (!fromHistory) pushNav({ modal: 'after', id });
-  $('modalBg').classList.add('show');
+  showModalBg();
   let m;
   try { m = (await gql(`query($id: Int) { Media(id: $id) { id relations { edges { relationType node { ${CARD} type } } } recommendations(perPage: 8, sort: RATING_DESC) { nodes { mediaRecommendation { ${CARD} } } } } }`, { id }, 60 * 60 * 1000)).Media; }
   catch (err) { modal.innerHTML = `<div class="dbody" style="text-align:center"><div style="font-size:50px">🎉</div><h2 style="justify-content:center">Befejezted: ${esc(e.title)}!</h2><p class="small">${esc(err.message)}</p><button class="btn full" data-close>Bezár</button></div>`; return; }
