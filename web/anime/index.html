@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Csak az AniList (adatok), a MyMemory (leírás fordítása), a trace.moe (képkeresés, csak a feltöltött kép) és az AnimeThemes (openingek) érhető el; a listád a telefonon marad. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe; media-src 'self' blob: https://media.trace.moe https://v.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
+<!-- Csak az AniList (adatok), a MyMemory (leírás fordítása), a trace.moe (képkeresés, csak a feltöltött kép) és az AnimeThemes (openingek), valamint a Wikidata és a Wikipédia (részenkénti összefoglalók) érhető el; a listád a telefonon marad. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe; media-src 'self' blob: https://media.trace.moe https://v.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://www.wikidata.org https://en.wikipedia.org https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#07060f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -272,6 +272,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
     <div class="row" style="margin-top:6px"><input class="grow" type="search" id="listQ" placeholder="Keresés a listádban…" autocomplete="off"></div>
     <div class="chips" id="listSort"></div>
     <div id="gapBanner"></div>
+    <div id="recapBanner"></div>
     <div class="card" id="listOut"></div>
     <button class="btn full" id="clearSt" style="color:#ff8095"></button>
   </section>
@@ -624,7 +625,7 @@ async function openAnime(id, fromHistory) {
   const e = S.list[id];
   const accent = (m.coverImage && m.coverImage.color) || '#ff6fb5';
   modal.style.setProperty('--dyn', accent);
-  const desc = (m.description || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  const desc = cleanDesc(m.description);
   const chars = (m.characters && m.characters.edges) || [];
   const recs = (m.recommendations.nodes || []).map(n => n.mediaRecommendation).filter(Boolean);
   const rels = (m.relations.edges || []).filter(r => r.node.type === 'ANIME' && ['SEQUEL', 'PREQUEL', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'PARENT'].includes(r.relationType));
@@ -652,6 +653,7 @@ async function openAnime(id, fromHistory) {
       ${rels.length ? `<h2>Kapcsolódó</h2><div class="shelf">${rels.map(r => poster(r.node).replace('<div class="t">', `<div class="small">${REL[r.relationType]}</div><div class="t">`)).join('')}</div>` : ''}
       ${recs.length ? `<h2>Ha ez tetszett…</h2><div class="shelf">${recs.map(poster).join('')}</div>` : ''}
       <h2>🎵 Openingek és endingek</h2><div id="themesOut"><p class="small">Betöltés…</p></div>
+      <button class="btn full hot" id="recapBtn">📖 Mi történt eddig? (az előző évadok)</button>
       <button class="btn full" id="orderBtn">🧭 Nézési sorrend (a teljes sorozat)</button>
       <div class="row" style="margin-top:12px">
         ${m.trailer && m.trailer.site === 'youtube' ? `<a class="btn grow" style="text-align:center;text-decoration:none" href="https://www.youtube.com/watch?v=${encodeURIComponent(m.trailer.id)}" target="_blank" rel="noopener noreferrer">▶️ Előzetes</a>` : ''}
@@ -663,6 +665,7 @@ async function openAnime(id, fromHistory) {
   if (more) more.onclick = () => { $('desc').classList.toggle('clamp'); more.textContent = $('desc').classList.contains('clamp') ? 'Több ▾' : 'Kevesebb ▴'; };
   bindEditor(m);
   $('orderBtn').onclick = () => openOrder(m.id);
+  $('recapBtn').onclick = () => openRecap(m.id);
   loadThemes(m);
   if ($('trBtn')) {
     $('trBtn').onclick = () => toggleHu(m.id, desc);
@@ -780,6 +783,265 @@ async function openOrder(id, fromHistory) {
     <button class="btn full" data-close>Bezár</button></div>`;
   modal.querySelectorAll('[data-om]').forEach(b => b.onclick = () => { orderMainOnly = b.dataset.om === '1'; openOrder(id, true); });
   modal.scrollTop = 0;
+}
+
+// ---------- 📖 Mi történt eddig? (előző évadok összefoglalója) ----------
+// Saját AI nélkül, csak megbízható forrásokból: az AniList hivatalos évad-leírásai és szereplői, valamint az angol
+// Wikipédia részenkénti összefoglalói (a Wikidata AniList/MAL-azonosítója alapján keresve). Az AniList és a Wikipédia
+// felé csak az anime azonosítója és címe megy ki. Az elkészült összefoglaló a telefonra mentődik, offline is olvasható.
+const RECAP_KEY = 'anime-hub-recap';
+const RECAP_EP_FORMATS = ['TV', 'TV_SHORT', 'ONA', 'OVA'];
+let recapTab = 'short';
+const recapReveal = new Set();
+function recapStore() { try { return JSON.parse(localStorage.getItem(RECAP_KEY)) || {}; } catch (e) { return {}; } }
+function recapSave(rec) {
+  const all = recapStore(); all[rec.id] = rec;
+  const ids = Object.keys(all).sort((a, b) => all[a].t - all[b].t);
+  while (ids.length > 25) delete all[ids.shift()];
+  for (let i = 0; i < 5; i++) {
+    try { localStorage.setItem(RECAP_KEY, JSON.stringify(all)); return true; }
+    catch (e) { const old = Object.keys(all).filter(k => k != rec.id).sort((a, b) => all[a].t - all[b].t)[0]; if (!old) break; delete all[old]; }
+  }
+  toast('Nem fért el a telefonon az összefoglaló'); return false;
+}
+const cleanDesc = d => (d || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'").replace(/\n{3,}/g, '\n\n').trim();
+// AniList szereplőleírás: a ~!spoiler!~ részek és a „Kor: 17” jellegű adatsorok nélkül, röviden.
+function charDesc(d) {
+  let t = (d || '').replace(/~![\s\S]*?!~/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/(__|\*\*)(.*?)\1/g, '$2').replace(/<[^>]+>/g, '');
+  t = t.split('\n').map(l => l.trim()).filter(l => l && !(l.length < 90 && /^[^.]{1,30}:\s/.test(l))).join('\n');
+  if (t.length > 420) { const cut = t.slice(0, 420); t = cut.slice(0, Math.max(cut.lastIndexOf('. ') + 1, 200)) + '…'; }
+  return t.trim();
+}
+const wikiApi = (host, params) => fetchT(`https://${host}/w/api.php?format=json&origin=*&formatversion=2&` + new URLSearchParams(params), {}, 15000)
+  .then(r => { if (!r.ok) throw new Error('wiki ' + r.status); return r.json(); });
+// AniList (P8729) vagy MAL (P4086) azonosító → angol Wikipédia-cikk címe
+async function wikiTitleFor(m) {
+  const q = `haswbstatement:P8729=${m.id}` + (m.idMal ? `|P4086=${m.idMal}` : '');
+  const s = await wikiApi('www.wikidata.org', { action: 'query', list: 'search', srsearch: q, srlimit: 1 });
+  const hit = s.query && s.query.search[0];
+  if (!hit) return null;
+  const e = await wikiApi('www.wikidata.org', { action: 'wbgetentities', ids: hit.title, props: 'sitelinks', sitefilter: 'enwiki' });
+  const ent = e.entities && e.entities[hit.title];
+  return (ent && ent.sitelinks && ent.sitelinks.enwiki && ent.sitelinks.enwiki.title) || null;
+}
+// Egy Wikipédia-oldal részlistái: [{ heading, main, rows: [{ t, s }] }] + az esetleges „List of … episodes” link
+const wikiMem = {};
+async function wikiPage(t) {
+  if (wikiMem[t]) return wikiMem[t];
+  const j = await wikiApi('en.wikipedia.org', { action: 'parse', page: t, prop: 'text', redirects: 1 });
+  if (!j.parse) return (wikiMem[t] = { title: t, tables: [], list: null });
+  const doc = new DOMParser().parseFromString(j.parse.text, 'text/html');
+  doc.querySelectorAll('sup, style, .mw-editsection').forEach(n => n.remove());
+  const root = doc.querySelector('.mw-parser-output') || doc.body;
+  const tables = [...doc.querySelectorAll('table.wikiepisodetable')].map(tb => {
+    const rows = [...tb.querySelectorAll('tr.vevent')].map(r => {
+      const cell = r.querySelector('td.summary');
+      const raw = cell ? cell.textContent.trim() : '';
+      const nx = r.nextElementSibling;
+      return { t: (raw.match(/"([^"]+)"/) || [, raw.split('\n')[0]])[1].trim(), s: nx && nx.classList.contains('expand-child') ? nx.textContent.replace(/[ \t]+/g, ' ').trim() : '' };
+    });
+    let top = tb; while (top.parentElement && top.parentElement !== root) top = top.parentElement;
+    let heading = '', main = '';
+    for (let el = top.previousElementSibling; el; el = el.previousElementSibling) {
+      if (!main && el.matches('.hatnote, [role=note]') && /main article/i.test(el.textContent)) { const a = el.querySelector('a[title]'); if (a) main = a.getAttribute('title'); }
+      if (el.matches('h2, h3, h4, .mw-heading')) { heading = el.textContent.trim(); break; }
+    }
+    return { heading, main, rows };
+  }).filter(x => x.rows.length);
+  const la = [...doc.querySelectorAll('a[title]')].find(a => /^List of .+ episodes/.test(a.getAttribute('title')) && a.getAttribute('title') !== j.parse.title);
+  return (wikiMem[t] = { title: j.parse.title, tables, list: la ? la.getAttribute('title') : null });
+}
+function seasonNum(name) {
+  const m = name.match(/season\s*(\d+)/i) || name.match(/(\d+)(?:st|nd|rd|th)\s+season/i);
+  if (m) return +m[1];
+  const r = name.match(/\s(II|III|IV|V|VI)$/); return r ? ({ II: 2, III: 3, IV: 4, V: 5, VI: 6 })[r[1]] : 0;
+}
+function pickTable(tables, x, pos) {
+  if (!tables.length) return null;
+  const n = seasonNum(x.title) || pos + 1;
+  let best = null, bestSc = -1;
+  tables.forEach((tb, i) => {
+    let sc = 0;
+    if (x.episodes && tb.rows.length === x.episodes) sc += 3; else if (x.episodes && Math.abs(tb.rows.length - x.episodes) <= 1) sc += 1;
+    if (x.year && tb.heading.includes(String(x.year))) sc += 2;
+    if (new RegExp(`(season|series)\\s*${n}\\b`, 'i').test(tb.heading)) sc += 2;
+    if (i === pos) sc += 1;
+    if (tb.rows.some(r => r.s)) sc += 1;
+    if (sc > bestSc) { bestSc = sc; best = tb; }
+  });
+  if (bestSc <= 1 && tables.length > 1 && !tables[pos]) return null;
+  let rows = best.rows;
+  // „Part 2”: ugyanaz a Wikipédia-évad, csak a második fele
+  if (x.episodes && rows.length > x.episodes) {
+    if (/part\s*2|2nd part|second part/i.test(x.title)) rows = rows.slice(-x.episodes);
+    else if (/part\s*1/i.test(x.title)) rows = rows.slice(0, x.episodes);
+  }
+  return Object.assign({}, best, { rows });
+}
+async function wikiEpisodes(chain, progress) {
+  const eps = chain.filter(x => RECAP_EP_FORMATS.includes(x.format));
+  const titles = {};
+  for (const x of eps) { try { titles[x.id] = await wikiTitleFor(x); } catch (e) { titles[x.id] = undefined; } progress(); }
+  let fallback = Object.values(titles).find(Boolean) || null;
+  if (!fallback && eps.length) {
+    try {
+      const s = await wikiApi('en.wikipedia.org', { action: 'query', list: 'search', srsearch: `${chain[0].title} episodes anime`, srlimit: 5 });
+      const h = (s.query.search || []).find(r => /^List of .+ episodes/.test(r.title)) || s.query.search[0];
+      fallback = h ? h.title : null;
+    } catch (e) { if (Object.values(titles).every(t => t === undefined)) throw new Error('Nem érem el a Wikipédiát.'); }
+  }
+  for (const [pos, x] of eps.entries()) {
+    const t = titles[x.id] || fallback;
+    if (!t) continue;
+    try {
+      let pg = await wikiPage(t);
+      if (!pg.tables.length && pg.list) pg = await wikiPage(pg.list);
+      let tb = pickTable(pg.tables, x, pos);
+      if (tb && !tb.rows.some(r => r.s) && tb.main) {
+        const sub = await wikiPage(tb.main);
+        const t2 = pickTable(sub.tables, x, 0);
+        if (t2) { tb = t2; pg = sub; }
+      }
+      x.wiki = { page: pg.title, eps: tb ? tb.rows : [] };
+    } catch (e) { x.wiki = { page: t, eps: [], err: 1 }; }
+    progress();
+  }
+}
+async function buildRecap(id, say) {
+  const chain = [], chars = new Map();
+  let cur = id;
+  for (let i = 0; i < 15 && cur; i++) {
+    say(`Az előző évadok összegyűjtése… (${chain.length + 1}.)`);
+    const m = (await gql(`query($id: Int) { Media(id: $id) { id idMal title { romaji english } coverImage { large color } format episodes seasonYear startDate { year } description
+      characters(role: MAIN, perPage: 6) { nodes { id name { full } image { medium } description } }
+      relations { edges { relationType node { id type format startDate { year month } } } } } }`, { id: cur }, 60 * 60 * 1000)).Media;
+    if (!m) break;
+    chain.unshift({ id: m.id, idMal: m.idMal, title: title(m), cover: cover(m), format: m.format, episodes: m.episodes, year: m.seasonYear || (m.startDate && m.startDate.year), desc: cleanDesc(m.description) });
+    for (const c of (m.characters && m.characters.nodes) || []) if (!chars.has(c.id)) chars.set(c.id, { name: c.name.full, img: c.image && c.image.medium, desc: charDesc(c.description), from: title(m) });
+    const pre = m.relations.edges.filter(e => e.relationType === 'PREQUEL' && e.node.type === 'ANIME' && e.node.format !== 'MUSIC' && !chain.some(c => c.id === e.node.id));
+    pre.sort((a, b) => (a.node.format === 'TV' ? 0 : 1) - (b.node.format === 'TV' ? 0 : 1));
+    cur = pre.length ? pre[0].node.id : null;
+  }
+  if (!chain.length) throw new Error('Ezt az animét nem találom az AniListen.');
+  const rec = { id, t: Date.now(), chain, chars: [...chars.values()].slice(0, 14), hu: {} };
+  let done = 0;
+  try { await wikiEpisodes(chain, () => say(`Részenkénti leírások keresése a Wikipédián… (${++done})`)); }
+  catch (e) { rec.wikiErr = e.message; }
+  // A már lefordított évadleírásokat (adatlapról) átvesszük.
+  const tc = trCache(); for (const x of chain) if (tc[x.id]) rec.hu['d' + x.id] = tc[x.id];
+  return rec;
+}
+async function openRecap(id, fromHistory, force) {
+  const modal = $('modal');
+  if (!fromHistory) pushNav({ modal: 'recap', id });
+  showModalBg();
+  let rec = recapStore()[id];
+  if (!rec || force) {
+    modal.innerHTML = '<div class="dbody"><h2>📖 Mi történt eddig?</h2><p class="loading" id="recapSay">Betöltés…</p></div>';
+    try { rec = await buildRecap(id, t => { const el = $('recapSay'); if (el) el.textContent = t; }); }
+    catch (e) {
+      if (rec) { toast('Nem sikerült frissíteni – a mentett változatot látod'); }
+      else { modal.innerHTML = '<div class="dbody">' + errHtml(e) + '<button class="btn full" data-close>Bezár</button></div>'; return; }
+    }
+    if (!(history.state && history.state.modal === 'recap' && history.state.id === id)) return; // közben elnavigáltak
+    recapSave(rec);
+  }
+  renderRecap(rec);
+}
+function renderRecap(rec) {
+  const modal = $('modal');
+  const last = rec.chain[rec.chain.length - 1];
+  const e = S.list[rec.id];
+  const seenCur = e ? (e.status === 'done' ? (e.episodes || 999) : e.progress) : 0;
+  const prev = rec.chain.slice(0, -1);
+  const tx = (k, en) => `<div class="rtx" data-k="${k}" style="white-space:pre-line">${esc(rec.hu[k] || en)}</div>`;
+  const meta = x => `${FORMAT[x.format] || x.format || ''}${x.year ? ' · ' + x.year : ''}${x.episodes ? ' · ' + x.episodes + ' rész' : ''}`;
+  const head = x => `<div class="row" style="gap:10px;align-items:center"><img src="${esc(x.cover)}" alt="" loading="lazy" style="width:44px;height:62px;object-fit:cover;border-radius:8px">
+    <div class="grow"><b>${esc(x.title)}</b><div class="small">${meta(x)}${x.id === rec.id ? ' · ▶️ erről az évadról nyitottad' : ''}</div></div></div>`;
+  let body = '';
+  if (recapTab === 'short') {
+    body = (prev.length ? '' : '<p class="small">Ennek az animének nincs előzménye az AniListen – ez az első évad.</p>') +
+      rec.chain.map(x => `<div class="card">${head(x)}${x.desc ? `<div style="margin-top:8px">${tx('d' + x.id, x.desc)}</div>` : '<p class="small">Nincs hivatalos leírás.</p>'}</div>`).join('');
+  } else if (recapTab === 'long') {
+    body = (rec.wikiErr ? `<p class="err">⚠️ ${esc(rec.wikiErr)} A rövid összefoglaló így is olvasható.</p>` : '') + rec.chain.map(x => {
+      const eps = (x.wiki && x.wiki.eps) || [];
+      const withSum = eps.filter(r => r.s).length;
+      const isCur = x.id === rec.id;
+      const limit = isCur && !recapReveal.has(x.id) ? seenCur : Infinity;
+      const shown = eps.slice(0, limit);
+      const link = x.wiki && x.wiki.page ? `<a class="small" href="https://en.wikipedia.org/wiki/${encodeURIComponent(x.wiki.page.replace(/ /g, '_'))}" target="_blank" rel="noopener noreferrer">Wikipédia-oldal ↗</a>` : '';
+      return `<details class="card" data-rid="${x.id}" ${isCur && shown.length ? 'open' : ''}><summary style="cursor:pointer;list-style:none">${head(x)}
+        <div class="small" style="margin-top:6px">${withSum ? `📚 ${withSum} rész leírása ▾` : x.format === 'MOVIE' ? '🎬 Film – a rövid leírást mutatom ▾' : '📄 Nincs részenkénti leírás – a rövid leírást mutatom ▾'}</div></summary>
+        ${withSum ? shown.map((r, i) => `<div style="margin-top:10px"><b>${i + 1}. ${esc(r.t)}</b>${r.s ? tx(`e${x.id}_${i}`, r.s) : '<div class="small">(nincs leírás)</div>'}</div>`).join('') +
+          (isCur && eps.length > shown.length ? `<p class="small" style="margin-top:10px">🔒 ${seenCur ? `${azA(seenCur)} ${seenCur}. résznél tartasz, a többit elrejtettem.` : 'Ezt az évadot a listád szerint még nem kezdted el, ezért a részeit elrejtettem.'}</p><button class="btn full" data-reveal="${x.id}">👁️ Mutasd a többit is (spoiler!)</button>` : '')
+          : `<div style="margin-top:8px">${x.desc ? tx('d' + x.id, x.desc) : '<p class="small">Nincs leírás.</p>'}</div>`}
+        ${link}</details>`;
+    }).join('');
+  } else {
+    body = rec.chars.length ? rec.chars.map((c, i) => `<div class="card"><div class="row" style="gap:10px;align-items:flex-start">
+      ${c.img ? `<img src="${esc(c.img)}" alt="" loading="lazy" style="width:54px;height:72px;object-fit:cover;border-radius:8px">` : ''}
+      <div class="grow"><b>${esc(c.name)}</b><div class="small">${esc(c.from)}</div>${c.desc ? `<div style="margin-top:4px">${tx('c' + i, c.desc)}</div>` : ''}</div></div></div>`).join('')
+      : '<p class="small">Nincsenek főszereplők az AniListen.</p>';
+  }
+  modal.innerHTML = `<div class="dbody"><h2>📖 Mi történt eddig?</h2>
+    <p class="small" style="margin-top:0">${prev.length ? `${esc(last.title)} előtt ${prev.length} rész/évad: ${prev.map(x => esc(x.title)).join(' → ')}` : esc(last.title)}</p>
+    <div class="chips"><button class="chip ${recapTab === 'short' ? 'on' : ''}" data-rtab="short">📖 Rövid</button><button class="chip ${recapTab === 'long' ? 'on' : ''}" data-rtab="long">📚 Részletes</button><button class="chip ${recapTab === 'chars' ? 'on' : ''}" data-rtab="chars">👥 Szereplők</button></div>
+    <p class="small" id="recapTr"></p>
+    ${body}
+    <p class="small">Források: AniList (hivatalos leírások, szereplők) és angol Wikipédia (részenkénti összefoglalók), gépi fordítással. A korábbi évadokat teljesen leírja; abból az évadból, amelyikről megnyitottad, csak a látott részekig.<br>💾 Mentve a telefonra: ${new Date(rec.t).toLocaleString('hu-HU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – net nélkül is olvasható.</p>
+    <button class="btn full" id="recapRefresh">🔄 Frissítés a forrásokból</button>
+    <button class="btn full" data-close>Bezár</button></div>`;
+  modal.querySelectorAll('[data-rtab]').forEach(b => b.onclick = () => { recapTab = b.dataset.rtab; renderRecap(rec); modal.scrollTop = 0; });
+  modal.querySelectorAll('[data-reveal]').forEach(b => b.onclick = () => { recapReveal.add(+b.dataset.reveal); renderRecap(rec); });
+  modal.querySelectorAll('details[data-rid]').forEach(d => d.addEventListener('toggle', () => { if (d.open) recapTranslate(rec); }));
+  $('recapRefresh').onclick = () => openRecap(rec.id, true, true);
+  recapTranslate(rec);
+}
+// A látható angol szövegrészeket sorban magyarra fordítja és elmenti; ha elfogy a keret, a többi angolul marad.
+let recapTrRun = 0, recapTrFail = 0;
+const azA = n => ([1, 5].includes(n) || (n >= 50 && n < 60) || (n >= 500 && n < 600)) ? 'Az' : 'A';
+async function recapTranslate(rec) {
+  const run = ++recapTrRun;
+  const modal = $('modal');
+  const todo = [...modal.querySelectorAll('.rtx')].filter(el => !rec.hu[el.dataset.k] && !(el.closest('details') && !el.closest('details').open));
+  if (!todo.length) return;
+  const note = $('recapTr');
+  // Elfogyott keret után 10 percig nem próbálkozunk újra minden fülváltáskor.
+  if (Date.now() - recapTrFail < 10 * 60 * 1000) { if (note) note.innerHTML = '⚠️ A fordítási keret most elfogyott, a többit angolul látod. <button class="btn" id="recapTrRetry" style="padding:4px 10px;font-size:12px">🇭🇺 Újra</button>'; if ($('recapTrRetry')) $('recapTrRetry').onclick = () => { recapTrFail = 0; recapTranslate(rec); }; return; }
+  for (const [i, el] of todo.entries()) {
+    if (run !== recapTrRun || !el.isConnected) return;
+    if (note) note.textContent = `🇭🇺 Fordítás… (${i + 1}/${todo.length})`;
+    try { rec.hu[el.dataset.k] = await translateHu(el.textContent); }
+    catch (e) {
+      recapTrFail = Date.now();
+      if (note && run === recapTrRun) note.innerHTML = `⚠️ ${esc(e.message)} A többit angolul látod – holnap újra próbálja, vagy <a href="https://translate.google.com/?sl=en&tl=hu&op=translate&text=${encodeURIComponent(el.textContent.slice(0, 4500))}" target="_blank" rel="noopener noreferrer">Google Fordító ↗</a>`;
+      recapSave(rec); return;
+    }
+    if (el.isConnected) el.textContent = rec.hu[el.dataset.k];
+    if (el.dataset.k[0] === 'd') trSave(+el.dataset.k.slice(1), rec.hu[el.dataset.k]);
+  }
+  recapSave(rec);
+  if (note && run === recapTrRun) note.textContent = '🇭🇺 Gépi fordítás – lehetnek benne pontatlanságok.';
+}
+function openRecaps(fromHistory) {
+  if (!fromHistory) pushNav({ modal: 'recaps' });
+  showModalBg();
+  const all = Object.values(recapStore()).sort((a, b) => b.t - a.t);
+  const modal = $('modal');
+  modal.innerHTML = `<div class="dbody"><h2>📖 Mentett összefoglalók</h2><p class="small" style="margin-top:0">Net nélkül is olvashatók.</p>
+    ${all.map(r => { const x = r.chain[r.chain.length - 1]; return `<div class="entry"><img src="${esc(x.cover)}" alt="" loading="lazy"><div class="info" data-recap="${r.id}"><b>${esc(x.title)}</b><div class="small">${r.chain.length - 1} előzmény · ${new Date(r.t).toLocaleDateString('hu-HU')}</div></div><button class="btn" data-rdel="${r.id}" title="Törlés">✕</button></div>`; }).join('') || '<p>Még nincs mentett összefoglaló. Egy anime adatlapján a „📖 Mi történt eddig?” gombbal készíthetsz.</p>'}
+    <button class="btn full" data-close>Bezár</button></div>`;
+  modal.querySelectorAll('[data-recap]').forEach(b => b.onclick = () => openRecap(+b.dataset.recap));
+  modal.querySelectorAll('[data-rdel]').forEach(b => b.onclick = () => {
+    const a = recapStore(); delete a[b.dataset.rdel];
+    try { localStorage.setItem(RECAP_KEY, JSON.stringify(a)); } catch (e) {}
+    openRecaps(true); renderRecapBanner();
+  });
+}
+function renderRecapBanner() {
+  const n = Object.keys(recapStore()).length;
+  $('recapBanner').innerHTML = n ? `<button class="btn full" id="recapsOpen">📖 ${n} mentett összefoglaló (offline is) ›</button>` : '';
+  if (n) $('recapsOpen').onclick = () => openRecaps();
 }
 
 // ---------- 📸 Melyik anime ez? (trace.moe képkeresés) ----------
@@ -1035,6 +1297,7 @@ function renderList() {
   S.listSort = S.listSort || 'smart';
   $('listSort').innerHTML = LIST_SORTS.map(([k, n]) => `<button class="chip ${S.listSort === k ? 'on' : ''}" data-ls="${k}">${n}</button>`).join('');
   renderGapBanner();
+  renderRecapBanner();
   const q = ($('listQ').value || '').trim().toLowerCase();
   const left = x => (x.episodes ? x.episodes - x.progress : 9999);
   const sorters = {
@@ -1772,7 +2035,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
+const MODALS = { recap: id => openRecap(id, true), recaps: () => openRecaps(true), gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {
