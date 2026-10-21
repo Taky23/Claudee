@@ -82,7 +82,7 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **Felfedezés:** felkapott, idei szezon, jövő szezon (premierlista dátummal és visszaszámlálással, 📌 gombbal a Tervezem listára), minden idők legjobbjai, kereső; részletes adatlap bannerrel, szereplőkkel, kapcsolódó részekkel és ajánlásokkal.
   - **📸 Melyik anime ez?** Képernyőképből vagy videórészletből megmondja az anime címét, a részt és a percet ([trace.moe](https://trace.moe), csak a feltöltött kép megy ki; 18+ találatok kiszűrve).
   - **🧭 Nézési sorrend:** a teljes franchise (évadok, filmek, OVA-k, mellékszálak) megjelenési sorrendben, „fő történet” vagy „minden” nézettel, a már látottak bejelölve.
-  - **🎵 Openingek és endingek:** az [AnimeThemes](https://animethemes.moe) adatbázisából, az appban lejátszható videóval, YouTube és Spotify kereséssel.
+  - **🎵 Openingek és endingek:** az [AnimeThemes](https://animethemes.moe) adatbázisából, az appban lejátszható videóval, YouTube (videó) és YouTube Music (dal) kereséssel.
   - **🇭🇺 Magyar leírás:** az adatlapon egy gomb (vagy a „mindig magyarul” kapcsoló) lefordítja a leírást. Ha a Chrome beépített, telefonon futó fordítója már elérhető, azt használja; különben a MyMemory ingyenes fordítót (csak a leírás szövege megy ki). A fordítást megjegyzi, és ha elfogy a napi keret, Google Fordító linket ad.
   - **Vissza gomb:** a telefon vissza gombja az appon belül lép vissza (fülek, adatlapok, ablakok), fent „‹ Vissza” gomb is van, a kezdőképernyőn pedig dupla nyomás kell a kilépéshez.
   - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig.

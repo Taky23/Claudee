@@ -495,7 +495,7 @@ async function loadThemes(m) {
   const out = () => $('themesOut');
   const name = title(m);
   const yt = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
-  const sp = q => `https://open.spotify.com/search/${encodeURIComponent(q)}`;
+  const ytm = q => `https://music.youtube.com/search?q=${encodeURIComponent(q)}`;
   let themes = themesMem[m.id];
   if (!themes) {
     try {
@@ -520,8 +520,8 @@ async function loadThemes(m) {
       <b>${t.type === 'OP' ? '🎬 Opening' : '🌙 Ending'} ${t.sequence || 1}:</b> ${esc(song.title || '?')}${artists ? ` <span class="muted">– ${esc(artists)}</span>` : ''}
       <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:6px">
         ${video ? `<button class="btn" data-play="${i}" style="padding:5px 10px;font-size:12px">▶️ Lejátszás itt</button>` : ''}
-        <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${yt(q)}" target="_blank" rel="noopener noreferrer">YouTube</a>
-        <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${sp(q)}" target="_blank" rel="noopener noreferrer">Spotify</a>
+        <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${yt(q + ' ' + name + ' ' + (t.type === 'OP' ? 'opening' : 'ending'))}" target="_blank" rel="noopener noreferrer">📺 YouTube</a>
+        <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${ytm(q)}" target="_blank" rel="noopener noreferrer">🎵 YouTube Music</a>
       </div><div data-vid="${i}"></div></div>`;
   }).join('') + '</div><p class="small">Dal-adatok: AnimeThemes.moe</p>';
   out().querySelectorAll('[data-play]').forEach(b => b.onclick = () => {
