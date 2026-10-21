@@ -51,7 +51,7 @@ A játék végén a bot magától lezár egy **időkapszulát**, ami pontosan eg
 
 ## 📱 Telefonos webappok (Discord nélkül)
 
-A `web/` mappában hét telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
+A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre kitéve appként futnak, offline is működnek, és az állást a telefonon tárolják.
 
 - **🎲 Véletlen kaland** (`web/kaland/`) – egy gombnyomásra apró, fura napi küldetést kapsz. Naponta kétszer kérhetsz helyette másikat, utána jöhetnek a bónuszküldetések. Fotót és jegyzetet is csatolhatsz. Pontokat, szinteket, szériát és 22 jelvényt gyűjthetsz, a teljesítéseid a kalandnaplóba kerülnek.
 - **🕵️ Zsebdetektív** (`web/detektiv/`) – minden nap egy új rejtély öt gyanúsítottal és nyomokkal. A napi eset mindenkinek ugyanaz, így a barátaiddal is összemérhetitek. A nyomok együtt mindig pontosan egy tettest adnak ki. Két nyom ingyenes, minden további pontba kerül, és csak egyszer vádolhatsz. Van pont nélküli gyakorló mód és statisztika is.
@@ -78,11 +78,18 @@ A `web/` mappában hét telepíthető webapp (PWA) van. A kezdőképernyőre kit
 
 - **🌴 Sötét Utas** (`web/sotet/`) – Dexter-szerű kettős élet szimulátor, nyomozás nélkül, ezért más, mint A Kód. Minden nap 4 napszakból áll, és mindegyikre választasz egy akciót: munka, futás, megfigyelés, idő Lilivel, előkészítés, lecsapás, takarítás, pihenés. Négy mérőt kell egyensúlyban tartani: a Sötét Utas éhségét, a gyanút, a kapcsolatot és az energiát. Közben véletlen helyzetek jönnek két választással, minden lecsapás után pedig egy takarítós reflexjáték. A játék végtelen, napszámlálóval és top 10-es helyi ranglistával.
 
+- **🌸 Anime Hub** (`web/anime/`) – saját anime-központ az [AniList](https://anilist.co) nyilvános API-jával. A lista, a pontozás és a jegyzetek **csak a telefonon** vannak. Az AniList felé csak keresések és azonosítók mennek, a CSP mást nem enged.
+  - **Felfedezés:** felkapott, idei szezon, minden idők legjobbjai, kereső; részletes adatlap bannerrel, szereplőkkel, kapcsolódó részekkel és ajánlásokkal.
+  - **Listám:** +1 rész egy koppintással, 5 állapot, saját 1–10-es pontszám, újranézések, jegyzet; „🔔 X új rész vár rád” és visszaszámlálás a következő részig.
+  - **Műsor:** heti vetítési naptár, a listádon lévők kiemelésével.
+  - **Mit nézzek?** Hangulat (8 féle) és rendelkezésre álló idő szerinti ajánló a „Tervezem” listából vagy újdonságokból, plusz egy „még egy rész” alvás-kalkulátor.
+  - **Én:** anime-DNS statisztika (részek, órák, műfajok, stúdiók), anime-személyiség megosztható képként, saját S–D tier list, mentés és visszaállítás.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
 2. Amikor a `web/` mappa változása bekerül a `main` ágba, a `.github/workflows/pages.yml` magától közzéteszi az oldalt itt:
-   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/`, `kod/`, `tarkov/`, `gamer/`, `tar/` és `sotet/` alatt).
+   `https://<felhasználónév>.github.io/<repó>/` (az appok a `kaland/`, `detektiv/`, `kod/`, `tarkov/`, `gamer/`, `tar/`, `sotet/` és `anime/` alatt).
 3. Nyisd meg a telefonon, majd:
    - **Android (Chrome):** ⋮ menü → *Hozzáadás a kezdőképernyőhöz* / *Alkalmazás telepítése*
    - **iPhone (Safari):** Megosztás (□↑) → *Főképernyőhöz adás*

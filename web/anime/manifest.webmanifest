@@ -1,0 +1,35 @@
+{
+  "name": "Anime Hub",
+  "short_name": "Anime Hub",
+  "description": "Saját anime-lista, heti műsor, hangulat szerinti ajánló, anime-DNS és tier list – a listád csak a telefonodon.",
+  "lang": "hu",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0f0c1d",
+  "background_color": "#0f0c1d",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
