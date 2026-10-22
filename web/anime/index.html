@@ -392,9 +392,12 @@ async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
   // Ha az AniList az imént nem válaszolt, 3 percig nem várunk rá újra 8 másodpercet – rögtön jöhet a tartalék.
   if (aniDownUntil > Date.now()) throw new Error('Az AniList most nem elérhető. Ez a rész csak AniListtel működik (a tartalék Jikan ezt nem tudja) – próbáld újra pár perc múlva.');
   const body = JSON.stringify({ query, variables });
-  let lastErr = null;
+  let lastErr = null, fails = 0;
+  // Leállás vagy karbantartás (hálózati hiba, 5xx, HTML oldal JSON helyett): egy gyors újrapróbálás után
+  // 3 percre „lent”-nek jelöljük, így rögtön jöhet a tartalék, és nem vár minden oldal külön.
+  const down = msg => { aniDownUntil = Date.now() + 3 * 60 * 1000; return new Error(msg); };
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await sleep(attempt === 1 ? 4000 : 10000);
+    if (attempt) await sleep(fails ? 2000 : attempt === 1 ? 4000 : 10000);
     if (blockedUntil > Date.now()) await sleep(blockedUntil - Date.now());
     await throttle();
     let res;
@@ -403,7 +406,7 @@ async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
     } catch (e) {
       // Időtúllépésnél nem várakozunk újra: az AniList valószínűleg le van állva.
       if (e.name === 'AbortError') { aniDownUntil = Date.now() + 3 * 60 * 1000; throw new Error('Az AniList 8 másodperc alatt sem válaszolt – valószínűleg most nem elérhető. Próbáld újra kicsit később.'); }
-      lastErr = new Error('Az AniList most nem érhető el (lehet, hogy túl sok kérés ment ki, és egy percre letiltott). Várj egy kicsit, és próbáld újra.');
+      if (++fails >= 2) throw down('Az AniList most nem érhető el (lehet, hogy karbantartás van, vagy leállt). Próbáld újra kicsit később.');
       continue;
     }
     if (res.status === 429) {
@@ -412,8 +415,11 @@ async function gql(query, variables = {}, ttl = 10 * 60 * 1000) {
       lastErr = new Error(`Túl sok kérés – az AniList ${ra} másodpercre letiltott. Utána magától megy tovább.`);
       continue;
     }
-    if (res.status >= 500) { lastErr = new Error('Az AniList most akadozik (' + res.status + ').'); continue; }
-    const j = await res.json().catch(() => ({}));
+    if (res.status >= 500) { if (++fails >= 2) throw down('Az AniList most karbantartás alatt van vagy akadozik (' + res.status + '). Próbáld újra kicsit később.'); continue; }
+    const j = await res.json().catch(() => null);
+    if (!j) throw down('Az AniList most nem rendes adatot küld (valószínűleg karbantartás van). Próbáld újra kicsit később.');
+    // Pl. 403 „az API ideiglenesen ki van kapcsolva” karbantartás alatt – a 400/404 viszont csak egy rossz/ismeretlen kérés.
+    if (!res.ok && ![400, 404].includes(res.status)) throw down('Az AniList most nem szolgál ki (' + res.status + (j.errors && j.errors[0] ? ': ' + j.errors[0].message : '') + ') – valószínűleg karbantartás van.');
     if (!res.ok || !j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Az AniList most nem válaszol (' + res.status + ').');
     mem.set(key, { t: Date.now(), d: j.data });
     aniDownUntil = 0;
