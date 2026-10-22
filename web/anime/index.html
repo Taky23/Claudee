@@ -2202,12 +2202,17 @@ const MOODS = {
   brain: ['🧠 Agyalós', ['Mystery', 'Psychological', 'Thriller']],
   scary: ['😱 Félni akarok', ['Horror', 'Supernatural']],
   love: ['💘 Romantika', ['Romance']],
-  world: ['🌌 Másik világ', ['Fantasy', 'Adventure', 'Sci-Fi']],
   chill: ['😌 Chill', ['Slice of Life', 'Music']],
-  ecchi: ['🍑 Ecchi', ['Ecchi']],
+  warm: ['🥰 Szívmelengető', ['Slice of Life'], ['Iyashikei']],
+  motiv: ['💪 Motiváló', ['Sports'], ['Coming of Age']],
 };
 // Több hangulat is kijelölhető: az ajánlatnak mindegyikbe bele kell illenie (hangulatonként legalább egy műfaj egyezzen).
-function ms() { if (!Array.isArray(S.moods)) S.moods = S.mood && MOODS[S.mood] ? [S.mood] : ['fun']; return S.moods; }
+function ms() {
+  if (!Array.isArray(S.moods)) S.moods = S.mood && MOODS[S.mood] ? [S.mood] : ['fun'];
+  // A régi „hangulatok” közül az Ecchi műfaj, a Másik világ pedig kategória lett.
+  if (S.moods.some(k => k === 'ecchi' || k === 'world')) S.moods = [...new Set(S.moods.map(k => k === 'ecchi' ? 'g:Ecchi' : k === 'world' ? 't:Isekai' : k))];
+  return S.moods;
+}
 // Az összes AniList-műfaj (a 18+ Hentai nélkül) és a legfontosabb AniList-címkék („kategóriák”)
 const ALL_GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Ecchi', 'Fantasy', 'Horror', 'Mahou Shoujo', 'Mecha', 'Music', 'Mystery', 'Psychological', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller'];
 const PICK_TAGS = [['Isekai', 'Isekai'], ['School', 'Iskolai'], ['Shounen', 'Shounen'], ['Seinen', 'Seinen'], ['Shoujo', 'Shoujo'], ['Josei', 'Josei'],
@@ -2219,7 +2224,7 @@ const PICK_TAGS = [['Isekai', 'Isekai'], ['School', 'Iskolai'], ['Shounen', 'Sho
   ['Female Harem', 'Hárem'], ['Male Harem', 'Fordított hárem'], ['Robots', 'Robotok'], ['Zombie', 'Zombik'], ['Pirates', 'Kalózok'], ['Gore', 'Véres (gore)']];
 const TAG_HU = Object.fromEntries(PICK_TAGS);
 // Kiválasztott kulcsok: hangulat (pl. 'fun'), műfaj ('g:Action') vagy kategória ('t:Isekai'). Mindegyiknek meg kell felelnie.
-const pickGroup = k => MOODS[k] ? { g: MOODS[k][1], t: [] } : k.startsWith('g:') ? { g: [k.slice(2)], t: [] } : k.startsWith('t:') ? { g: [], t: [k.slice(2)] } : null;
+const pickGroup = k => MOODS[k] ? { g: MOODS[k][1], t: MOODS[k][2] || [] } : k.startsWith('g:') ? { g: [k.slice(2)], t: [] } : k.startsWith('t:') ? { g: [], t: [k.slice(2)] } : null;
 const pickName = k => MOODS[k] ? MOODS[k][0] : k.startsWith('g:') ? g(k.slice(2)) : TAG_HU[k.slice(2)] || k.slice(2);
 const moodGroups = () => ms().map(pickGroup).filter(Boolean);
 const moodFits = (gs, ts = []) => moodGroups().every(grp => (gs || []).some(x => grp.g.includes(x)) || ts.some(x => grp.t.includes(x)));
@@ -2289,11 +2294,11 @@ $('pickBtn').onclick = async () => {
   try {
     const formats = S.time === 'movie' ? ['MOVIE'] : S.time === 'any' ? ['TV', 'MOVIE', 'ONA'] : ['TV', 'ONA'];
     const eps = S.time === 'short' ? { episodes_lesser: 14 } : S.time === 'long' ? { episodes_greater: 24 } : {};
-    // A legszűkebb csoporttal kérdezünk (kategóriánál címkére, különben műfajra), a többire a telefonon szűrünk.
+    // A legszűkebb csoporttal kérdezünk (ha van benne műfaj, arra, különben a kategória címkéire), a többire a telefonon szűrünk.
     const base = groups.length ? groups.reduce((a, b) => (b.g.length + b.t.length < a.g.length + a.t.length ? b : a)) : null;
     const fetchPage = p => gql(`query($g: [String], $t: [String], $f: [MediaFormat], $p: Int, $el: Int, $eg: Int, $sc: Int) { Page(page: $p, perPage: 50) {
       media(type: ANIME, genre_in: $g, tag_in: $t, format_in: $f, isAdult: false, sort: POPULARITY_DESC, averageScore_greater: $sc, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} tags { name rank } } } }`,
-      { g: base && base.t.length ? null : base && base.g, t: base && base.t.length ? base.t : null, f: formats, p, el: eps.episodes_lesser, eg: eps.episodes_greater, sc: groups.length > 1 ? 60 : 68 }, 60 * 60 * 1000).then(d => d.Page.media.filter(m => !S.list[m.id]));
+      { g: base && base.g.length ? base.g : null, t: base && !base.g.length ? base.t : null, f: formats, p, el: eps.episodes_lesser, eg: eps.episodes_greater, sc: groups.length > 1 ? 60 : 68 }, 60 * 60 * 1000).then(d => d.Page.media.filter(m => !S.list[m.id]));
     const p0 = 1 + Math.floor(Math.random() * (groups.length > 1 ? 3 : 2));
     let all = await fetchPage(p0);
     let pool = all.filter(m => moodFits(m.genres, mTags(m)));
