@@ -289,6 +289,22 @@ body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 .stars button.on { background: var(--grad); color: #fff; box-shadow: 0 0 12px rgba(255, 79, 163, .5); }
 .persona { background: linear-gradient(135deg, rgba(255, 79, 163, .25), rgba(166, 107, 255, .25)); }
 .toast { background: rgba(255, 255, 255, .92); color: #1a1033; border-radius: 16px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+/* 🌌 Anime univerzum */
+.uni { position: relative; height: 58dvh; min-height: 340px; margin: 8px -16px 0; overflow: hidden; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: radial-gradient(ellipse at 50% 50%, rgba(123, 44, 255, .22), transparent 70%), radial-gradient(#fff 1px, transparent 1.4px) 0 0 / 37px 41px, radial-gradient(rgba(255, 255, 255, .5) 1px, transparent 1.4px) 11px 19px / 23px 29px, #070512; }
+.uni svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.unode { cursor: pointer; }
+.unode .ring { transition: stroke-width .15s; }
+.unode.sel .ring { stroke: #ff9fd0; stroke-width: 5; filter: drop-shadow(0 0 8px #ff4fa3); }
+.ulab { font-size: 11px; font-weight: 750; fill: #f1eeff; paint-order: stroke; stroke: #070512; stroke-width: 3px; }
+.ulab2 { font-size: 9.5px; fill: #9a93c4; paint-order: stroke; stroke: #070512; stroke-width: 3px; }
+.uzoom { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+.uzoom .btn { width: 38px; height: 38px; padding: 0; background: rgba(9, 7, 22, .75); }
+.udot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--uc); margin-right: 6px; vertical-align: 1px; }
+.udot.sq { border-radius: 2px; }
+#uniChips .chip:not(.on) { opacity: .45; }
+#uniChips .chip.on { background: rgba(255, 255, 255, .1); color: var(--text); box-shadow: inset 0 0 0 1px var(--uc); }
 </style>
 </head>
 <body>
@@ -862,6 +878,7 @@ async function openAnime(id, fromHistory) {
       ${recs.length ? `<h2>Ha ez tetszett…</h2><div class="shelf">${recs.map(poster).join('')}</div>` : ''}
       <h2>🎵 Openingek és endingek</h2><div id="themesOut"><p class="small">Betöltés…</p></div>
       <button class="btn full hot" id="recapBtn">📖 Mi történt eddig? (az előző évadok)</button>
+      <button class="btn full" id="uniBtn">🌌 Anime univerzum (kapcsolati háló)</button>
       <button class="btn full" id="orderBtn">🧭 Nézési sorrend (a teljes sorozat)</button>
       <div class="row" style="margin-top:12px">
         ${m.trailer && m.trailer.site === 'youtube' ? `<a class="btn grow" style="text-align:center;text-decoration:none" href="https://www.youtube.com/watch?v=${encodeURIComponent(m.trailer.id)}" target="_blank" rel="noopener noreferrer">▶️ Előzetes</a>` : ''}
@@ -872,8 +889,8 @@ async function openAnime(id, fromHistory) {
   const more = $('more');
   if (more) more.onclick = () => { $('desc').classList.toggle('clamp'); more.textContent = $('desc').classList.contains('clamp') ? 'Több ▾' : 'Kevesebb ▴'; };
   bindEditor(m);
-  if (m.fallback) { $('orderBtn').style.display = 'none'; if (!recapStore()[m.id]) $('recapBtn').style.display = 'none'; else $('recapBtn').onclick = () => openRecap(m.id); }
-  else { $('orderBtn').onclick = () => openOrder(m.id); $('recapBtn').onclick = () => openRecap(m.id); }
+  if (m.fallback) { $('orderBtn').style.display = 'none'; $('uniBtn').style.display = 'none'; if (!recapStore()[m.id]) $('recapBtn').style.display = 'none'; else $('recapBtn').onclick = () => openRecap(m.id); }
+  else { $('orderBtn').onclick = () => openOrder(m.id); $('uniBtn').onclick = () => openUniverse(m.id); $('recapBtn').onclick = () => openRecap(m.id); }
   loadThemes(m);
   if ($('trBtn')) {
     $('trBtn').onclick = () => toggleHu(m.id, desc);
@@ -945,6 +962,31 @@ async function loadThemes(m) {
 const ORDER_REL = ['PREQUEL', 'SEQUEL', 'PARENT', 'SIDE_STORY', 'SPIN_OFF', 'ALTERNATIVE', 'SUMMARY'];
 const orderMem = {};
 let orderMainOnly = true;
+async function loadFranchise(id, say) {
+  if (orderMem[id]) return orderMem[id];
+  const nodes = new Map(), main = new Set([id]);
+  let frontier = [id];
+  for (let depth = 0; depth < 10 && frontier.length && nodes.size < 60; depth++) {
+    const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { ${CARD} startDate { year month day }
+      relations { edges { relationType node { id type format } } } } } }`, { ids: frontier }, 60 * 60 * 1000);
+    const next = [];
+    for (const m of d.Page.media) {
+      nodes.set(m.id, m);
+      for (const e of m.relations.edges) {
+        if (e.node.type !== 'ANIME' || e.node.format === 'MUSIC' || !ORDER_REL.includes(e.relationType)) continue;
+        // Fő történet: csak előzmény/folytatás láncon elérhető részek.
+        if (main.has(m.id) && (e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL')) main.add(e.node.id);
+        if (!nodes.has(e.node.id) && !next.includes(e.node.id) && nodes.size + next.length < 60) next.push(e.node.id);
+      }
+    }
+    frontier = next;
+    if (say) say(`A sorozat feltérképezése… (${nodes.size} rész eddig)`);
+  }
+  const dateKey = m => { const s = m.startDate || {}; return s.year ? s.year * 10000 + (s.month || 12) * 100 + (s.day || 28) : 99999999; };
+  const data = { list: [...nodes.values()].sort((a, b) => dateKey(a) - dateKey(b)), main, start: id, nodes };
+  orderMem[id] = data;
+  return data;
+}
 async function openOrder(id, fromHistory) {
   const modal = $('modal');
   if (!fromHistory) pushNav({ modal: 'order', id });
@@ -952,29 +994,8 @@ async function openOrder(id, fromHistory) {
   let data = orderMem[id];
   if (!data) {
     modal.innerHTML = '<div class="dbody"><h2>🧭 Nézési sorrend</h2><p class="loading">A sorozat feltérképezése…</p></div>';
-    const nodes = new Map(), main = new Set([id]);
-    let frontier = [id];
-    try {
-      for (let depth = 0; depth < 10 && frontier.length && nodes.size < 60; depth++) {
-        const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { ${CARD} startDate { year month day }
-          relations { edges { relationType node { id type format } } } } } }`, { ids: frontier }, 60 * 60 * 1000);
-        const next = [];
-        for (const m of d.Page.media) {
-          nodes.set(m.id, m);
-          for (const e of m.relations.edges) {
-            if (e.node.type !== 'ANIME' || e.node.format === 'MUSIC' || !ORDER_REL.includes(e.relationType)) continue;
-            // Fő történet: csak előzmény/folytatás láncon elérhető részek.
-            if (main.has(m.id) && (e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL')) main.add(e.node.id);
-            if (!nodes.has(e.node.id) && !next.includes(e.node.id) && nodes.size + next.length < 60) next.push(e.node.id);
-          }
-        }
-        frontier = next;
-        modal.querySelector('.loading') && (modal.querySelector('.loading').textContent = `A sorozat feltérképezése… (${nodes.size} rész eddig)`);
-      }
-    } catch (e) { modal.innerHTML = '<div class="dbody">' + errHtml(e) + '<button class="btn full" data-close>Bezár</button></div>'; return; }
-    const dateKey = m => { const s = m.startDate || {}; return s.year ? s.year * 10000 + (s.month || 12) * 100 + (s.day || 28) : 99999999; };
-    data = { list: [...nodes.values()].sort((a, b) => dateKey(a) - dateKey(b)), main, start: id };
-    orderMem[id] = data;
+    try { data = await loadFranchise(id, t => { const el = modal.querySelector('.loading'); if (el) el.textContent = t; }); }
+    catch (e) { modal.innerHTML = '<div class="dbody">' + errHtml(e) + '<button class="btn full" data-close>Bezár</button></div>'; return; }
   }
   const seen = x => S.list[x.id] && (S.list[x.id].status === 'done' || S.list[x.id].progress > 0);
   const shown = data.list.filter(x => !orderMainOnly || data.main.has(x.id));
@@ -1250,6 +1271,227 @@ function renderRecapBanner() {
   const n = Object.keys(recapStore()).length;
   $('recapBanner').innerHTML = n ? `<button class="btn full" id="recapsOpen">📖 ${n} mentett összefoglaló (offline is) ›</button>` : '';
   if (n) $('recapsOpen').onclick = () => openRecaps();
+}
+
+// ---------- 🌌 Anime univerzum (interaktív kapcsolati háló) ----------
+// A franchise minden része egy „bolygó”: a fő történet középen időrendben, körülötte mellékszálak, spin-offok,
+// alternatív történetek és filmek. Egy kis saját erő-szimuláció rendezi el; húzással mozgatható, két ujjal nagyítható.
+const UNI_TYPES = {
+  SEQ: ['#ff4fa3', 'Előzmény / folytatás', ''],
+  SIDE: ['#43e0d0', 'Mellékszál', ''],
+  SPIN: ['#7cc4ff', 'Spin-off', ''],
+  ALT: ['#ffc76b', 'Alternatív történet', '6 5'],
+  SUM: ['#9a93c4', 'Összefoglaló', '2 4'],
+};
+let uniOff = new Set(), uniNoMovie = false, uniSel = null, uniAnim = 0;
+function uniEdges(data) {
+  const seen = new Map();
+  for (const m of data.list) for (const e of m.relations.edges) {
+    const o = e.node.id;
+    if (!data.nodes.has(o) || o === m.id) continue;
+    let from = m.id, to = o, t;
+    switch (e.relationType) {
+      case 'SEQUEL': t = 'SEQ'; break;
+      case 'PREQUEL': t = 'SEQ'; from = o; to = m.id; break;
+      case 'SIDE_STORY': t = 'SIDE'; break;
+      case 'PARENT': t = 'SIDE'; from = o; to = m.id; break;
+      case 'SPIN_OFF': t = 'SPIN'; break;
+      case 'ALTERNATIVE': t = 'ALT'; break;
+      case 'SUMMARY': t = 'SUM'; break;
+      default: continue;
+    }
+    const key = Math.min(from, to) + '-' + Math.max(from, to);
+    const old = seen.get(key);
+    if (!old || (t === 'SEQ' && old.t !== 'SEQ')) seen.set(key, { from, to, t });
+  }
+  return [...seen.values()];
+}
+const uniSeen = id => S.list[id] && (S.list[id].status === 'done' || S.list[id].progress > 0);
+async function openUniverse(id, fromHistory) {
+  const modal = $('modal');
+  if (!fromHistory) pushNav({ modal: 'universe', id });
+  showModalBg();
+  let data = orderMem[id];
+  if (!data) {
+    modal.innerHTML = '<div class="dbody"><h2>🌌 Anime univerzum</h2><p class="loading">A sorozat feltérképezése…</p></div>';
+    try { data = await loadFranchise(id, t => { const el = modal.querySelector('.loading'); if (el) el.textContent = t; }); }
+    catch (e) { modal.innerHTML = '<div class="dbody">' + errHtml(e) + '<button class="btn full" data-close>Bezár</button></div>'; return; }
+    if (!(history.state && history.state.modal === 'universe' && history.state.id === id)) return;
+  }
+  uniSel = id; uniOff = new Set(); uniNoMovie = false;
+  const edges = uniEdges(data);
+  const movies = data.list.filter(m => m.format === 'MOVIE').length;
+  const seenCnt = data.list.filter(m => uniSeen(m.id)).length;
+  modal.innerHTML = `<div class="dbody"><h2 class="sec" style="margin-top:6px"><span class="jp">宇宙</span>Anime univerzum</h2>
+    <p class="small" style="margin-top:0">${data.list.length} rész a franchise-ban · ✅ ${seenCnt} megnézve. Koppints egy bolygóra; húzd a hálót, két ujjal nagyíts.</p>
+    <div class="chips" id="uniChips">${Object.entries(UNI_TYPES).filter(([k]) => edges.some(e => e.t === k)).map(([k, [c, n]]) => `<button class="chip on" data-ut="${k}" style="--uc:${c}"><i class="udot"></i>${n}</button>`).join('')}
+      ${movies ? `<button class="chip on" data-ut="MOVIE" style="--uc:#fff"><i class="udot sq"></i>🎬 Filmek (${movies})</button>` : ''}</div>
+    <div class="uni" id="uni"><svg id="uniSvg"><defs>
+      <clipPath id="ucirc" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath>
+      <clipPath id="usq" clipPathUnits="objectBoundingBox"><rect width="1" height="1" rx=".2"/></clipPath>
+      ${Object.entries(UNI_TYPES).map(([k, [c]]) => `<marker id="uar-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`).join('')}
+      <radialGradient id="uglow"><stop offset="0" stop-color="#ff4fa3" stop-opacity=".55"/><stop offset="1" stop-color="#a66bff" stop-opacity="0"/></radialGradient>
+    </defs><g id="uniG"></g></svg>
+      <div class="uzoom"><button class="btn" data-uz="1.3">＋</button><button class="btn" data-uz="0.77">−</button><button class="btn" data-uz="0">⟲</button></div></div>
+    <div id="uniInfo"></div>
+    <button class="btn full" data-close>Bezár</button></div>`;
+  drawUniverse(data, edges);
+}
+function drawUniverse(data, edges) {
+  const svg = $('uniSvg'), G = $('uniG');
+  const W = svg.clientWidth, H = svg.clientHeight;
+  const dateKey = m => { const s = m.startDate || {}; return s.year ? s.year * 10000 + (s.month || 12) * 100 + (s.day || 28) : 99999999; };
+  const mainList = data.list.filter(m => data.main.has(m.id)).sort((a, b) => dateKey(a) - dateKey(b));
+  const N = new Map();
+  mainList.forEach((m, i) => N.set(m.id, { m, x: (i - (mainList.length - 1) / 2) * 170, y: 0, vx: 0, vy: 0, main: true, tx: (i - (mainList.length - 1) / 2) * 170 }));
+  // A többieket a már elhelyezett szomszédjuk közelébe tesszük (felváltva fölé és alá).
+  let flip = 1, guard = 0;
+  while (N.size < data.list.length && guard++ < 100) {
+    for (const e of edges) {
+      const a = N.get(e.from), b = N.get(e.to);
+      if ((a && b) || (!a && !b)) continue;
+      const p = a || b, id = a ? e.to : e.from;
+      flip = -flip;
+      N.set(id, { m: data.nodes.get(id), x: p.x + (Math.random() - .5) * 120, y: p.y + flip * (130 + Math.random() * 60), vx: 0, vy: 0, main: false });
+    }
+  }
+  for (const m of data.list) if (!N.has(m.id)) N.set(m.id, { m, x: (Math.random() - .5) * 300, y: 260, vx: 0, vy: 0, main: false });
+  const nodes = [...N.values()];
+  const R = n => n.m.id === data.start ? 34 : n.main ? 27 : 22;
+  // SVG elemek
+  G.innerHTML = `<g id="uE">${edges.map((e, i) => { const [c, , dash] = UNI_TYPES[e.t]; return `<line data-e="${i}" stroke="${c}" stroke-width="${e.t === 'SEQ' ? 3 : 2}" ${dash ? `stroke-dasharray="${dash}"` : ''} ${e.t === 'ALT' || e.t === 'SUM' ? '' : `marker-end="url(#uar-${e.t})"`} stroke-linecap="round"/>`; }).join('')}</g>
+    <g id="uN">${nodes.map(n => { const r = R(n), mv = n.m.format === 'MOVIE', s = uniSeen(n.m.id), st = n.m.id === data.start;
+      const name = title(n.m); const lab = name.length > 18 ? name.slice(0, 17) + '…' : name;
+      return `<g class="unode" data-n="${n.m.id}">${st ? `<circle r="${r + 26}" fill="url(#uglow)"/>` : ''}
+        <image href="${esc(cover(n.m))}" x="${-r}" y="${-r}" width="${2 * r}" height="${2 * r}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${mv ? 'usq' : 'ucirc'})"/>
+        ${mv ? `<rect class="ring" x="${-r}" y="${-r}" width="${2 * r}" height="${2 * r}" rx="${r * .4}"` : `<circle class="ring" r="${r}"`} fill="none" stroke="${st ? '#fff' : s ? '#5ee0a0' : n.main ? '#a66bff' : 'rgba(255,255,255,.35)'}" stroke-width="${st ? 3.5 : 2.5}"/>
+        ${s ? `<circle cx="${r * .72}" cy="${-r * .72}" r="8" fill="#5ee0a0"/><text x="${r * .72}" y="${-r * .72 + 4}" text-anchor="middle" font-size="11" font-weight="900" fill="#06301c">✓</text>` : ''}
+        ${mv ? `<text x="${-r * .72}" y="${-r * .6}" text-anchor="middle" font-size="13">🎬</text>` : ''}
+        <text class="ulab" y="${r + 15}" text-anchor="middle">${esc(lab)}</text>
+        <text class="ulab2" y="${r + 28}" text-anchor="middle">${esc([FORMAT[n.m.format] || '', n.m.startDate && n.m.startDate.year].filter(Boolean).join(' · '))}</text></g>`; }).join('')}</g>`;
+  const lineEls = [...G.querySelectorAll('[data-e]')], nodeEls = new Map([...G.querySelectorAll('[data-n]')].map(el => [+el.dataset.n, el]));
+  // Láthatóság (szűrők)
+  const visible = () => {
+    const vis = new Set([data.start]);
+    for (const e of edges) if (!uniOff.has(e.t)) { vis.add(e.from); vis.add(e.to); }
+    if (uniNoMovie) for (const n of nodes) if (n.m.format === 'MOVIE' && n.m.id !== data.start) vis.delete(n.m.id);
+    return vis;
+  };
+  const paint = () => {
+    const vis = visible();
+    nodes.forEach(n => { const el = nodeEls.get(n.m.id); el.style.display = vis.has(n.m.id) ? '' : 'none'; el.classList.toggle('sel', n.m.id === uniSel); });
+    edges.forEach((e, i) => {
+      const show = !uniOff.has(e.t) && vis.has(e.from) && vis.has(e.to);
+      lineEls[i].style.display = show ? '' : 'none';
+      lineEls[i].style.opacity = uniSel && (e.from === uniSel || e.to === uniSel) ? 1 : uniSel ? .3 : .75;
+    });
+  };
+  const place = () => {
+    nodes.forEach(n => nodeEls.get(n.m.id).setAttribute('transform', `translate(${n.x.toFixed(1)},${n.y.toFixed(1)})`));
+    edges.forEach((e, i) => {
+      const a = N.get(e.from), b = N.get(e.to), dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+      const ra = R(a) + 3, rb = R(b) + (e.t === 'ALT' || e.t === 'SUM' ? 3 : 7);
+      lineEls[i].setAttribute('x1', a.x + dx / d * ra); lineEls[i].setAttribute('y1', a.y + dy / d * ra);
+      lineEls[i].setAttribute('x2', b.x - dx / d * rb); lineEls[i].setAttribute('y2', b.y - dy / d * rb);
+    });
+  };
+  // Erő-szimuláció: taszítás, rugók az éleken, a fő történet egy vonalban, időrendben.
+  let alpha = 1;
+  const tick = () => {
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j]; let dx = b.x - a.x, dy = b.y - a.y; let d2 = dx * dx + dy * dy;
+      if (d2 < 1) { dx = Math.random(); dy = Math.random(); d2 = 1; }
+      if (d2 > 250000) continue;
+      const f = 9000 / d2 * alpha, d = Math.sqrt(d2);
+      a.vx -= dx / d * f; a.vy -= dy / d * f; b.vx += dx / d * f; b.vy += dy / d * f;
+    }
+    for (const e of edges) {
+      const a = N.get(e.from), b = N.get(e.to), dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+      const L = a.main && b.main ? 170 : 135, k = (d - L) / d * .06 * alpha;
+      a.vx += dx * k; a.vy += dy * k; b.vx -= dx * k; b.vy -= dy * k;
+    }
+    for (const n of nodes) {
+      if (n.main) { n.vy += -n.y * .1 * alpha; n.vx += (n.tx - n.x) * .05 * alpha; }
+      else { n.vy += -n.y * .003 * alpha; n.vx += -n.x * .002 * alpha; }
+      n.vx *= .6; n.vy *= .6; n.x += n.vx; n.y += n.vy;
+    }
+    alpha = Math.max(.02, alpha * .975);
+  };
+  // Nagyítás / mozgatás
+  let k = 1, tx = W / 2, ty = H / 2;
+  const apply = () => G.setAttribute('transform', `translate(${tx.toFixed(1)},${ty.toFixed(1)}) scale(${k.toFixed(3)})`);
+  const fit = () => {
+    const vis = visible(); const ns = nodes.filter(n => vis.has(n.m.id));
+    const xs = ns.map(n => n.x), ys = ns.map(n => n.y);
+    const x0 = Math.min(...xs) - 60, x1 = Math.max(...xs) + 60, y0 = Math.min(...ys) - 60, y1 = Math.max(...ys) + 75;
+    k = Math.min(W / (x1 - x0), H / (y1 - y0), 1.25); tx = W / 2 - (x0 + x1) / 2 * k; ty = H / 2 - (y0 + y1) / 2 * k; apply();
+  };
+  const zoomAt = (f, cx, cy) => { const nk = Math.min(3, Math.max(.2, k * f)); tx = cx - (cx - tx) * nk / k; ty = cy - (cy - ty) * nk / k; k = nk; apply(); };
+  paint();
+  const run = ++uniAnim;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { for (let i = 0; i < 220; i++) tick(); place(); fit(); }
+  else {
+    for (let i = 0; i < 40; i++) tick();
+    place(); fit();
+    let frames = 0;
+    const step = () => { if (run !== uniAnim || !svg.isConnected) return; for (let i = 0; i < 2; i++) tick(); place(); if (++frames % 10 === 0 && frames < 70) fit(); if (frames < 90) requestAnimationFrame(step); else fit(); };
+    requestAnimationFrame(step);
+  }
+  apply();
+  const ptr = new Map(); let moved = false, pinch = 0;
+  svg.addEventListener('pointerdown', ev => { svg.setPointerCapture(ev.pointerId); ptr.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY }); if (ptr.size === 1) moved = false; pinch = 0; });
+  svg.addEventListener('pointermove', ev => {
+    const p = ptr.get(ev.pointerId); if (!p) return;
+    if (ptr.size === 1) {
+      if (Math.hypot(ev.clientX - p.sx, ev.clientY - p.sy) > 6) moved = true;
+      if (moved) { tx += ev.clientX - p.x; ty += ev.clientY - p.y; apply(); }
+    } else if (ptr.size === 2) {
+      moved = true;
+      const [a, b] = [...ptr.values()];
+      const before = Math.hypot(a.x - b.x, a.y - b.y);
+      p.x = ev.clientX; p.y = ev.clientY;
+      const [c, d] = [...ptr.values()]; const after = Math.hypot(c.x - d.x, c.y - d.y);
+      const r = svg.getBoundingClientRect();
+      if (before > 0) zoomAt(after / before, (c.x + d.x) / 2 - r.left, (c.y + d.y) / 2 - r.top);
+      return;
+    }
+    p.x = ev.clientX; p.y = ev.clientY;
+  });
+  const up = ev => {
+    const p = ptr.get(ev.pointerId); ptr.delete(ev.pointerId);
+    if (!p || moved || ptr.size) return;
+    const hit = document.elementFromPoint(ev.clientX, ev.clientY);
+    const nEl = hit && hit.closest && hit.closest('[data-n]');
+    uniSel = nEl ? +nEl.dataset.n : null; paint(); uniInfo(data, edges);
+  };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', ev => ptr.delete(ev.pointerId));
+  svg.addEventListener('wheel', ev => { ev.preventDefault(); const r = svg.getBoundingClientRect(); zoomAt(ev.deltaY < 0 ? 1.15 : .87, ev.clientX - r.left, ev.clientY - r.top); }, { passive: false });
+  $('modal').querySelectorAll('[data-uz]').forEach(b => b.onclick = () => { const f = +b.dataset.uz; if (!f) fit(); else zoomAt(f, W / 2, H / 2); });
+  $('modal').querySelectorAll('[data-ut]').forEach(b => b.onclick = () => {
+    const t = b.dataset.ut;
+    if (t === 'MOVIE') uniNoMovie = !uniNoMovie; else uniOff.has(t) ? uniOff.delete(t) : uniOff.add(t);
+    b.classList.toggle('on', t === 'MOVIE' ? !uniNoMovie : !uniOff.has(t));
+    if (uniSel && !visible().has(uniSel)) uniSel = null;
+    paint(); uniInfo(data, edges);
+  });
+  uniInfo(data, edges);
+}
+function uniInfo(data, edges) {
+  const box = $('uniInfo'); if (!box) return;
+  const m = data.nodes.get(uniSel);
+  if (!m) { box.innerHTML = '<p class="small" style="text-align:center">Koppints egy bolygóra a részletekért. Fehér gyűrű: ahonnan indultál · zöld ✓: már láttad · lila: fő történet.</p>'; return; }
+  const REL = { SEQ: ['Előzménye', 'Folytatása'], SIDE: ['Fő műve', 'Mellékszála'], SPIN: ['Ebből vált ki', 'Spin-offja'], ALT: ['Alternatív változata', 'Alternatív változata'], SUM: ['Összefoglalója', 'Összefoglalója'] };
+  const rels = edges.filter(e => e.from === m.id || e.to === m.id).map(e => {
+    const other = data.nodes.get(e.from === m.id ? e.to : e.from);
+    return `<div class="small">${REL[e.t][e.from === m.id ? 1 : 0]}: <b style="color:var(--text)">${esc(title(other))}</b></div>`;
+  });
+  const e = S.list[m.id];
+  box.innerHTML = `<div class="card"><div class="row" style="gap:12px;align-items:flex-start"><img src="${esc(cover(m))}" alt="" style="width:64px;aspect-ratio:2/3;object-fit:cover;border-radius:10px">
+    <div class="grow"><b>${esc(title(m))}</b><div class="small">${FORMAT[m.format] || m.format || ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''}${m.startDate && m.startDate.year ? ' · ' + m.startDate.year : ''}${m.averageScore ? ' · ⭐ ' + (m.averageScore / 10).toFixed(1) : ''}</div>
+      <div class="small" style="margin:4px 0">${data.main.has(m.id) ? '🟣 Fő történet' : '🔹 Extra'} · ${e ? (uniSeen(m.id) ? '✅ Láttad' : '📋 A listádon') : 'Még nincs a listádon'}</div>${rels.slice(0, 6).join('')}</div></div>
+    <div class="row" style="margin-top:10px"><button class="btn hot grow" data-id="${m.id}">Adatlap ›</button>${e ? '' : `<button class="btn" id="uniPlan">📌 Tervezem</button>`}</div></div>`;
+  const pb = $('uniPlan');
+  if (pb) pb.onclick = () => { S.list[m.id] = Object.assign(snapshot(m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() }); save(); toast('📌 Felkerült a Tervezem listádra'); uniInfo(data, edges); };
 }
 
 // ---------- 📸 Melyik anime ez? (trace.moe képkeresés) ----------
@@ -2258,7 +2500,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { recap: id => openRecap(id, true), recaps: () => openRecaps(true), gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
+const MODALS = { universe: id => openUniverse(id, true), recap: id => openRecap(id, true), recaps: () => openRecaps(true), gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {
