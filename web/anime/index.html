@@ -307,6 +307,11 @@ a { color: var(--soft); }
 .mtile span { position: absolute; left: 8px; right: 6px; bottom: 7px; text-align: left; font-weight: 850; font-size: 13px; line-height: 1.15; text-shadow: 0 1px 6px #000; }
 .mtile.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--glow); }
 .mtile.on::after { content: "✓"; position: absolute; right: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-weight: 900; font-size: 13px; display: grid; place-items: center; }
+#pickSel { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; color: var(--muted); }
+#pickSel b { color: var(--text); }
+#genreTiles .mtile { aspect-ratio: 1 / .8; }
+#genreTiles .mtile span { font-size: 12.5px; }
+#tagChips .chip { padding: 7px 11px; font-size: 12.5px; }
 .tgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
 .tgrid .chip { text-align: left; padding: 11px 12px; }
 .ptitle { font-size: 20px; font-weight: 850; margin: 12px 0 2px; }
@@ -459,7 +464,13 @@ body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
   <section class="view" id="v-pick">
     <div class="ptitle">Mit nézzek ma?</div>
     <div class="small">Válaszd ki a hangulatod (akár többet is), és találunk hozzá animét!</div>
+    <div id="pickSel"></div>
+    <div class="psub">Hangulat</div>
     <div class="mgrid" id="moodChips"></div>
+    <div class="psub">Műfajok</div>
+    <div class="mgrid" id="genreTiles"></div>
+    <div class="psub">Kategóriák</div>
+    <div class="chips" id="tagChips" style="flex-wrap:wrap"></div>
     <div class="psub">Mennyi időd van?</div>
     <div class="tgrid" id="timeChips"></div>
     <div class="psub">Honnan?</div>
@@ -2197,23 +2208,39 @@ const MOODS = {
 };
 // Több hangulat is kijelölhető: az ajánlatnak mindegyikbe bele kell illenie (hangulatonként legalább egy műfaj egyezzen).
 function ms() { if (!Array.isArray(S.moods)) S.moods = S.mood && MOODS[S.mood] ? [S.mood] : ['fun']; return S.moods; }
-const moodGroups = () => ms().filter(k => MOODS[k]).map(k => MOODS[k][1]);
-const moodFits = gs => moodGroups().every(grp => (gs || []).some(x => grp.includes(x)));
-const moodLabel = () => ms().length ? ms().map(k => MOODS[k][0]).join(' + ') : '🎲 Bármi';
+// Az összes AniList-műfaj (a 18+ Hentai nélkül) és a legfontosabb AniList-címkék („kategóriák”)
+const ALL_GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Ecchi', 'Fantasy', 'Horror', 'Mahou Shoujo', 'Mecha', 'Music', 'Mystery', 'Psychological', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller'];
+const PICK_TAGS = [['Isekai', 'Isekai'], ['School', 'Iskolai'], ['Shounen', 'Shounen'], ['Seinen', 'Seinen'], ['Shoujo', 'Shoujo'], ['Josei', 'Josei'],
+  ['Historical', 'Történelmi'], ['Military', 'Katonai'], ['Super Power', 'Szuperképesség'], ['Martial Arts', 'Harcművészet'], ['Magic', 'Mágia'], ['Demons', 'Démonok'],
+  ['Vampire', 'Vámpír'], ['Dragons', 'Sárkányok'], ['Gods', 'Istenek'], ['Mythology', 'Mitológia'], ['Samurai', 'Szamuráj'], ['Ninja', 'Nindzsa'], ['Space', 'Űr'],
+  ['Cyberpunk', 'Kiberpunk'], ['Post-Apocalyptic', 'Posztapokaliptikus'], ['Survival', 'Túlélés'], ['Death Game', 'Halálos játék'], ['Time Manipulation', 'Időutazás'],
+  ['Reincarnation', 'Reinkarnáció'], ['Video Games', 'Videojátékos'], ['Detective', 'Nyomozós'], ['Yakuza', 'Jakuza / maffia'], ['Revenge', 'Bosszú'], ['Anti-Hero', 'Antihős'],
+  ['Tragedy', 'Tragédia'], ['Coming of Age', 'Felnövés'], ['Iyashikei', 'Lélekmelengető (iyashikei)'], ['Idol', 'Idol'], ['Food', 'Főzés / étel'], ['Love Triangle', 'Szerelmi háromszög'],
+  ['Female Harem', 'Hárem'], ['Male Harem', 'Fordított hárem'], ['Robots', 'Robotok'], ['Zombie', 'Zombik'], ['Pirates', 'Kalózok'], ['Gore', 'Véres (gore)']];
+const TAG_HU = Object.fromEntries(PICK_TAGS);
+// Kiválasztott kulcsok: hangulat (pl. 'fun'), műfaj ('g:Action') vagy kategória ('t:Isekai'). Mindegyiknek meg kell felelnie.
+const pickGroup = k => MOODS[k] ? { g: MOODS[k][1], t: [] } : k.startsWith('g:') ? { g: [k.slice(2)], t: [] } : k.startsWith('t:') ? { g: [], t: [k.slice(2)] } : null;
+const pickName = k => MOODS[k] ? MOODS[k][0] : k.startsWith('g:') ? g(k.slice(2)) : TAG_HU[k.slice(2)] || k.slice(2);
+const moodGroups = () => ms().map(pickGroup).filter(Boolean);
+const moodFits = (gs, ts = []) => moodGroups().every(grp => (gs || []).some(x => grp.g.includes(x)) || ts.some(x => grp.t.includes(x)));
+const moodLabel = () => ms().length ? ms().map(pickName).join(' + ') : '🎲 Bármi';
+const mTags = m => (m.tags || []).filter(t => t.rank >= 50).map(t => t.name);
 const TIMES = { any: '🤷 Mindegy', movie: '🎬 Egy film', short: '⚡ Rövid (≤13 rész)', long: '🍿 Darálós (25+ rész)' };
 const SRCS = { mine: '📌 A Tervezem listámból', new: '✨ Új felfedezés' };
 // A hangulat-csempék háttere: az adott műfajok egyik legnépszerűbb animéjének borítója (7 napig a telefonon tárolva)
 const MOOD_IMG_KEY = 'anime-hub-moodimg';
-let moodImg = (() => { try { const c = JSON.parse(localStorage.getItem(MOOD_IMG_KEY)); return c && Date.now() - c.t < 7 * 86400000 ? c.d : {}; } catch (e) { return {}; } })();
+let moodImg = (() => { try { const c = JSON.parse(localStorage.getItem(MOOD_IMG_KEY)); return c && Date.now() - c.t < 7 * 86400000 && c.d.g0 ? c.d : {}; } catch (e) { return {}; } })();
 let moodLoading = false;
 async function loadMoodImgs() {
   if (moodLoading || Object.keys(moodImg).length) return;
   moodLoading = true;
   try {
-    const keys = Object.keys(MOODS);
+    const keys = Object.keys(MOODS), res = {};
     const d = await gql(`query { ${keys.map((k, i) => `${k}: Page(page: ${i % 3 + 1}, perPage: 1) { media(type: ANIME, isAdult: false, sort: POPULARITY_DESC, genre_in: ${JSON.stringify(MOODS[k][1])}) { coverImage { large } } }`).join(' ')} }`, {}, 24 * 3600 * 1000);
-    const res = {};
     for (const k of keys) { const m = d[k] && d[k].media[0]; if (m) res[k] = m.coverImage.large; }
+    // Műfajonként egy népszerű borító (a 2. helyezettet, hogy kevesebb legyen az ismétlődés)
+    const d2 = await gql(`query { ${ALL_GENRES.map((x, i) => `g${i}: Page(page: 2, perPage: 1) { media(type: ANIME, isAdult: false, sort: POPULARITY_DESC, genre: ${JSON.stringify(x)}) { coverImage { large } } }`).join(' ')} }`, {}, 24 * 3600 * 1000);
+    ALL_GENRES.forEach((x, i) => { const m = d2['g' + i] && d2['g' + i].media[0]; if (m) res['g' + i] = m.coverImage.large; });
     moodImg = res;
     try { localStorage.setItem(MOOD_IMG_KEY, JSON.stringify({ t: Date.now(), d: res })); } catch (e) {}
     if (curView() === 'v-pick') renderPickUI();
@@ -2221,8 +2248,11 @@ async function loadMoodImgs() {
   moodLoading = false;
 }
 function renderPickUI() {
-  $('moodChips').innerHTML = Object.entries(MOODS).map(([k, v]) => `<button class="mtile ${ms().includes(k) ? 'on' : ''}" data-mood="${k}" ${moodImg[k] ? `style="background-image:url('${esc(moodImg[k])}')"` : ''}><span>${v[0]}</span></button>`).join('') +
-    (ms().length ? '<button class="mtile" data-mood="" style="border:2px dashed var(--line);background:var(--surface)"><span style="text-align:center;left:0;right:0;top:40%;bottom:auto">✕ Kijelölés törlése</span></button>' : '');
+  const sel = ms();
+  $('pickSel').innerHTML = sel.length ? `<span class="grow">Kiválasztva: <b>${esc(moodLabel())}</b></span><button class="btn" data-mood="" style="padding:5px 10px;font-size:12px;flex-shrink:0">✕ Törlés</button>` : '<span>Ha semmit nem jelölsz ki, bármit ajánlhatok.</span>';
+  $('moodChips').innerHTML = Object.entries(MOODS).map(([k, v]) => `<button class="mtile ${sel.includes(k) ? 'on' : ''}" data-mood="${k}" ${moodImg[k] ? `style="background-image:url('${esc(moodImg[k])}')"` : ''}><span>${v[0]}</span></button>`).join('');
+  $('genreTiles').innerHTML = ALL_GENRES.map((x, i) => `<button class="mtile ${sel.includes('g:' + x) ? 'on' : ''}" data-mood="g:${esc(x)}" ${moodImg['g' + i] ? `style="background-image:url('${esc(moodImg['g' + i])}')"` : ''}><span>${esc(g(x))}</span></button>`).join('');
+  $('tagChips').innerHTML = PICK_TAGS.map(([k, n]) => `<button class="chip ${sel.includes('t:' + k) ? 'on' : ''}" data-mood="t:${esc(k)}">${esc(n)}</button>`).join('');
   $('timeChips').innerHTML = Object.entries(TIMES).map(([k, v]) => `<button class="chip ${S.time === k ? 'on' : ''}" data-time="${k}">${v}</button>`).join('');
   $('srcChips').innerHTML = Object.entries(SRCS).map(([k, v]) => `<button class="chip ${S.src === k ? 'on' : ''}" data-src="${k}">${v}</button>`).join('');
   calcBed();
@@ -2240,24 +2270,36 @@ $('pickBtn').onclick = async () => {
   const groups = moodGroups();
   pickRolls++;
   if (S.src === 'mine') {
-    const pool = Object.values(S.list).filter(x => x.status === 'plan' && moodFits(x.genres) && timeOk(x.format, x.episodes));
+    let plan = Object.values(S.list).filter(x => x.status === 'plan' && timeOk(x.format, x.episodes));
+    // Kategóriákhoz (címkékhez) le kell kérni a tervezett animék címkéit.
+    let tagsOf = {};
+    if (groups.some(grp => grp.t.length) && plan.some(x => x.id > 0)) {
+      try {
+        const ids = plan.filter(x => x.id > 0).map(x => x.id);
+        for (let i = 0; i < ids.length; i += 50) {
+          const d = await gql(`query($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { id tags { name rank } } } }`, { ids: ids.slice(i, i + 50) }, 24 * 3600 * 1000);
+          for (const m of d.Page.media) tagsOf[m.id] = mTags(m);
+        }
+      } catch (e) { /* címkék nélkül csak műfajra szűrünk */ }
+    }
+    const pool = plan.filter(x => moodFits(x.genres, tagsOf[x.id] || []));
     if (pool.length) { showPick(R(pool), 'A „Tervezem” listádról'); return; }
     out.innerHTML = '<div class="card"><p class="small" style="margin:0">A „Tervezem” listádon nincs ilyen. Keresek valami újat…</p></div>';
   } else out.innerHTML = '<p class="loading">Keresgélek…</p>';
   try {
     const formats = S.time === 'movie' ? ['MOVIE'] : S.time === 'any' ? ['TV', 'MOVIE', 'ONA'] : ['TV', 'ONA'];
     const eps = S.time === 'short' ? { episodes_lesser: 14 } : S.time === 'long' ? { episodes_greater: 24 } : {};
-    // A legszűkebb hangulat műfajaival kérdezünk, a többire a telefonon szűrünk.
-    const base = groups.length ? groups.reduce((a, b) => (b.length < a.length ? b : a)) : null;
-    const fetchPage = p => gql(`query($g: [String], $f: [MediaFormat], $p: Int, $el: Int, $eg: Int, $sc: Int) { Page(page: $p, perPage: 50) {
-      media(type: ANIME, genre_in: $g, format_in: $f, isAdult: false, sort: POPULARITY_DESC, averageScore_greater: $sc, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} } } }`,
-      { g: base, f: formats, p, el: eps.episodes_lesser, eg: eps.episodes_greater, sc: groups.length > 1 ? 60 : 68 }, 60 * 60 * 1000).then(d => d.Page.media.filter(m => !S.list[m.id]));
+    // A legszűkebb csoporttal kérdezünk (kategóriánál címkére, különben műfajra), a többire a telefonon szűrünk.
+    const base = groups.length ? groups.reduce((a, b) => (b.g.length + b.t.length < a.g.length + a.t.length ? b : a)) : null;
+    const fetchPage = p => gql(`query($g: [String], $t: [String], $f: [MediaFormat], $p: Int, $el: Int, $eg: Int, $sc: Int) { Page(page: $p, perPage: 50) {
+      media(type: ANIME, genre_in: $g, tag_in: $t, format_in: $f, isAdult: false, sort: POPULARITY_DESC, averageScore_greater: $sc, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} tags { name rank } } } }`,
+      { g: base && base.t.length ? null : base && base.g, t: base && base.t.length ? base.t : null, f: formats, p, el: eps.episodes_lesser, eg: eps.episodes_greater, sc: groups.length > 1 ? 60 : 68 }, 60 * 60 * 1000).then(d => d.Page.media.filter(m => !S.list[m.id]));
     const p0 = 1 + Math.floor(Math.random() * (groups.length > 1 ? 3 : 2));
     let all = await fetchPage(p0);
-    let pool = all.filter(m => moodFits(m.genres));
-    if (!pool.length && p0 > 1) { all = await fetchPage(1); pool = all.filter(m => moodFits(m.genres)); }
+    let pool = all.filter(m => moodFits(m.genres, mTags(m)));
+    if (!pool.length && p0 > 1) { all = await fetchPage(1); pool = all.filter(m => moodFits(m.genres, mTags(m))); }
     let note = 'Új neked';
-    if (!pool.length && all.length) { pool = all.filter(m => groups.some(grp => (m.genres || []).some(x => grp.includes(x)))); if (!pool.length) pool = all; note = 'Mindegyik hangulatba illőt nem találtam – ez legalább az egyikbe illik'; }
+    if (!pool.length && all.length) { pool = all.filter(m => groups.some(grp => (m.genres || []).some(x => grp.g.includes(x)) || mTags(m).some(x => grp.t.includes(x)))); if (!pool.length) pool = all; note = 'Mindegyik kiválasztottba illőt nem találtam – ez legalább az egyikbe illik'; }
     if (!pool.length) { out.innerHTML = '<div class="card"><p class="small" style="margin:0">Ezeket már mind ismered! Próbáld újra, vagy válassz más hangulatot.</p></div>'; return; }
     showPick(snapshot(R(pool)), note);
   } catch (e) { out.innerHTML = errHtml(e); }
