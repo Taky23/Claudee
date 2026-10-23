@@ -48,6 +48,18 @@
   <div class="warn" style="margin-top:14px">⚠️ A táblagép néhány rossz próbálkozás után kizár (egyre hosszabb időre). Ezt a listát <b>ne</b> ütögesd be sorban – arra való, hogy ránézésre felismerd a mintádat, és csak a leghasonlóbbat próbáld.</div>
 
   <div class="panel">
+    <b>📷 Keresés fénykép alapján</b>
+    <p class="sub" style="margin:4px 0 0">Tölts fel egy képet a lerajzolt mintáról (jól látszódjon a vonal, lehetőleg kék/sötét tollal, világos háttéren). Az app megkeresi, melyik minták hasonlítanak rá a legjobban.</p>
+    <div class="row" style="margin-top:10px; align-items:center">
+      <button class="btn" id="photoBtn" style="flex:0 0 auto">📷 Kép kiválasztása</button>
+      <canvas id="inkPrev" width="90" height="90" style="width:72px;height:72px;border:1px solid var(--line);border-radius:10px;background:#111;display:none"></canvas>
+      <span class="sub" id="photoInfo" style="flex:1"></span>
+    </div>
+    <input type="file" id="photoIn" accept="image/*" hidden>
+    <div id="photoProg" class="sub" style="margin-top:8px"></div>
+  </div>
+
+  <div class="panel" id="filterPanel">
     <div class="row">
       <div>
         <label>Hány pontból állt?</label>
@@ -139,28 +151,28 @@ buildPick('startPick', (i, b) => {
   document.querySelectorAll('#startPick button').forEach(x => x.classList.remove('on'));
   startExact = was ? null : i; if (!was) b.classList.add('on');
   document.getElementById('startSide').value = 'exact';
-  render();
+  refresh();
 });
 buildPick('mustPick', (i, b) => {
   if (mustSet.has(i)) { mustSet.delete(i); b.classList.remove('must'); } else { mustSet.add(i); b.classList.add('must'); }
-  render();
+  refresh();
 });
-document.getElementById('noCross').onchange = render;
-lenSel.onchange = render;
-document.getElementById('startSide').onchange = render;
+document.getElementById('noCross').onchange = refresh;
+lenSel.onchange = refresh;
+document.getElementById('startSide').onchange = refresh;
 
 const PER = 48; let page = 0, filtered = [];
-function applyFilter() {
+function matchesManual(p) {
   const len = lenSel.value, side = document.getElementById('startSide').value, noCross = document.getElementById('noCross').checked;
-  filtered = ALL.filter(p => {
-    if (len !== 'any' && p.length !== +len) return false;
-    if (side === 'exact') { if (startExact !== null && p[0] !== startExact) return false; }
-    else if (side !== 'any' && !SIDES[side].includes(p[0])) return false;
-    for (const m of mustSet) if (!p.includes(m)) return false;
-    if (noCross && selfCrosses(p)) return false;
-    return true;
-  });
+  if (len !== 'any' && p.length !== +len) return false;
+  if (side === 'exact') { if (startExact !== null && p[0] !== startExact) return false; }
+  else if (side !== 'any' && !SIDES[side].includes(p[0])) return false;
+  for (const m of mustSet) if (!p.includes(m)) return false;
+  if (noCross && selfCrosses(p)) return false;
+  return true;
 }
+function applyFilter() { filtered = ALL.filter(matchesManual); }
+function refresh() { if (photoResults) renderPhoto(); else render(); }
 function svgFor(path) {
   const P = i => { const [x, y] = XY(i); return [15 + x * 35, 15 + y * 35]; };
   let dots = '';
@@ -186,6 +198,136 @@ function render() {
   if (document.getElementById('prev')) document.getElementById('prev').onclick = () => { page--; render(); scrollTo(0, 0); };
   if (document.getElementById('next')) document.getElementById('next').onclick = () => { page++; render(); scrollTo(0, 0); };
 }
+// ---------- 📷 Keresés fénykép alapján ----------
+// 1) felismeri a lerajzolt (kék/sötét, háttérnél élénkebb) vonalat; 2) minden mintát összevet a vonal alakjával
+//    (távolság-térkép + néhány elforgatás, hogy a ferde fotó is menjen); 3) a leghasonlóbbakat előre teszi.
+const GN = 40;                         // rács finomsága az összevetéshez
+const ANGLES = [-20, -12, -6, 0, 6, 12, 20].map(d => d * Math.PI / 180);
+const INK_PREV = document.getElementById('inkPrev');
+document.getElementById('photoBtn').onclick = () => document.getElementById('photoIn').click();
+document.getElementById('photoIn').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) photoSearch(f); };
+
+function loadImage(file) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('kép')); i.src = URL.createObjectURL(file); });
+}
+// Egy pixel „vonal”-e: sötétebb vagy kékebb, mint a világos háttér
+function isInk(r, g, b) {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  if (b - r > 24 && b > 55 && mn < 215) return true;       // kék toll
+  if (mx < 110 && mx - mn < 70) return true;               // sötét (fekete/kék) vonal
+  return false;
+}
+function detectInk(img) {
+  const scale = Math.min(1, 460 / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h);
+  const d = cx.getImageData(0, 0, w, h).data;
+  const pts = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4; if (isInk(d[i], d[i + 1], d[i + 2])) pts.push(x, y); }
+  return { pts, w, h };
+}
+// Pontfelhő rácsba rakva + távolság-térkép (minden cellára: milyen messze a legközelebbi vonal-cella)
+function distTransform(cells) {
+  const INF = 1e9, dt = new Float32Array(GN * GN).fill(INF);
+  for (const c of cells) dt[c] = 0;
+  const at = (x, y) => (x < 0 || y < 0 || x >= GN || y >= GN) ? INF : dt[y * GN + x];
+  for (let y = 0; y < GN; y++) for (let x = 0; x < GN; x++) { const i = y * GN + x; dt[i] = Math.min(dt[i], at(x - 1, y) + 1, at(x, y - 1) + 1, at(x - 1, y - 1) + 1.4, at(x + 1, y - 1) + 1.4); }
+  for (let y = GN - 1; y >= 0; y--) for (let x = GN - 1; x >= 0; x--) { const i = y * GN + x; dt[i] = Math.min(dt[i], at(x + 1, y) + 1, at(x, y + 1) + 1, at(x + 1, y + 1) + 1.4, at(x - 1, y + 1) + 1.4); }
+  return dt;
+}
+// Pontfelhő elforgatva, majd a saját befoglalójába normálva, rácscellákba
+function cloudToCells(xs, ys, ang) {
+  const c = Math.cos(ang), s = Math.sin(ang), n = xs.length;
+  let cxm = 0, cym = 0; for (let i = 0; i < n; i++) { cxm += xs[i]; cym += ys[i]; } cxm /= n; cym /= n;
+  const rx = new Float32Array(n), ry = new Float32Array(n);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < n; i++) { const dx = xs[i] - cxm, dy = ys[i] - cym; const X = dx * c - dy * s, Y = dx * s + dy * c; rx[i] = X; ry[i] = Y; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
+  const bw = Math.max(1e-3, x1 - x0), bh = Math.max(1e-3, y1 - y0), set = new Set();
+  for (let i = 0; i < n; i++) { const gx = Math.min(GN - 1, Math.max(0, Math.round((rx[i] - x0) / bw * (GN - 1)))), gy = Math.min(GN - 1, Math.max(0, Math.round((ry[i] - y0) / bh * (GN - 1)))); set.add(gy * GN + gx); }
+  return [...set];
+}
+// Egy minta mintavételi pontjai a saját befoglalójába normálva ([0..1])
+function patternUnitPoints(p) {
+  let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+  for (const i of p) { const [x, y] = XY(i); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const bw = (x1 - x0) || 1, bh = (y1 - y0) || 1, u = [];
+  const push = (x, y) => u.push((x1 === x0 ? 0.5 : (x - x0) / bw), (y1 === y0 ? 0.5 : (y - y0) / bh));
+  for (let k = 0; k + 1 < p.length; k++) {
+    const [ax, ay] = XY(p[k]), [bx, by] = XY(p[k + 1]);
+    const steps = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / 0.28));
+    for (let t = 0; t < steps; t++) push(ax + (bx - ax) * t / steps, ay + (by - ay) * t / steps);
+  }
+  const [lx, ly] = XY(p[p.length - 1]); push(lx, ly);
+  return u;
+}
+async function photoSearch(file) {
+  const info = document.getElementById('photoInfo'), prog = document.getElementById('photoProg');
+  info.textContent = ''; prog.textContent = 'Kép elemzése…';
+  let img; try { img = await loadImage(file); } catch (e) { prog.textContent = '❌ Ezt a képet nem tudom beolvasni.'; return; }
+  const { pts } = detectInk(img);
+  if (pts.length < 40) { prog.textContent = '❌ Nem találtam elég vonalat a képen. Próbálj egy élesebb, közelebbi fotót, jól látható (sötét/kék) vonallal, világos háttéren.'; return; }
+  const n = pts.length / 2, xs = new Float32Array(n), ys = new Float32Array(n);
+  for (let i = 0; i < n; i++) { xs[i] = pts[2 * i]; ys[i] = pts[2 * i + 1]; }
+  // minden elforgatáshoz: cellák + távolság-térkép
+  const rots = ANGLES.map(a => { const cells = cloudToCells(xs, ys, a); return { cells, dt: distTransform(cells) }; });
+  // előnézet (0°)
+  drawInkPreview(rots[ANGLES.indexOf(0) >= 0 ? ANGLES.indexOf(0) : 0].cells);
+  INK_PREV.style.display = ''; info.textContent = `Felismert vonal: ${n.toLocaleString('hu-HU')} pont. Keresés…`;
+  // STAGE 1: minden minta – minta→vonal irányú hasonlóság (a legjobb szögnél)
+  const N = ALL.length, scored = new Float32Array(N);
+  let i0 = 0;
+  await new Promise(done => {
+    function chunk() {
+      const end = Math.min(N, i0 + 15000);
+      for (; i0 < end; i0++) {
+        const u = patternUnitPoints(ALL[i0]); let best = 1e9;
+        for (const { dt } of rots) {
+          let sum = 0; const m = u.length / 2;
+          for (let k = 0; k < m; k++) { const gx = (u[2 * k] * (GN - 1)) | 0, gy = (u[2 * k + 1] * (GN - 1)) | 0; sum += dt[gy * GN + gx]; }
+          const d = sum / m; if (d < best) best = d;
+        }
+        scored[i0] = best;
+      }
+      prog.textContent = `Keresés… ${Math.round(100 * i0 / N)}%`;
+      if (i0 < N) requestAnimationFrame(chunk); else done();
+    }
+    requestAnimationFrame(chunk);
+  });
+  // legjobb jelöltek, majd kétirányú (szimmetrikus) pontosítás
+  let idx = Array.from({ length: N }, (_, i) => i).sort((a, b) => scored[a] - scored[b]).slice(0, 1200);
+  const inv = (p, ang) => {  // minta cellái egy adott szög rácsában + vonal→minta irány
+    const u = patternUnitPoints(p), pc = new Set();
+    for (let k = 0; k < u.length / 2; k++) { const gx = (u[2 * k] * (GN - 1)) | 0, gy = (u[2 * k + 1] * (GN - 1)) | 0; pc.add(gy * GN + gx); }
+    const pdt = distTransform([...pc]), r = rots[ang];
+    let s = 0; for (const c of r.cells) s += pdt[c]; return (s / r.cells.length) + scored_for(p, ang);
+  };
+  function scored_for(p, ang) { const u = patternUnitPoints(p); let s = 0, m = u.length / 2; const dt = rots[ang].dt; for (let k = 0; k < m; k++) { const gx = (u[2 * k] * (GN - 1)) | 0, gy = (u[2 * k + 1] * (GN - 1)) | 0; s += dt[gy * GN + gx]; } return s / m; }
+  const final = idx.map(i => {
+    let best = 1e9; for (let a = 0; a < rots.length; a++) { const v = inv(ALL[i], a); if (v < best) best = v; }
+    return { i, score: best };
+  }).sort((a, b) => a.score - b.score);
+  photoResults = final.slice(0, 60).map(o => ALL[o.i]);
+  prog.textContent = `✅ Kész. A leghasonlóbb minták elöl (a lenti szűrők ezt most nem érintik). A zöld pont a kezdés.`;
+  info.textContent = `Felismert vonal: ${n.toLocaleString('hu-HU')} pont.`;
+  renderPhoto();
+}
+function drawInkPreview(cells) {
+  const cx = INK_PREV.getContext('2d'); cx.clearRect(0, 0, 90, 90); cx.fillStyle = '#5b8cff';
+  const s = 90 / GN; for (const c of cells) cx.fillRect((c % GN) * s, ((c / GN) | 0) * s, Math.ceil(s), Math.ceil(s));
+}
+let photoResults = null;
+function renderPhoto() {
+  document.getElementById('filterPanel').style.opacity = .5;
+  const shown = photoResults.filter(matchesManual);
+  document.getElementById('count').textContent = `📷 A fényképhez leghasonlóbb minták${shown.length < photoResults.length ? ' (a fenti szűrőkkel szűkítve)' : ''}: ${shown.length} db`;
+  const grid = document.getElementById('grid'); grid.innerHTML = '';
+  for (const p of shown) { const f = document.createElement('figure'); f.innerHTML = svgFor(p) + `<figcaption>${p.map(i => i + 1).join(' – ')}</figcaption>`; grid.appendChild(f); }
+  const pager = document.getElementById('pager');
+  pager.innerHTML = '<button class="btn" id="backFilter">↩︎ Vissza a kézi szűrőhöz</button>';
+  document.getElementById('backFilter').onclick = () => { photoResults = null; document.getElementById('filterPanel').style.opacity = ''; INK_PREV.style.display = 'none'; document.getElementById('photoInfo').textContent = ''; document.getElementById('photoProg').textContent = ''; render(); };
+}
+
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
