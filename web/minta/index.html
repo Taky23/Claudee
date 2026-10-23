@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mintakereső</title>
+<meta name="theme-color" content="#0f1016">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root { --bg:#0f1016; --card:#1a1c26; --line:#2c2f3d; --text:#eef1f8; --muted:#9aa0b4; --accent:#5b8cff; --dot:#3a3f52; --ok:#16a34a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text);
+         padding:calc(16px + env(safe-area-inset-top)) 14px calc(40px + env(safe-area-inset-bottom)); }
+  main { max-width:900px; margin:0 auto; }
+  h1 { font-size:21px; margin:0; }
+  p.sub { color:var(--muted); margin:4px 0 0; font-size:13px; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin:14px 0; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  select { width:100%; padding:10px; border-radius:10px; border:1px solid var(--line); background:#232634; color:var(--text); font:inherit; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:150px; }
+  .pick { display:grid; grid-template-columns:repeat(3,46px); gap:8px; justify-content:start; margin-top:6px; }
+  .pick button { width:46px; height:46px; border-radius:50%; border:2px solid var(--line); background:#232634; color:var(--muted); font-weight:700; cursor:pointer; font-size:15px; }
+  .pick button.on { background:var(--accent); color:#fff; border-color:transparent; }
+  .pick button.must { border-color:#ffc857; color:#ffc857; }
+  .toggle { display:flex; align-items:center; gap:8px; margin-top:12px; }
+  .toggle input { width:20px; height:20px; accent-color:var(--accent); }
+  .toggle label { margin:0; color:var(--text); }
+  .hint { font-size:12px; color:var(--muted); margin-top:8px; }
+  .count { font-weight:700; margin:6px 2px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+  figure { margin:0; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:8px; text-align:center; }
+  figure svg { width:100%; height:auto; display:block; }
+  figcaption { font-size:12px; color:var(--muted); margin-top:4px; font-variant-numeric:tabular-nums; }
+  .pager { display:flex; gap:8px; align-items:center; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+  button.btn { padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:#232634; color:var(--text); font:inherit; font-weight:650; cursor:pointer; }
+  button.btn:disabled { opacity:.4; }
+  .warn { background:#2a2113; border:1px solid #5a4a1e; color:#ffdf9e; border-radius:12px; padding:12px 14px; font-size:13.5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🔓 Mintakereső</h1>
+  <p class="sub">Elfelejtett rajzos feloldó mintához a saját táblagépedhez. Szűrd le arra, amire emlékszel – a minták látványából ismerd fel a sajátod.</p>
+
+  <div class="warn" style="margin-top:14px">⚠️ A táblagép néhány rossz próbálkozás után kizár (egyre hosszabb időre). Ezt a listát <b>ne</b> ütögesd be sorban – arra való, hogy ránézésre felismerd a mintádat, és csak a leghasonlóbbat próbáld.</div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label>Hány pontból állt?</label>
+        <select id="len"><option value="any">Mindegy</option></select>
+      </div>
+      <div>
+        <label>Honnan indult?</label>
+        <select id="startSide">
+          <option value="left">Bal oldalról</option>
+          <option value="any">Mindegy</option>
+          <option value="top">Felülről</option>
+          <option value="right">Jobbról</option>
+          <option value="bottom">Alulról</option>
+          <option value="exact">Pontos pont (lent kiválasztom)</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Pontos kezdőpont (csak ha fent „Pontos pont”)</label>
+    <div class="pick" id="startPick"></div>
+
+    <label>Biztosan érintett pontok (sárga – akármilyen sorrendben benne van)</label>
+    <div class="pick" id="mustPick"></div>
+
+    <div class="toggle"><input type="checkbox" id="noCross"><label for="noCross">Csak olyan minták, amik nem keresztezik saját magukat</label></div>
+    <div class="hint">Számozás: <b>1–2–3</b> felső sor, <b>4–5–6</b> középső, <b>7–8–9</b> alsó sor. A zöld pont a kezdés.</div>
+  </div>
+
+  <div class="count" id="count"></div>
+  <div class="grid" id="grid"></div>
+  <div class="pager" id="pager"></div>
+</main>
+
+<script>
+"use strict";
+const XY = i => [i % 3, (i / 3) | 0];
+const MID = {};
+for (let a = 0; a < 9; a++) for (let b = 0; b < 9; b++) {
+  const [ax, ay] = XY(a), [bx, by] = XY(b);
+  if ((ax + bx) % 2 === 0 && (ay + by) % 2 === 0 && !(ax === bx && ay === by)) MID[a * 9 + b] = ((ay + by) / 2) * 3 + ((ax + bx) / 2);
+}
+function segInter(p1, p2, p3, p4) {
+  const o = (a, b, c) => Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+  const on = (a, b, c) => Math.min(a[0], b[0]) <= c[0] && c[0] <= Math.max(a[0], b[0]) && Math.min(a[1], b[1]) <= c[1] && c[1] <= Math.max(a[1], b[1]);
+  const A = XY(p1), B = XY(p2), C = XY(p3), D = XY(p4);
+  const d1 = o(C, D, A), d2 = o(C, D, B), d3 = o(A, B, C), d4 = o(A, B, D);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+  return (d1 === 0 && on(C, D, A)) || (d2 === 0 && on(C, D, B)) || (d3 === 0 && on(A, B, C)) || (d4 === 0 && on(A, B, D));
+}
+function selfCrosses(path) {
+  for (let i = 0; i + 1 < path.length; i++)
+    for (let j = i + 2; j + 1 < path.length; j++) {
+      if (segInter(path[i], path[i + 1], path[j], path[j + 1])) {
+        const s = new Set([path[i], path[i + 1], path[j], path[j + 1]]);
+        if (s.size === 4) return true;
+      }
+    }
+  return false;
+}
+const ALL = [];
+(function gen() {
+  const path = [], used = new Array(9).fill(false);
+  function rec(cur) {
+    if (path.length >= 4) ALL.push(path.slice());
+    if (path.length === 9) return;
+    for (let nxt = 0; nxt < 9; nxt++) {
+      if (used[nxt]) continue;
+      const mid = cur < 0 ? undefined : MID[cur * 9 + nxt];
+      if (mid !== undefined && !used[mid]) continue;
+      used[nxt] = true; path.push(nxt);
+      rec(nxt);
+      path.pop(); used[nxt] = false;
+    }
+  }
+  rec(-1);
+})();
+
+const SIDES = { left: [0, 3, 6], right: [2, 5, 8], top: [0, 1, 2], bottom: [6, 7, 8] };
+const lenSel = document.getElementById('len');
+for (let n = 4; n <= 9; n++) { const o = document.createElement('option'); o.value = n; o.textContent = n + ' pont'; lenSel.appendChild(o); }
+let startExact = null;
+const mustSet = new Set();
+function buildPick(id, onClick) {
+  const box = document.getElementById(id);
+  for (let i = 0; i < 9; i++) { const b = document.createElement('button'); b.textContent = i + 1; b.dataset.i = i; b.onclick = () => onClick(i, b); box.appendChild(b); }
+}
+buildPick('startPick', (i, b) => {
+  const was = b.classList.contains('on');
+  document.querySelectorAll('#startPick button').forEach(x => x.classList.remove('on'));
+  startExact = was ? null : i; if (!was) b.classList.add('on');
+  document.getElementById('startSide').value = 'exact';
+  render();
+});
+buildPick('mustPick', (i, b) => {
+  if (mustSet.has(i)) { mustSet.delete(i); b.classList.remove('must'); } else { mustSet.add(i); b.classList.add('must'); }
+  render();
+});
+document.getElementById('noCross').onchange = render;
+lenSel.onchange = render;
+document.getElementById('startSide').onchange = render;
+
+const PER = 48; let page = 0, filtered = [];
+function applyFilter() {
+  const len = lenSel.value, side = document.getElementById('startSide').value, noCross = document.getElementById('noCross').checked;
+  filtered = ALL.filter(p => {
+    if (len !== 'any' && p.length !== +len) return false;
+    if (side === 'exact') { if (startExact !== null && p[0] !== startExact) return false; }
+    else if (side !== 'any' && !SIDES[side].includes(p[0])) return false;
+    for (const m of mustSet) if (!p.includes(m)) return false;
+    if (noCross && selfCrosses(p)) return false;
+    return true;
+  });
+}
+function svgFor(path) {
+  const P = i => { const [x, y] = XY(i); return [15 + x * 35, 15 + y * 35]; };
+  let dots = '';
+  for (let i = 0; i < 9; i++) { const [x, y] = P(i); const k = path.indexOf(i); dots += `<circle cx="${x}" cy="${y}" r="${k >= 0 ? 6 : 4}" fill="${k >= 0 ? (k === 0 ? 'var(--ok)' : 'var(--accent)') : 'var(--dot)'}"/>`; }
+  let line = '';
+  for (let i = 0; i + 1 < path.length; i++) { const [x1, y1] = P(path[i]), [x2, y2] = P(path[i + 1]); line += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" opacity="${0.45 + 0.55 * i / path.length}"/>`; }
+  const [sx, sy] = P(path[0]);
+  return `<svg viewBox="0 0 100 100">${line}${dots}<circle cx="${sx}" cy="${sy}" r="9" fill="none" stroke="var(--ok)" stroke-width="1.5"/></svg>`;
+}
+function render() {
+  applyFilter();
+  page = Math.min(page, Math.max(0, Math.ceil(filtered.length / PER) - 1));
+  document.getElementById('count').textContent = filtered.length.toLocaleString('hu-HU') + ' lehetséges minta' + (filtered.length > PER ? ` (egyszerre ${PER} látszik)` : '');
+  const grid = document.getElementById('grid'); grid.innerHTML = '';
+  for (const p of filtered.slice(page * PER, page * PER + PER)) {
+    const f = document.createElement('figure');
+    f.innerHTML = svgFor(p) + `<figcaption>${p.map(i => i + 1).join(' – ')}</figcaption>`;
+    grid.appendChild(f);
+  }
+  const pages = Math.ceil(filtered.length / PER);
+  const pager = document.getElementById('pager');
+  pager.innerHTML = pages > 1 ? `<button class="btn" id="prev" ${page === 0 ? 'disabled' : ''}>‹ Előző</button><span>${page + 1}. / ${pages} oldal</span><button class="btn" id="next" ${page + 1 >= pages ? 'disabled' : ''}>Következő ›</button>` : '';
+  if (document.getElementById('prev')) document.getElementById('prev').onclick = () => { page--; render(); scrollTo(0, 0); };
+  if (document.getElementById('next')) document.getElementById('next').onclick = () => { page++; render(); scrollTo(0, 0); };
+}
+render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
