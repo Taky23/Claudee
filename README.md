@@ -120,6 +120,10 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 Helyben is kipróbálhatod: `cd web && python -m http.server`, majd nyisd meg a `http://localhost:8000` címet.
 
+## 💻 EPUB Fordító (Windows program)
+
+Asztali program (`desktop/epub-fordito/`): **EPUB → TXT**, **TXT → EPUB**, és **angol → magyar fordítás DeepL-lel** úgy, hogy az EPUB szerkezete (fejezetek, kiemelések, képek, tartalomjegyzék) megmarad. A fordítás magyar idézőjeleket használ, a kész részeket menti, így megszakítás vagy elfogyott keret után folytatható. A kész `EpubFordito.exe` a GitHub **Releases** oldalán van (a `.github/workflows/epub-fordito.yml` építi Windowson). Részletek: [desktop/epub-fordito/README.md](desktop/epub-fordito/README.md).
+
 ## ⚙️ Telepítés
 
 ### 1. Bot létrehozása a Discordon
