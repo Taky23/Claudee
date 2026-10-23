@@ -1,0 +1,57 @@
+name: EPUB Fordító (Windows .exe)
+
+on:
+  push:
+    paths: ['desktop/epub-fordito/**', '.github/workflows/epub-fordito.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install lxml pytest
+      - run: python -m pytest -q -p no:cacheprovider desktop/epub-fordito
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install lxml pyinstaller
+      - run: pyinstaller --onefile --windowed --name EpubFordito desktop/epub-fordito/epub_fordito.py
+      - name: Gyors próba a kész .exe-vel (szimulált fordítóval)
+        shell: bash
+        env:
+          EPUB_FORDITO_MOCK: '1'
+        run: |
+          printf 'Test Book\n\n\n\nChapter 1\n\n"Hello," she said.\n\n\n\nChapter 2\n\nThe end.\n' > probe.txt
+          ./dist/EpubFordito.exe to-epub probe.txt
+          ./dist/EpubFordito.exe translate probe.epub
+          ./dist/EpubFordito.exe to-txt "probe - magyar.epub"
+          ls -la
+          test -f probe.epub && test -f "probe - magyar.epub" && test -f "probe - magyar.txt"
+          grep -q '„Hello,”' "probe - magyar.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EpubFordito
+          path: dist/EpubFordito.exe
+      - name: Kiadás (csak a main ágon)
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete epub-fordito --yes --cleanup-tag || true
+          gh release create epub-fordito dist/EpubFordito.exe --target "${{ github.sha }}" \
+            --title "EPUB Fordító (Windows)" \
+            --notes "Töltsd le az EpubFordito.exe fájlt, és indítsd el (nem kell telepíteni). Használat: desktop/epub-fordito/README.md"
