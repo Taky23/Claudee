@@ -2581,11 +2581,31 @@ function stats() {
   };
 }
 const ME_TABS = [['time', 'Áttekintés'], ['dna', 'DNS'], ['year', 'Évkönyv'], ['ch', 'Kihívások'], ['battle', 'Csata']];
+// A feltöltött profilképet négyzetre vágjuk, 256px-re kicsinyítjük és JPEG data URL-ként
+// tároljuk (kb. 20-40 KB), hogy beférjen a telefon helyi tárhelyébe.
+function compressAvatar(file, ok, fail) {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    try {
+      const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+      const side = Math.min(img.width, img.height), sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+      c.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, S, S);
+      ok(c.toDataURL('image/jpeg', 0.85));
+    } catch (e) { (fail || (() => {}))(e); }
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); (fail || (() => {}))(); };
+  img.src = url;
+}
 function renderProfile() {
   const st = stats(), p = S.prof || {};
   const fav = st.genres[0] ? g(st.genres[0][0]) : '–';
-  $('profOut').innerHTML = `<div class="card prof"><div class="bigav" id="avEdit" title="Profilkép módosítása">${esc(p.av || (p.name || 'A')[0].toUpperCase())}</div>
-      <div class="grow" style="min-width:0"><b id="nameEdit" style="cursor:pointer">${esc(p.name || 'Anime rajongó')} <span class="small">✎</span></b><div class="small">🔒 Minden adatod csak ezen a telefonon van</div></div></div>
+  $('profOut').innerHTML = `<div class="card prof"><div class="bigav" id="avEdit" title="Profilkép feltöltése"${p.img ? ` style="background-image:url(${esc(p.img)});background-size:cover;background-position:center"` : ''}>${p.img ? '' : esc(p.av || (p.name || 'A')[0].toUpperCase())}</div>
+      <input type="file" id="avFile" accept="image/*" hidden>
+      <div class="grow" style="min-width:0"><b id="nameEdit" style="cursor:pointer">${esc(p.name || 'Anime rajongó')} <span class="small">✎</span></b>
+        <div class="small" style="display:flex;gap:12px;margin:3px 0 1px"><span id="avEmoji" style="cursor:pointer">😀 Emoji</span>${p.img ? '<span id="avClear" style="cursor:pointer">✕ Kép törlése</span>' : ''}</div>
+        <div class="small">🔒 Minden adatod csak ezen a telefonon van</div></div></div>
     <div class="card pstats"><div><span>Anime</span><b>${st.total}</b></div><div><span>Epizód</span><b>${st.eps.toLocaleString('hu-HU')}</b></div><div><span>Óra</span><b>${st.hours.toLocaleString('hu-HU')}</b></div><div><span>Kedvenc műfaj</span><b class="acc">${esc(fav)}</b></div></div>
     ${NATIVE && !st.total ? `<div class="card"><p class="small" style="margin:0">📥 <b>Üres a listád?</b> Az app külön tárhelyet használ, mint a böngésző, ezért a listád nem jön át magától. Hozd át: a böngészőben <b>Én → Import és mentés → Mentés fájlba</b>, majd itt <b>Import és mentés → Visszaállítás fájlból</b>.</p></div>` : ''}
     <div class="card setlist">
@@ -2596,8 +2616,16 @@ function renderProfile() {
       <div class="setrow" data-set="recaps"><span class="ic">📖</span>Mentett összefoglalók<span class="ch">›</span></div>
       <div class="setrow" data-set="about"><span class="ic">ⓘ</span>Névjegy és adatvédelem<span class="ch">›</span></div>
     </div>`;
-  const setP = (k, v) => { S.prof = Object.assign({}, S.prof, { [k]: v }); save(); renderProfile(); renderAvatar(); };
-  $('avEdit').onclick = () => { const v = prompt('Profilkép: írj be egy emojit vagy egy betűt', p.av || ''); if (v !== null) setP('av', [...v.trim()].slice(0, 2).join('')); };
+  const setP = (obj) => { S.prof = Object.assign({}, S.prof, obj); save(); renderProfile(); renderAvatar(); };
+  $('avEdit').onclick = () => $('avFile').click();
+  $('avFile').onchange = e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { toast('Csak képet lehet feltölteni'); return; }
+    compressAvatar(f, url => setP({ img: url }), () => toast('Nem sikerült beolvasni a képet'));
+  };
+  $('avEmoji').onclick = () => { const v = prompt('Profilkép: írj be egy emojit vagy egy betűt', p.av || ''); if (v !== null) setP({ av: [...v.trim()].slice(0, 2).join(''), img: '' }); };
+  if ($('avClear')) $('avClear').onclick = () => setP({ img: '' });
   $('nameEdit').onclick = () => { const v = prompt('Hogy szólítsalak?', p.name || ''); if (v !== null) setP('name', v.trim().slice(0, 24)); };
   $('profOut').querySelectorAll('[data-set]').forEach(r => r.onclick = () => {
     const k = r.dataset.set;
@@ -3081,7 +3109,11 @@ function showView(view) {
 $('brand').onclick = () => { if (curView() !== 'v-home') { showView('v-home'); pushNav(); } else window.scrollTo({ top: 0, behavior: 'smooth' }); };
 $('searchBtn').onclick = () => { if (curView() !== 'v-search') { showView('v-search'); pushNav(); } setTimeout(() => $('q').focus(), 60); };
 $('meBtn').onclick = () => { if (curView() !== 'v-me') { showView('v-me'); pushNav(); } };
-function renderAvatar() { const p = S.prof || {}; $('hAv').textContent = p.av || (p.name || 'A')[0].toUpperCase(); }
+function renderAvatar() {
+  const p = S.prof || {}, h = $('hAv');
+  if (p.img) { h.textContent = ''; h.style.backgroundImage = `url(${p.img})`; h.style.backgroundSize = 'cover'; h.style.backgroundPosition = 'center'; }
+  else { h.style.backgroundImage = ''; h.textContent = p.av || (p.name || 'A')[0].toUpperCase(); }
+}
 renderAvatar();
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   if (b.dataset.view === curView()) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
