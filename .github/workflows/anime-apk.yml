@@ -43,6 +43,7 @@ jobs:
           base=android/app/src/main
           mkdir -p "$base/java/hu/taky/animehub" "$base/res/layout" "$base/res/xml" "$base/res/drawable"
           cp native/java/AnimeWidget.java "$base/java/hu/taky/animehub/AnimeWidget.java"
+          cp native/java/MainActivity.java "$base/java/hu/taky/animehub/MainActivity.java"
           cp native/res/layout/anime_widget.xml "$base/res/layout/anime_widget.xml"
           cp native/res/xml/anime_widget_info.xml "$base/res/xml/anime_widget_info.xml"
           cp native/res/drawable/widget_bg.xml "$base/res/drawable/widget_bg.xml"
