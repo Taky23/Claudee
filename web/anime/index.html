@@ -2158,6 +2158,7 @@ const DAYS = ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek
 const DAYS_SHORT = ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'];
 // Naptári nap eltolással (nem 24 óra hozzáadásával) – így az óraátállítás (téli/nyári idő) nem rontja el a napokat.
 function dayStart(offset) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + offset); return d; }
+let calCache = null, calSel = 0;
 async function renderCal() {
   S.calMode = S.calMode === 'past' ? 'past' : 'next';
   const past = S.calMode === 'past';
@@ -2168,9 +2169,7 @@ async function renderCal() {
   const days = past ? Array.from({ length: 8 }, (_, i) => dayStart(-i)) : Array.from({ length: 7 }, (_, i) => dayStart(i));
   const from = Math.floor((past ? dayStart(-7) : dayStart(0)) / 1000);
   const to = past ? Math.floor(Date.now() / 1000) : Math.floor(dayStart(7) / 1000);
-  const dayLabel = (d, i) => (i === 0 ? 'Ma' : i === 1 ? (past ? 'Tegnap' : 'Holnap') : DAYS[d.getDay()]);
-  const drawTabs = has => { $('dayTabs').innerHTML = days.map((d, i) => `<button data-day="${i}" class="${i === 0 ? 'on' : ''}" ${has && !has[d.toDateString()] ? 'disabled' : ''}>${i === 0 ? 'Ma' : DAYS_SHORT[d.getDay()]}</button>`).join(''); };
-  drawTabs(null);
+  $('dayTabs').innerHTML = days.map((d, i) => `<button data-day="${i}">${i === 0 ? 'Ma' : DAYS_SHORT[d.getDay()]}</button>`).join('');
   out.innerHTML = '<p class="loading">Betöltés…</p>';
   try {
     let all = [], page = 1, more = true;
@@ -2185,30 +2184,42 @@ async function renderCal() {
     for (const a of all) { const k = new Date(a.airingAt * 1000).toDateString(); (byDay[k] = byDay[k] || []).push(a); }
     // „Volt” nézetben a nap részeit a legfrissebbtől lefelé mutatjuk.
     if (past) for (const k in byDay) byDay[k].sort((a, b) => b.airingAt - a.airingAt);
-    drawTabs(byDay);
-    if (!all.length) {
-      out.innerHTML = `<div class="card"><p class="small" style="margin:0">${S.calMine
-        ? (past ? 'Az elmúlt héten nem jött ki új rész a listádon lévő animékből.' : 'A héten nem jön új rész a listádon lévő animékből. Válts a „Teljes műsor” nézetre!')
-        : 'Nincs adat.'}</p></div>`;
-      return;
-    }
-    out.innerHTML = days.map((d, i) => {
-      const list = byDay[d.toDateString()];
-      if (!list) return '';
-      const label = dayLabel(d, i) + ' · ' + d.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric' });
-      return `<div class="dayh" id="day-${i}">${label}</div>${list.map(a => `<div class="arow ${S.list[a.media.id] ? 'mine' : ''}" data-id="${a.media.id}">
-        <span class="tm">${new Date(a.airingAt * 1000).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}</span>
-        <img src="${esc(cover(a.media))}" alt="" loading="lazy">
-        <span class="grow" style="min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title(a.media))}</b><span class="small">${a.episode}. rész${past ? ' · ✅ kijött' : ''}${S.list[a.media.id] ? ' · <span style="color:var(--warn)">★</span> a listádon' : ''}</span></span></div>`).join('')}`;
-    }).join('');
+    calCache = { past, days, byDay };
+    // Az első olyan napra ugrunk, amelyiken van rész (ha a mai üres).
+    calSel = days.findIndex(d => byDay[d.toDateString()]);
+    if (calSel < 0) calSel = 0;
+    renderCalDay();
   } catch (e) { out.innerHTML = errHtml(e); }
+}
+// Csak a kiválasztott nap részeit mutatja.
+function renderCalDay() {
+  if (!calCache) return;
+  const { past, days, byDay } = calCache;
+  const dayLabel = (d, i) => (i === 0 ? 'Ma' : i === 1 ? (past ? 'Tegnap' : 'Holnap') : DAYS[d.getDay()]);
+  $('dayTabs').querySelectorAll('[data-day]').forEach(b => {
+    const i = +b.dataset.day, has = !!byDay[days[i].toDateString()];
+    b.disabled = !has; b.classList.toggle('on', i === calSel);
+  });
+  const d = days[calSel], list = byDay[d.toDateString()];
+  const label = dayLabel(d, calSel) + ' · ' + d.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric' });
+  if (!list) {
+    const anyOther = days.some(x => byDay[x.toDateString()]);
+    $('calOut').innerHTML = `<div class="dayh">${label}</div><div class="card"><p class="small" style="margin:0">${
+      anyOther ? 'Ezen a napon nincs rész. Válts másik napra fent.' : (S.calMine
+        ? (past ? 'Az elmúlt héten nem jött ki új rész a listádon lévő animékből.' : 'A héten nem jön új rész a listádon lévő animékből. Válts a „Teljes műsor” nézetre!')
+        : 'Nincs adat.')}</p></div>`;
+    return;
+  }
+  $('calOut').innerHTML = `<div class="dayh">${label}</div>${list.map(a => `<div class="arow ${S.list[a.media.id] ? 'mine' : ''}" data-id="${a.media.id}">
+    <span class="tm">${new Date(a.airingAt * 1000).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}</span>
+    <img src="${esc(cover(a.media))}" alt="" loading="lazy">
+    <span class="grow" style="min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title(a.media))}</b><span class="small">${a.episode}. rész${past ? ' · ✅ kijött' : ''}${S.list[a.media.id] ? ' · <span style="color:var(--warn)">★</span> a listádon' : ''}</span></span></div>`).join('')}`;
 }
 $('calMode').addEventListener('click', e => { const b = e.target.closest('[data-cmode]'); if (b && b.dataset.cmode !== S.calMode) { S.calMode = b.dataset.cmode; save(); renderCal(); } });
 $('calSeg').addEventListener('click', e => { const b = e.target.closest('[data-cm]'); if (b) { S.calMine = b.dataset.cm === '1'; save(); renderCal(); } });
 $('dayTabs').addEventListener('click', e => {
   const b = e.target.closest('[data-day]'); if (!b || b.disabled) return;
-  $('dayTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  const h = $('day-' + b.dataset.day); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  calSel = +b.dataset.day; renderCalDay(); window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
 // ---------- Mit nézzek? ----------
