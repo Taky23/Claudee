@@ -2626,7 +2626,7 @@ function renderProfile() {
   };
   $('avEmoji').onclick = () => { const v = prompt('Profilkép: írj be egy emojit vagy egy betűt', p.av || ''); if (v !== null) setP({ av: [...v.trim()].slice(0, 2).join(''), img: '' }); };
   if ($('avClear')) $('avClear').onclick = () => setP({ img: '' });
-  $('nameEdit').onclick = () => { const v = prompt('Hogy szólítsalak?', p.name || ''); if (v !== null) setP('name', v.trim().slice(0, 24)); };
+  $('nameEdit').onclick = () => { const v = prompt('Hogy szólítsalak?', p.name || ''); if (v !== null) setP({ name: v.trim().slice(0, 24) }); };
   $('profOut').querySelectorAll('[data-set]').forEach(r => r.onclick = () => {
     const k = r.dataset.set;
     if (k === 'notify') toggleNotify(); else if (k === 'themes') openThemes(); else if (k === 'recaps') openRecaps(); else if (k === 'about') openAbout();
