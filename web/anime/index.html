@@ -538,7 +538,45 @@ function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('sh
 
 function loadState() { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) { return {}; } }
 const S = Object.assign({ list: {}, calMine: true, mood: 'fun', time: 'any', src: 'mine' }, loadState());
-function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { toast('Nem sikerült menteni (tele a tárhely?)'); } }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { toast('Nem sikerült menteni (tele a tárhely?)'); } updateNative(); }
+
+// ---------- Natív extrák (csak az APK-ban): helyi értesítés új részről + kezdőképernyős widget ----------
+// Szerver nélkül, minden a telefonon: a megjelenési időpontokból helyi értesítést időzít, és a közelgő
+// részeket kiírja a widgetnek. Böngészőben (nem APK) ez a rész nem csinál semmit.
+const CAP = window.Capacitor || null;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+function plug(n) { return CAP && CAP.Plugins ? CAP.Plugins[n] : null; }
+function upcomingAirings() {
+  const now = Date.now() / 1000;
+  return Object.values(S.list)
+    .filter(x => x.status === 'watching' && x.airing && x.airing.airingAt > now && x.id > 0)
+    .sort((a, b) => a.airing.airingAt - b.airing.airingAt);
+}
+let nativeT;
+function updateNative() { if (!NATIVE) return; clearTimeout(nativeT); nativeT = setTimeout(doUpdateNative, 1500); }
+async function doUpdateNative() {
+  if (!NATIVE) return;
+  const up = upcomingAirings();
+  const Pref = plug('Preferences');
+  if (Pref) { try { await Pref.set({ key: 'anime_widget', value: JSON.stringify(up.slice(0, 6).map(x => ({ t: x.title, at: x.airing.airingAt, ep: x.airing.episode }))) }); } catch (e) {} }
+  const LN = plug('LocalNotifications');
+  if (!LN) return;
+  try {
+    if (!S.notify) { const pend = await LN.getPending(); if (pend.notifications && pend.notifications.length) await LN.cancel({ notifications: pend.notifications.map(n => ({ id: n.id })) }); return; }
+    let perm = await LN.checkPermissions();
+    if (perm.display !== 'granted') { perm = await LN.requestPermissions(); if (perm.display !== 'granted') return; }
+    const pend = await LN.getPending();
+    if (pend.notifications && pend.notifications.length) await LN.cancel({ notifications: pend.notifications.map(n => ({ id: n.id })) });
+    const notifs = up.slice(0, 60).map((x, i) => ({ id: 20000 + i, title: '🌸 Új rész érkezett!', body: `${x.title} – ${x.airing.episode}. rész`, schedule: { at: new Date(x.airing.airingAt * 1000), allowWhileIdle: true } }));
+    if (notifs.length) await LN.schedule({ notifications: notifs });
+  } catch (e) {}
+}
+async function toggleNotify() {
+  S.notify = !S.notify;
+  if (S.notify) { const LN = plug('LocalNotifications'); if (LN) { try { const r = await LN.requestPermissions(); if (r.display !== 'granted') { S.notify = false; toast('Az értesítéshez engedély kell a telefon beállításaiban.'); } } catch (e) {} } }
+  save(); doUpdateNative(); renderProfile();
+  toast(S.notify ? '🔔 Értesítés bekapcsolva' : 'Értesítés kikapcsolva');
+}
 // ---------- 🎨 Témák ----------
 // [kulcs, név, leírás, kiemelő szín, háttér]
 const THEMES = [['dark', 'Sötét (alapértelmezett)', 'Mély és letisztult, vörös', '#e53935', '#0a0a0c'], ['ejfel', 'Éjféli anime', 'Lila éjszaka csillagokkal', '#ff4fa3', '#090716'],
@@ -2403,6 +2441,7 @@ function renderProfile() {
       <div class="grow" style="min-width:0"><b id="nameEdit" style="cursor:pointer">${esc(p.name || 'Anime rajongó')} <span class="small">✎</span></b><div class="small">🔒 Minden adatod csak ezen a telefonon van</div></div></div>
     <div class="card pstats"><div><span>Anime</span><b>${st.total}</b></div><div><span>Epizód</span><b>${st.eps.toLocaleString('hu-HU')}</b></div><div><span>Óra</span><b>${st.hours.toLocaleString('hu-HU')}</b></div><div><span>Kedvenc műfaj</span><b class="acc">${esc(fav)}</b></div></div>
     <div class="card setlist">
+      ${NATIVE ? `<div class="setrow" data-set="notify"><span class="ic">🔔</span>Értesítés új részről<span class="ch">${S.notify ? 'Be' : 'Ki'} ›</span></div>` : ''}
       <div class="setrow" data-set="themes"><span class="ic">🎨</span>Témák<span class="sw">${THEMES.slice(0, 5).map(t => `<i style="background:${t[3]}"></i>`).join('')}</span><span class="ch">›</span></div>
       <div class="setrow" data-set="data"><span class="ic">💾</span>Import és mentés<span class="ch">›</span></div>
       <div class="setrow" data-set="recaps"><span class="ic">📖</span>Mentett összefoglalók<span class="ch">›</span></div>
@@ -2413,7 +2452,7 @@ function renderProfile() {
   $('nameEdit').onclick = () => { const v = prompt('Hogy szólítsalak?', p.name || ''); if (v !== null) setP('name', v.trim().slice(0, 24)); };
   $('profOut').querySelectorAll('[data-set]').forEach(r => r.onclick = () => {
     const k = r.dataset.set;
-    if (k === 'themes') openThemes(); else if (k === 'recaps') openRecaps(); else if (k === 'about') openAbout();
+    if (k === 'notify') toggleNotify(); else if (k === 'themes') openThemes(); else if (k === 'recaps') openRecaps(); else if (k === 'about') openAbout();
     else { S.meTab = 'data'; save(); renderMe(); pushNav(); setTimeout(() => $('meData').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
   });
 }
@@ -2935,6 +2974,7 @@ updateBack();
 renderHome();
 // A háttérfrissítés később indul, hogy ne torlódjon a kezdőoldal betöltésével.
 setTimeout(syncAiring, 8000);
+if (NATIVE) { if (S.notify === undefined) S.notify = true; setTimeout(doUpdateNative, 10000); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
