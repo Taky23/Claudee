@@ -571,6 +571,22 @@ async function doUpdateNative() {
     if (notifs.length) await LN.schedule({ notifications: notifs });
   } catch (e) {}
 }
+// A telefon hardveres vissza gombja az APK-ban: az appon belül lépjen vissza (fülek, ablakok),
+// a kezdőlapon pedig csak dupla nyomásra lépjen ki – ne dobjon ki egyből.
+let backExitAt = 0;
+function setupBackButton() {
+  const App = plug('App'); if (!App || !App.addListener) return;
+  App.addListener('backButton', () => {
+    const modalOpen = $('modalBg').classList.contains('show');
+    const atHome = curView() === 'v-home' && !modalOpen && !(history.state && history.state.modal);
+    if (atHome) {
+      if (Date.now() - backExitAt < 2000) { try { App.exitApp(); } catch (e) {} }
+      else { backExitAt = Date.now(); toast('Nyomd meg még egyszer a kilépéshez'); }
+    } else {
+      window.history.back();
+    }
+  });
+}
 async function toggleNotify() {
   S.notify = !S.notify;
   if (S.notify) { const LN = plug('LocalNotifications'); if (LN) { try { const r = await LN.requestPermissions(); if (r.display !== 'granted') { S.notify = false; toast('Az értesítéshez engedély kell a telefon beállításaiban.'); } } catch (e) {} } }
@@ -2440,6 +2456,7 @@ function renderProfile() {
   $('profOut').innerHTML = `<div class="card prof"><div class="bigav" id="avEdit" title="Profilkép módosítása">${esc(p.av || (p.name || 'A')[0].toUpperCase())}</div>
       <div class="grow" style="min-width:0"><b id="nameEdit" style="cursor:pointer">${esc(p.name || 'Anime rajongó')} <span class="small">✎</span></b><div class="small">🔒 Minden adatod csak ezen a telefonon van</div></div></div>
     <div class="card pstats"><div><span>Anime</span><b>${st.total}</b></div><div><span>Epizód</span><b>${st.eps.toLocaleString('hu-HU')}</b></div><div><span>Óra</span><b>${st.hours.toLocaleString('hu-HU')}</b></div><div><span>Kedvenc műfaj</span><b class="acc">${esc(fav)}</b></div></div>
+    ${NATIVE && !st.total ? `<div class="card"><p class="small" style="margin:0">📥 <b>Üres a listád?</b> Az app külön tárhelyet használ, mint a böngésző, ezért a listád nem jön át magától. Hozd át: a böngészőben <b>Én → Import és mentés → Mentés fájlba</b>, majd itt <b>Import és mentés → Visszaállítás fájlból</b>.</p></div>` : ''}
     <div class="card setlist">
       ${NATIVE ? `<div class="setrow" data-set="notify"><span class="ic">🔔</span>Értesítés új részről<span class="ch">${S.notify ? 'Be' : 'Ki'} ›</span></div>` : ''}
       <div class="setrow" data-set="themes"><span class="ic">🎨</span>Témák<span class="sw">${THEMES.slice(0, 5).map(t => `<i style="background:${t[3]}"></i>`).join('')}</span><span class="ch">›</span></div>
@@ -2974,7 +2991,7 @@ updateBack();
 renderHome();
 // A háttérfrissítés később indul, hogy ne torlódjon a kezdőoldal betöltésével.
 setTimeout(syncAiring, 8000);
-if (NATIVE) { if (S.notify === undefined) S.notify = true; setTimeout(doUpdateNative, 10000); }
+if (NATIVE) { if (S.notify === undefined) S.notify = true; setTimeout(doUpdateNative, 10000); setupBackButton(); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
