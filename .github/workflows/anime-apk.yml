@@ -51,6 +51,9 @@ jobs:
             if(!m.includes("AnimeWidget")){const rec=`\n        <receiver android:name=".AnimeWidget" android:exported="false">\n            <intent-filter>\n                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n            </intent-filter>\n            <meta-data android:name="android.appwidget.provider" android:resource="@xml/anime_widget_info" />\n        </receiver>\n    `;m=m.replace("</application>",rec+"</application>");fs.writeFileSync(p,m);console.log("Manifest patchelve");}else{console.log("Mar patchelve");}
           '
 
+      - name: Állandó aláíró kulcs (hogy a frissítések törlés nélkül települjenek)
+        run: mkdir -p ~/.android && cp apk/debug.keystore ~/.android/debug.keystore
+
       - name: SDK útvonal
         working-directory: apk/android
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
