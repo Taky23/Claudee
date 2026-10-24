@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="14dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🌸 Hamarosan jön"
+        android:textColor="#FF7AC6"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:layout_marginBottom="8dp" />
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="6dp">
+        <TextView android:id="@+id/time1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#B3ACD6" android:textSize="12sp" android:minWidth="88dp" />
+        <TextView android:id="@+id/row1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="#F6F3FF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="6dp">
+        <TextView android:id="@+id/time2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#B3ACD6" android:textSize="12sp" android:minWidth="88dp" />
+        <TextView android:id="@+id/row2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="#F6F3FF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <TextView android:id="@+id/time3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#B3ACD6" android:textSize="12sp" android:minWidth="88dp" />
+        <TextView android:id="@+id/row3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="#F6F3FF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+</LinearLayout>

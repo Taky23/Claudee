@@ -37,6 +37,20 @@ jobs:
         working-directory: apk
         run: npx @capacitor/assets generate --android --iconBackgroundColor '#0f0c1d' --iconBackgroundColorDark '#0f0c1d' --splashBackgroundColor '#0f0c1d' --splashBackgroundColorDark '#0f0c1d'
 
+      - name: Widget natív fájlok bemásolása és AndroidManifest módosítása
+        working-directory: apk
+        run: |
+          base=android/app/src/main
+          mkdir -p "$base/java/hu/taky/animehub" "$base/res/layout" "$base/res/xml" "$base/res/drawable"
+          cp native/java/AnimeWidget.java "$base/java/hu/taky/animehub/AnimeWidget.java"
+          cp native/res/layout/anime_widget.xml "$base/res/layout/anime_widget.xml"
+          cp native/res/xml/anime_widget_info.xml "$base/res/xml/anime_widget_info.xml"
+          cp native/res/drawable/widget_bg.xml "$base/res/drawable/widget_bg.xml"
+          node -e '
+            const fs=require("fs");const p="android/app/src/main/AndroidManifest.xml";let m=fs.readFileSync(p,"utf8");
+            if(!m.includes("AnimeWidget")){const rec=`\n        <receiver android:name=".AnimeWidget" android:exported="false">\n            <intent-filter>\n                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n            </intent-filter>\n            <meta-data android:name="android.appwidget.provider" android:resource="@xml/anime_widget_info" />\n        </receiver>\n    `;m=m.replace("</application>",rec+"</application>");fs.writeFileSync(p,m);console.log("Manifest patchelve");}else{console.log("Mar patchelve");}
+          '
+
       - name: SDK útvonal
         working-directory: apk/android
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
