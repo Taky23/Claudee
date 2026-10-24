@@ -473,7 +473,8 @@ body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
   <section class="view" id="v-pick">
     <div class="ptitle">Mit nézzek ma?</div>
     <div class="small">Válaszd ki a hangulatod (akár többet is), és találunk hozzá animét!</div>
-    <button class="btn hot full" id="discoverBtn" style="margin:12px 0;padding:14px">🔀 Fedezz fel – lapozgatós</button>
+    <button class="btn hot full" id="discoverBtn" style="margin:12px 0 8px;padding:14px">🔀 Fedezz fel – lapozgatós</button>
+    <button class="btn full" id="seasonBrowseBtn" style="margin-bottom:12px;padding:12px">🗓️ Szezon-böngésző (bármelyik év)</button>
     <div id="pickSel"></div>
     <div class="psub">Hangulat</div>
     <div class="mgrid" id="moodChips"></div>
@@ -1166,6 +1167,7 @@ async function openAnime(id, fromHistory) {
       ${m.fallback ? '<p class="small" style="margin:6px 0;color:var(--warn)">🟡 Tartalék mód: az adatok a Jikanról (MyAnimeList) jönnek, mert az AniList most nem válaszol. Szereplők, ajánlások, kapcsolódó részek most nem látszanak.</p>' : ''}
       <div class="tags">${m.genres.map(x => `<span class="tag">${esc(g(x))}</span>`).join('')}${m.format ? `<span class="tag">${FORMAT[m.format] || m.format}</span>` : ''}${m.seasonYear ? `<span class="tag">${m.seasonYear}</span>` : ''}</div>
       <div class="dmeta">${m.averageScore ? `<span><span class="st">★</span> <b>${(m.averageScore / 10).toFixed(1)}</b></span>` : ''}${m.episodes ? `<span>🎞️ ${m.episodes} rész</span>` : ''}<span>📺 ${STATUS_AL[m.status] || m.status || ''}</span>${m.studios.nodes.length ? `<span>🎬 ${esc(m.studios.nodes.map(n => n.name).join(', '))}</span>` : ''}</div>
+      ${watchTimeLine(m, e)}
       ${m.nextAiringEpisode ? `<p class="next" style="margin:6px 0 0">⏳ ${m.nextAiringEpisode.episode}. rész: ${untilTxt(m.nextAiringEpisode.airingAt - Date.now() / 1000)} múlva</p>` : ''}
       ${desc ? `<p class="desc clamp" id="desc">${esc(desc).replace(/\n/g, '<br>')}</p><div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn" id="more" style="padding:4px 10px;font-size:12px">Több ▾</button>
         <button class="btn" id="trBtn" style="padding:4px 10px;font-size:12px">🇭🇺 Magyarul</button>
@@ -1369,6 +1371,16 @@ function recapSave(rec) {
   toast('Nem fért el a telefonon az összefoglaló'); return false;
 }
 const cleanDesc = d => (d || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'").replace(/\n{3,}/g, '\n\n').trim();
+// „Mennyi idő befejezni?” – teljes hossz (részek × hossz), és ami hátra van, ha a listádon van.
+function watchTimeLine(m, e) {
+  const dur = m.duration || 24;
+  if (!m.episodes) return '';
+  const fmt = min => { const h = Math.floor(min / 60), mm = Math.round(min % 60); return h ? `${h} ó${mm ? ' ' + mm + ' p' : ''}` : `${mm} p`; };
+  const total = m.episodes * dur;
+  let line = `⏱️ Teljes hossz: ~${fmt(total)} (${m.episodes} rész × ${dur} perc) · ≈ ${Math.max(1, Math.round(total / 60))} nap napi 1 órával`;
+  if (e && e.progress < m.episodes) line += ` · <b style="color:var(--text)">hátra: ~${fmt((m.episodes - e.progress) * dur)}</b>`;
+  return `<p class="small" style="margin:6px 0 0">${line}</p>`;
+}
 // AniList szereplőleírás: a ~!spoiler!~ részek és a „Kor: 17” jellegű adatsorok nélkül, röviden.
 function charDesc(d) {
   let t = (d || '').replace(/~![\s\S]*?!~/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/(__|\*\*)(.*?)\1/g, '$2').replace(/<[^>]+>/g, '');
@@ -1872,6 +1884,69 @@ function discStep() {
   $('discSkip').onclick = () => { S.discSkip = S.discSkip || []; S.discSkip.push(m.id); if (S.discSkip.length > 800) S.discSkip = S.discSkip.slice(-800); save(); discPool.shift(); discStep(); };
   $('discAdd').onclick = () => { S.list[m.id] = Object.assign(snapshot(m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() }); save(); toast('📌 Felkerült a Tervezem listádra'); discPool.shift(); discStep(); };
   modal.scrollTop = 0;
+}
+
+// ---------- 🗓️ Szezon-böngésző (bármelyik év/szezon) ----------
+const SEASON_EMOJI = { WINTER: '❄️', SPRING: '🌸', SUMMER: '☀️', FALL: '🍂' };
+async function loadSeasonList(season, year, onProg) {
+  const key = `${season}-${year}`;
+  if (seasonMem[key]) return seasonMem[key];
+  let list = [];
+  for (let page = 1; page <= 12; page++) {
+    if (onProg) onProg(list.length);
+    const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
+      media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: season, y: year, p: page }, 60 * 60 * 1000);
+    list = list.concat(d.Page.media);
+    if (!d.Page.pageInfo.hasNextPage) break;
+  }
+  list.forEach((m, i) => { m.popRank = i; });
+  seasonMem[key] = list;
+  return list;
+}
+async function openBrowseSeason(fromHistory) {
+  if (!fromHistory) pushNav({ modal: 'browseSeason' });
+  showModalBg();
+  const cur = curSeason(), modal = $('modal'), nextY = new Date().getFullYear() + 1;
+  if (!S.browseSeason) S.browseSeason = { season: cur.season, year: cur.year };
+  const b = S.browseSeason;
+  let sortBy = 'pop';
+  const sorters = {
+    pop: (a, x) => a.popRank - x.popRank,
+    score: (a, x) => (x.averageScore || 0) - (a.averageScore || 0) || a.popRank - x.popRank,
+    az: (a, x) => title(a).localeCompare(title(x)),
+    date: (a, x) => ((premiere(a) || { t: 9e15 }).t) - ((premiere(x) || { t: 9e15 }).t),
+  };
+  const head = () => `<h2>🗓️ Szezon-böngésző</h2>
+    <div class="row"><select id="bsYear" style="flex:0 0 110px">${Array.from({ length: nextY - 1959 }, (_, i) => nextY - i).map(y => `<option value="${y}" ${y === b.year ? 'selected' : ''}>${y}</option>`).join('')}</select>
+      <div class="chips" style="flex:1">${Object.entries(SEASON_HU).map(([k, n]) => `<button class="chip ${b.season === k ? 'on' : ''}" data-bss="${k}">${SEASON_EMOJI[k]} ${n}</button>`).join('')}</div></div>`;
+  function bind() {
+    if ($('bsYear')) $('bsYear').onchange = () => { b.year = +$('bsYear').value; save(); draw(); };
+    modal.querySelectorAll('[data-bss]').forEach(x => x.onclick = () => { if (b.season !== x.dataset.bss) { b.season = x.dataset.bss; save(); draw(); } });
+  }
+  function render(list) {
+    const shown = list.slice().sort(sorters[sortBy]);
+    modal.innerHTML = `<div class="dbody">${head()}
+      <p class="small">${SEASON_HU[b.season]} ${b.year} – ${list.length} anime. 📌 a Tervezem listára.</p>
+      <div class="chips">${SEASON_SORTS.map(([k, n]) => `<button class="chip ${sortBy === k ? 'on' : ''}" data-ss="${k}">${n}</button>`).join('')}</div>
+      ${shown.map((m, i) => `<div class="entry"><b style="width:24px;text-align:center;color:var(--muted);font-size:12px">${i + 1}</b>
+        <img src="${esc(cover(m))}" alt="" loading="lazy">
+        <div class="info" data-id="${m.id}"><b>${esc(title(m))}</b>
+          <div class="small">${FORMAT[m.format] || ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''}${m.averageScore ? ' · ⭐ ' + (m.averageScore / 10).toFixed(1) : ''} · ${m.genres.slice(0, 3).map(g).join(', ')}</div></div>
+        ${S.list[m.id] ? '<span class="small">✓ listán</span>' : `<button class="btn" data-plan="${m.id}">📌</button>`}</div>`).join('') || '<p class="small">Erre a szezonra nincs anime.</p>'}
+      <button class="btn full" data-close>Bezár</button></div>`;
+    bind();
+    modal.querySelectorAll('[data-ss]').forEach(x => x.onclick = () => { sortBy = x.dataset.ss; render(list); modal.scrollTop = 0; });
+    modal.querySelectorAll('[data-plan]').forEach(x => x.onclick = ev => { ev.stopPropagation(); const m = list.find(y => y.id === +x.dataset.plan); S.list[m.id] = Object.assign(snapshot(m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() }); save(); toast('📌 Felkerült a Tervezem listádra'); const top = modal.scrollTop; render(list); modal.scrollTop = top; });
+  }
+  async function draw() {
+    modal.innerHTML = `<div class="dbody">${head()}<p class="loading" id="bsLoad">Betöltés…</p></div>`;
+    bind();
+    let list;
+    try { list = await loadSeasonList(b.season, b.year, n => { const l = $('bsLoad'); if (l) l.textContent = `Betöltés… (${n} anime)`; }); }
+    catch (e) { if (history.state && history.state.modal === 'browseSeason') { modal.innerHTML = `<div class="dbody">${head()}` + errHtml(e) + '<button class="btn full" data-close>Bezár</button></div>'; bind(); } return; }
+    if (history.state && history.state.modal === 'browseSeason') render(list);
+  }
+  draw();
 }
 
 // ---------- 📸 Melyik anime ez? (trace.moe képkeresés) ----------
@@ -2407,6 +2482,7 @@ $('v-pick').addEventListener('click', e => {
 const timeOk = (format, eps) => S.time === 'any' || (S.time === 'movie' ? format === 'MOVIE' : S.time === 'short' ? format !== 'MOVIE' && eps && eps <= 13 : format !== 'MOVIE' && eps && eps >= 25);
 let pickRolls = 0;
 $('discoverBtn').onclick = () => openDiscover();
+$('seasonBrowseBtn').onclick = () => openBrowseSeason();
 $('pickBtn').onclick = async () => {
   const out = $('pickOut');
   const groups = moodGroups();
@@ -3015,7 +3091,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { discover: () => openDiscover(true), themes: () => openThemes(true), about: () => openAbout(true), universe: id => openUniverse(id, true), recap: id => openRecap(id, true), recaps: () => openRecaps(true), gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
+const MODALS = { discover: () => openDiscover(true), browseSeason: () => openBrowseSeason(true), themes: () => openThemes(true), about: () => openAbout(true), universe: id => openUniverse(id, true), recap: id => openRecap(id, true), recaps: () => openRecaps(true), gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {
