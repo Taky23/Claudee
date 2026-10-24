@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.animehub",
+  "appName": "Anime Hub",
+  "webDir": "www",
+  "backgroundColor": "#0f0c1dff",
+  "android": {
+    "backgroundColor": "#0f0c1dff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/anime/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}
