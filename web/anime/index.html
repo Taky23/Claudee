@@ -348,6 +348,14 @@ a { color: var(--soft); }
 .themerow.on .rad { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 /* Hibaoldal */
+.disc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.disc .dimg { position: relative; height: 160px; background: var(--surface-2) center/cover; }
+.disc .dimg img { position: absolute; left: 14px; bottom: -34px; width: 78px; aspect-ratio: 2/3; object-fit: cover; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+.disc .dimg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 40%, var(--surface)); }
+.disc .dinfo { padding: 42px 14px 14px; }
+.disc .dinfo b { font-size: 17px; cursor: pointer; }
+.discbtns { display: flex; gap: 8px; margin-top: 12px; }
+.discbtns .btn { flex: 1; padding: 13px 8px; }
 .errbox { text-align: center; padding: 30px 16px; }
 .errbox svg { width: 72px; height: 72px; color: var(--accent); filter: drop-shadow(0 0 16px var(--glow)); }
 .errbox b { display: block; font-size: 19px; margin: 14px 0 8px; }
@@ -465,6 +473,7 @@ body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
   <section class="view" id="v-pick">
     <div class="ptitle">Mit nézzek ma?</div>
     <div class="small">Válaszd ki a hangulatod (akár többet is), és találunk hozzá animét!</div>
+    <button class="btn hot full" id="discoverBtn" style="margin:12px 0;padding:14px">🔀 Fedezz fel – lapozgatós</button>
     <div id="pickSel"></div>
     <div class="psub">Hangulat</div>
     <div class="mgrid" id="moodChips"></div>
@@ -1820,6 +1829,51 @@ function uniInfo(data, edges) {
   if (pb) pb.onclick = () => { S.list[m.id] = Object.assign(snapshot(m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() }); save(); toast('📌 Felkerült a Tervezem listádra'); uniInfo(data, edges); };
 }
 
+// ---------- 🔀 Fedezz fel (lapozgatós ajánló) ----------
+// Egyesével dob fel népszerű animéket (amik nincsenek a listádon és nem lapoztad át), gombbal a Tervezem listára teszed.
+let discPool = [], discLoading = false;
+async function discFill() {
+  if (discLoading) return;
+  discLoading = true;
+  try {
+    const sorts = ['TRENDING_DESC', 'POPULARITY_DESC', 'SCORE_DESC'];
+    const d = await gql(`query($p: Int, $s: [MediaSort]) { Page(page: $p, perPage: 50) {
+      media(type: ANIME, isAdult: false, sort: $s, format_in: [TV, MOVIE, ONA, OVA], popularity_greater: 3000) { ${CARD} bannerImage description(asHtml: false) } } }`,
+      { p: 1 + Math.floor(Math.random() * 8), s: [sorts[Math.floor(Math.random() * sorts.length)]] }, 60 * 60 * 1000);
+    S.discSkip = S.discSkip || [];
+    const skip = new Set(S.discSkip);
+    for (const m of d.Page.media) if (!S.list[m.id] && !skip.has(m.id) && !discPool.some(x => x.id === m.id)) discPool.push(m);
+  } catch (e) { /* csendben: a meglévő poolból megy tovább */ }
+  discLoading = false;
+}
+async function openDiscover(fromHistory) {
+  if (!fromHistory) pushNav({ modal: 'discover' });
+  showModalBg();
+  if (discPool.filter(m => !S.list[m.id]).length < 3) { $('modal').innerHTML = '<div class="dbody"><h2>🔀 Fedezz fel</h2><p class="loading">Keresgélek…</p></div>'; await discFill(); }
+  if (!(history.state && history.state.modal === 'discover')) return;
+  discStep();
+}
+function discStep() {
+  const modal = $('modal');
+  discPool = discPool.filter(m => !S.list[m.id] && !(S.discSkip || []).includes(m.id));
+  if (discPool.length < 4) discFill();
+  const m = discPool[0];
+  if (!m) { modal.innerHTML = '<div class="dbody"><h2>🔀 Fedezz fel</h2><p class="small">Most nem találtam újat (vagy nincs net). Próbáld kicsit később!</p><button class="btn full" data-close>Bezár</button></div>'; return; }
+  const desc = cleanDesc(m.description);
+  modal.innerHTML = `<div class="dbody"><h2>🔀 Fedezz fel</h2>
+    <div class="disc"><div class="dimg" style="background-image:url('${esc(m.bannerImage || cover(m))}')"><img src="${esc(cover(m))}" alt="" loading="lazy"></div>
+      <div class="dinfo"><b data-id="${m.id}">${esc(title(m))} ›</b>
+        <div class="small">${FORMAT[m.format] || ''}${m.episodes ? ' · ' + m.episodes + ' rész' : ''}${m.seasonYear ? ' · ' + m.seasonYear : ''}${m.averageScore ? ' · ⭐ ' + (m.averageScore / 10).toFixed(1) : ''}</div>
+        <div class="tags" style="margin:6px 0">${(m.genres || []).slice(0, 4).map(x => `<span class="tag">${esc(g(x))}</span>`).join('')}</div>
+        ${desc ? `<p class="small" style="max-height:120px;overflow:auto">${esc(desc)}</p>` : ''}</div></div>
+    <div class="discbtns"><button class="btn" id="discSkip">✕ Átlapoz</button><button class="btn hot" id="discAdd">📌 Tervezem</button></div>
+    <p class="small" style="text-align:center;margin-top:8px">A listádon lévőket és az átlapozottakat kihagyom.</p>
+    <button class="btn full" data-close>Bezár</button></div>`;
+  $('discSkip').onclick = () => { S.discSkip = S.discSkip || []; S.discSkip.push(m.id); if (S.discSkip.length > 800) S.discSkip = S.discSkip.slice(-800); save(); discPool.shift(); discStep(); };
+  $('discAdd').onclick = () => { S.list[m.id] = Object.assign(snapshot(m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() }); save(); toast('📌 Felkerült a Tervezem listádra'); discPool.shift(); discStep(); };
+  modal.scrollTop = 0;
+}
+
 // ---------- 📸 Melyik anime ez? (trace.moe képkeresés) ----------
 let traceResult = null;
 $('traceBtn').onclick = () => $('traceIn').click();
@@ -2352,6 +2406,7 @@ $('v-pick').addEventListener('click', e => {
 });
 const timeOk = (format, eps) => S.time === 'any' || (S.time === 'movie' ? format === 'MOVIE' : S.time === 'short' ? format !== 'MOVIE' && eps && eps <= 13 : format !== 'MOVIE' && eps && eps >= 25);
 let pickRolls = 0;
+$('discoverBtn').onclick = () => openDiscover();
 $('pickBtn').onclick = async () => {
   const out = $('pickOut');
   const groups = moodGroups();
@@ -2960,7 +3015,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 // ---------- Vissza gomb (képernyőn és a telefonon) ----------
 // Minden fül, al-fül és felugró ablak egy lépés az előzményekben, így a telefon vissza gombja az appon belül lép vissza.
 // A kezdőképernyőn az első „vissza” csak figyelmeztet; ha 2 másodpercen belül újra megnyomod, akkor lép ki.
-const MODALS = { themes: () => openThemes(true), about: () => openAbout(true), universe: id => openUniverse(id, true), recap: id => openRecap(id, true), recaps: () => openRecaps(true), gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
+const MODALS = { discover: () => openDiscover(true), themes: () => openThemes(true), about: () => openAbout(true), universe: id => openUniverse(id, true), recap: id => openRecap(id, true), recaps: () => openRecaps(true), gaps: () => openGaps(true), seq: () => openSequels(true), anime: id => openAnime(id, true), season: kind => openSeason(kind, true), next: () => openSeason('next', true), after: id => nextPopup(id, true), order: id => openOrder(id, true), trace: () => showTrace(true) };
 let exitTimer = null;
 function pushNav(extra = {}) { history.pushState(Object.assign({ v: curView(), me: S.meTab }, extra), ''); updateBack(); }
 function updateBack() {
