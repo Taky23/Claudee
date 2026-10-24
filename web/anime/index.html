@@ -492,7 +492,7 @@ body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
     <div class="seg" id="meTabs" style="margin-top:14px"></div>
     <div id="meOut"></div>
     <div id="meData">
-    <h2>📥 MyAnimeList import</h2>
+    <h2 id="malHead">📥 MyAnimeList import</h2>
     <div class="card">
       <p class="small" style="margin-top:0">Hozd át a MAL-listádat! A listádnak nyilvánosnak kell lennie (alapból az).</p>
       <b>1.</b> Írd be a MAL-felhasználóneved:
@@ -505,7 +505,7 @@ body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
       <input type="file" id="malFile" accept=".xml,.gz,application/xml,text/xml,application/gzip" hidden>
       <div id="malOut"></div>
     </div>
-    <h2>💾 Mentés</h2>
+    <h2 id="backupHead">💾 Mentés</h2>
     <div class="card">
       <p class="small" style="margin-top:0">A listád csak ezen a telefonon van. Időnként készíts mentést – ha törlöd a böngésző adatait, abból visszaállíthatod.</p>
       <button class="btn hot full" id="expBtn">⬇️ Mentés fájlba</button>
@@ -2459,8 +2459,9 @@ function renderProfile() {
     ${NATIVE && !st.total ? `<div class="card"><p class="small" style="margin:0">📥 <b>Üres a listád?</b> Az app külön tárhelyet használ, mint a böngésző, ezért a listád nem jön át magától. Hozd át: a böngészőben <b>Én → Import és mentés → Mentés fájlba</b>, majd itt <b>Import és mentés → Visszaállítás fájlból</b>.</p></div>` : ''}
     <div class="card setlist">
       ${NATIVE ? `<div class="setrow" data-set="notify"><span class="ic">🔔</span>Értesítés új részről<span class="ch">${S.notify ? 'Be' : 'Ki'} ›</span></div>` : ''}
+      <div class="setrow" data-set="mal"><span class="ic">📥</span>MyAnimeList import<span class="ch">›</span></div>
       <div class="setrow" data-set="themes"><span class="ic">🎨</span>Témák<span class="sw">${THEMES.slice(0, 5).map(t => `<i style="background:${t[3]}"></i>`).join('')}</span><span class="ch">›</span></div>
-      <div class="setrow" data-set="data"><span class="ic">💾</span>Import és mentés<span class="ch">›</span></div>
+      <div class="setrow" data-set="data"><span class="ic">💾</span>Mentés és visszaállítás<span class="ch">›</span></div>
       <div class="setrow" data-set="recaps"><span class="ic">📖</span>Mentett összefoglalók<span class="ch">›</span></div>
       <div class="setrow" data-set="about"><span class="ic">ⓘ</span>Névjegy és adatvédelem<span class="ch">›</span></div>
     </div>`;
@@ -2470,7 +2471,7 @@ function renderProfile() {
   $('profOut').querySelectorAll('[data-set]').forEach(r => r.onclick = () => {
     const k = r.dataset.set;
     if (k === 'notify') toggleNotify(); else if (k === 'themes') openThemes(); else if (k === 'recaps') openRecaps(); else if (k === 'about') openAbout();
-    else { S.meTab = 'data'; save(); renderMe(); pushNav(); setTimeout(() => $('meData').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }
+    else { S.meTab = 'data'; save(); renderMe(); pushNav(); setTimeout(() => { const h = $(k === 'mal' ? 'malHead' : 'backupHead'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }
   });
 }
 // Kördiagram a műfajokról (SVG)
