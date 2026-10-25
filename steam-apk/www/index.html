@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e141b">
+<title>Steam Rendező</title>
+<style>
+:root {
+  --bg: #0e141b;
+  --card: #16202d;
+  --card-2: #1e2a3a;
+  --text: #e6edf3;
+  --muted: #8fa3b8;
+  --accent: #66c0f4;
+  --ok: #7cc36a;
+  --warn: #e8b24a;
+  --bad: #e2675b;
+  --line: #2a3a4d;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom));
+}
+body.noscroll { overflow: hidden; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px 4px; }
+header h1 { font-size: 19px; margin: 0; }
+.who { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); min-width: 0; }
+.who img { width: 26px; height: 26px; border-radius: 6px; }
+.who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+main { max-width: 900px; margin: 0 auto; padding: 0 12px; }
+.view { display: none; }
+.view.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 10px 0; }
+input[type=search], input[type=text], input[type=password], input[type=number], select, textarea {
+  width: 100%; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card-2); color: var(--text); font: inherit; font-size: 16px;
+}
+textarea { resize: vertical; font-size: 14px; }
+.sticky { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 8px 0 4px; }
+.small { font-size: 12px; color: var(--muted); }
+.muted { color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; }
+.row > select { flex: 1; padding: 8px 10px; font-size: 14px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.chip { flex-shrink: 0; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.chip.on { background: var(--accent); color: #0b1620; border-color: transparent; }
+.btn { border: 1px solid var(--line); background: var(--card-2); color: var(--text); border-radius: 10px; padding: 10px 12px; font: inherit; font-weight: 650; cursor: pointer; }
+.btn.primary { background: var(--accent); color: #0b1620; border-color: transparent; }
+.btn.full { width: 100%; margin-top: 8px; }
+.btn:disabled { opacity: .5; }
+.iconbtn { flex-shrink: 0; width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--card-2); color: var(--text); font-size: 20px; cursor: pointer; }
+.err { color: var(--bad); font-weight: 650; }
+.ok { color: var(--ok); }
+a { color: var(--accent); }
+/* Rács */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.g { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; cursor: pointer; position: relative; }
+.g img { display: block; width: 100%; aspect-ratio: 460 / 215; object-fit: cover; background: #0a1017; }
+.g .gb { padding: 7px 9px 9px; }
+.g .gn { font-weight: 700; font-size: 13px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
+.g .tags { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; }
+.tag { font-size: 12px; background: rgba(14, 20, 27, .85); border-radius: 6px; padding: 1px 5px; }
+/* Lista */
+.list .li { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.list .li:last-child { border-bottom: 0; }
+.list .li img { width: 92px; aspect-ratio: 460 / 215; object-fit: cover; border-radius: 6px; background: #0a1017; flex-shrink: 0; }
+.list .li .n { font-weight: 700; font-size: 14px; }
+.list .li .r { margin-left: auto; text-align: right; white-space: nowrap; font-size: 13px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--card-2); color: var(--accent); }
+.stars { color: var(--warn); letter-spacing: 1px; }
+/* Adatlap */
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .6); display: flex; align-items: flex-end; justify-content: center; }
+.sheet[hidden] { display: none; }
+.sheet-body { background: var(--bg); width: 100%; max-width: 640px; max-height: 92dvh; overflow-y: auto; border-radius: 18px 18px 0 0; border-top: 1px solid var(--line); padding: 0 0 calc(16px + env(safe-area-inset-bottom)); }
+.sheet-body .hero { width: 100%; aspect-ratio: 460 / 215; object-fit: cover; display: block; background: #0a1017; }
+.sheet-body .in { padding: 12px 16px; }
+.sheet-body h2 { margin: 0 0 4px; font-size: 20px; }
+.close { position: sticky; top: 0; float: right; margin: 8px 8px -44px 0; z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(14, 20, 27, .85); color: var(--text); font-size: 18px; cursor: pointer; }
+.rate button { background: none; border: 0; font-size: 28px; color: var(--line); cursor: pointer; padding: 0 2px; }
+.rate button.on { color: var(--warn); }
+.kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; margin: 10px 0; }
+.kv div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 4px; }
+.kv b { display: block; font-size: 16px; }
+.sec { margin-top: 14px; }
+.sec > .small { margin-bottom: 4px; }
+/* Statisztika */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-grid .card { margin: 0; }
+.big { font-size: 26px; font-weight: 800; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 62px; gap: 8px; align-items: center; font-size: 13px; padding: 4px 0; }
+.bar-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { height: 8px; border-radius: 99px; background: var(--card-2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.bar-row b { text-align: right; font-variant-numeric: tabular-nums; }
+.col-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.col-row:last-child { border-bottom: 0; }
+.dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.col-row .nm { flex: 1; font-weight: 700; cursor: pointer; }
+.pick-card img { width: 100%; border-radius: 12px; aspect-ratio: 460 / 215; object-fit: cover; background: #0a1017; }
+.empty { text-align: center; padding: 30px 10px; color: var(--muted); }
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; z-index: 10;
+  background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom);
+}
+nav button { flex: 1; border: 0; background: none; color: var(--muted); padding: 8px 0 10px; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
+nav button span { display: block; font-size: 21px; }
+nav button.active { color: var(--accent); }
+ol.steps { margin: 6px 0; padding-left: 20px; font-size: 13px; color: var(--muted); }
+ol.steps li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 Steam Rendező</h1>
+  <div class="who" id="who"></div>
+</header>
+
+<main>
+  <!-- KÖNYVTÁR -->
+  <section class="view active" id="v-lib">
+    <div class="sticky">
+      <div class="row">
+        <input type="search" id="q" placeholder="Keresés a könyvtárban…" autocomplete="off">
+        <button class="iconbtn" id="viewToggle" aria-label="Nézet váltása">☰</button>
+      </div>
+      <div class="chips" id="filterChips"></div>
+      <div class="row" style="margin-top:4px">
+        <select id="sortSel">
+          <option value="playtime">⏱️ Legtöbbet játszott</option>
+          <option value="name">🔤 Név szerint</option>
+          <option value="last">🕒 Utoljára játszott</option>
+          <option value="recent">🔥 Elmúlt 2 hét</option>
+          <option value="rating">⭐ Értékelés</option>
+        </select>
+        <select id="genreSel"></select>
+      </div>
+    </div>
+    <p class="small" id="libInfo"></p>
+    <div id="libOut"></div>
+  </section>
+
+  <!-- GYŰJTEMÉNYEK -->
+  <section class="view" id="v-cols">
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">🗂️ Új gyűjtemény (pl. „Co-op a haverokkal”, „Horror”, „Ha lesz időm”)</div>
+      <div class="row">
+        <input type="text" id="colName" placeholder="Gyűjtemény neve" maxlength="40">
+        <button class="btn primary" id="colAdd">Hozzáad</button>
+      </div>
+    </div>
+    <div id="colsOut"></div>
+  </section>
+
+  <!-- MIT JÁTSSZAK? -->
+  <section class="view" id="v-pick">
+    <div class="card">
+      <div class="small">Miből sorsoljak?</div>
+      <div class="chips wrap" id="poolChips">
+        <button class="chip" data-pool="backlog">📥 Backlog + sosem indított</button>
+        <button class="chip" data-pool="never">🆕 Sosem indított</button>
+        <button class="chip" data-pool="unfinished">Minden nem kijátszott</button>
+        <button class="chip" data-pool="fav">⭐ Kedvencek</button>
+        <button class="chip" data-pool="all">Bármi</button>
+      </div>
+      <div class="row" style="margin-top:8px"><select id="pickGenre"></select><select id="pickCol"></select></div>
+      <button class="btn primary full" id="pickBtn" style="font-size:17px;padding:14px">🎲 Sorsolj nekem!</button>
+      <p class="small" id="pickInfo" style="margin:8px 0 0"></p>
+    </div>
+    <div id="pickOut"></div>
+  </section>
+
+  <!-- STATISZTIKA -->
+  <section class="view" id="v-stats">
+    <div id="statsOut"></div>
+  </section>
+
+  <!-- BEÁLLÍTÁSOK -->
+  <section class="view" id="v-set">
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">👤 Steam profil</div>
+      <input type="text" id="profileIn" placeholder="Profil link, egyéni név vagy SteamID" autocomplete="off" autocapitalize="off">
+      <p class="small" style="margin:6px 0 10px">Pl. <i>https://steamcommunity.com/id/valami</i> vagy <i>https://steamcommunity.com/profiles/7656…</i></p>
+      <div class="small" style="margin-bottom:6px">🔑 Steam Web API kulcs</div>
+      <div class="row">
+        <input type="password" id="keyIn" placeholder="32 karakteres kulcs" autocomplete="off" autocapitalize="off">
+        <button class="iconbtn" id="keyShow" aria-label="Kulcs mutatása">👁️</button>
+      </div>
+      <details style="margin-top:8px">
+        <summary class="small" style="cursor:pointer">Hogyan kapok kulcsot? (ingyenes, 1 perc)</summary>
+        <ol class="steps">
+          <li>Nyisd meg: <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener">steamcommunity.com/dev/apikey</a> és lépj be.</li>
+          <li>A „Domain Name” mezőbe írj bármit, pl. <b>localhost</b>, fogadd el a feltételeket, és nyomd meg a „Register” gombot.</li>
+          <li>Másold ide a megjelenő <b>Key</b> értékét.</li>
+          <li>A profilodon legyen nyilvános a játéklista: Profil szerkesztése → Adatvédelmi beállítások → <b>Játékrészletek: Nyilvános</b>.</li>
+        </ol>
+        <p class="small">A kulcs csak ezen a telefonon tárolódik, és csak a Steam szervereihez megy.</p>
+      </details>
+      <button class="btn primary full" id="syncBtn">⬇️ Könyvtár betöltése a Steamről</button>
+      <p class="small" id="syncInfo" style="margin:8px 0 0"></p>
+    </div>
+    <div class="card">
+      <div class="small" style="margin-bottom:4px">🏷️ Műfajok a Steam boltból</div>
+      <p class="small" style="margin-top:0">A műfajokat játékonként kell lekérni, a Steam lassítja a túl sűrű kérést, ezért ez nagy könyvtárnál pár percig tart. Közben nyugodtan használd az appot.</p>
+      <div id="genreInfo" class="small"></div>
+      <button class="btn full" id="genreBtn">Műfajok letöltése</button>
+    </div>
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">💾 Rendezés mentése / visszatöltése</div>
+      <p class="small" style="margin-top:0">A mentőkódban benne van minden állapot, értékelés, jegyzet és gyűjtemény (az API kulcs nincs). Új telefonon ide illesztve visszakapod.</p>
+      <textarea id="backupBox" rows="3" placeholder="Ide kerül / ide illeszd a mentőkódot"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" style="flex:1" id="backupMake">📤 Kód készítése</button>
+        <button class="btn" style="flex:1" id="backupLoad">📥 Visszatöltés</button>
+      </div>
+    </div>
+    <div class="card">
+      <button class="btn full" id="resetAll" style="margin-top:0">🗑️ Minden adat törlése erről a telefonról</button>
+      <p class="small">Az adatok a Steam Web API-ból és a Steam boltból jönnek. Ez nem hivatalos Valve alkalmazás.</p>
+    </div>
+  </section>
+</main>
+
+<div class="sheet" id="sheet" hidden><div class="sheet-body" id="sheetBody"></div></div>
+
+<nav>
+  <button class="active" data-view="v-lib"><span>📚</span>Könyvtár</button>
+  <button data-view="v-cols"><span>🗂️</span>Gyűjtemények</button>
+  <button data-view="v-pick"><span>🎲</span>Mit játsszak?</button>
+  <button data-view="v-stats"><span>📊</span>Statisztika</button>
+  <button data-view="v-set"><span>⚙️</span>Beállítások</button>
+</nav>
+
+<script>
+const STORE = 'steam-rendezo-v1';
+const API = 'https://api.steampowered.com/';
+const DAY = 24 * 3600 * 1000;
+
+// ---------- Állapot ----------
+function loadState() {
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s) return s; } catch (e) {}
+  return {};
+}
+const S = Object.assign({
+  key: '', profileInput: '', steamid: '', profile: null, games: {}, meta: {}, collections: [], genres: {}, lastSync: 0,
+  view: 'grid', sort: 'playtime', filter: 'all', genre: '', col: '', pool: 'backlog', pickGenre: '', pickCol: '',
+}, loadState());
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
+const meta = id => (S.meta[id] = S.meta[id] || {});
+const cleanMeta = id => { const m = S.meta[id]; if (m && !Object.keys(m).some(k => m[k] && (!Array.isArray(m[k]) || m[k].length))) delete S.meta[id]; };
+
+// ---------- Segédek ----------
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const hours = min => (min / 60).toLocaleString('hu-HU', { maximumFractionDigits: min < 600 ? 1 : 0 }) + ' óra';
+const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+function ago(ts) {
+  if (!ts) return 'soha';
+  const d = Math.floor((Date.now() / 1000 - ts) / 86400);
+  if (d < 1) return 'ma';
+  if (d < 2) return 'tegnap';
+  if (d < 31) return d + ' napja';
+  if (d < 365) return Math.floor(d / 30) + ' hónapja';
+  return Math.floor(d / 365) + ' éve';
+}
+const header = id => `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg`;
+// Ha nincs fejléc kép, a játék kis ikonjára váltunk, végül elrejtjük.
+function imgFail(img) {
+  const g = S.games[img.dataset.app];
+  if (!img.dataset.f && g && g.icon) { img.dataset.f = 1; img.src = `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.icon}.jpg`; img.style.objectFit = 'contain'; }
+  else img.style.visibility = 'hidden';
+}
+const imgTag = (id, cls = '') => `<img class="${cls}" src="${header(id)}" data-app="${id}" alt="" loading="lazy" onerror="imgFail(this)">`;
+
+const STATUS = {
+  playing: { t: 'Játszom', i: '▶️' },
+  backlog: { t: 'Backlog', i: '📥' },
+  done: { t: 'Kijátszva', i: '✅' },
+  dropped: { t: 'Félretéve', i: '⏸️' },
+};
+const COLORS = ['#66c0f4', '#7cc36a', '#e8b24a', '#e2675b', '#b58cf0', '#f08cc8', '#5fd3c4', '#c9b16b'];
+const gamesList = () => Object.values(S.games);
+
+// ---------- Steam ----------
+async function steam(path, params) {
+  const u = new URL(API + path);
+  Object.entries(Object.assign({ key: S.key, format: 'json' }, params)).forEach(([k, v]) => u.searchParams.set(k, v));
+  let r;
+  try { r = await fetch(u.toString()); } catch (e) {
+    throw new Error('Nem sikerült elérni a Steamet.' + (isNative() ? ' Van internet?' : ' (Böngészőből a Steam nem engedi a lekérést – az Android appban működik.)'));
+  }
+  if (r.status === 401 || r.status === 403) throw new Error('A Steam elutasította az API kulcsot. Ellenőrizd, hogy pontosan másoltad-e be.');
+  if (r.status === 429) throw new Error('A Steam most túl sok kérést kapott. Próbáld újra egy perc múlva.');
+  if (!r.ok) throw new Error('A Steam hibát jelzett (' + r.status + ').');
+  return r.json();
+}
+async function resolveId(input) {
+  input = input.trim().replace(/\/+$/, '');
+  if (!input) throw new Error('Add meg a Steam profilodat.');
+  let m = input.match(/(?:^|\/profiles\/)(\d{17})(?:$|[/?#])/) || input.match(/^(\d{17})$/);
+  if (m) return m[1];
+  m = input.match(/\/id\/([^/?#]+)/);
+  const vanity = m ? m[1] : input;
+  const d = await steam('ISteamUser/ResolveVanityURL/v1/', { vanityurl: vanity });
+  if (d.response && d.response.success === 1) return d.response.steamid;
+  throw new Error('Nem találom ezt a Steam profilt: „' + vanity + '”. Másold be a teljes profil linket.');
+}
+async function sync() {
+  if (!S.key) throw new Error('Add meg a Steam API kulcsot (lent leírom, hogyan kapsz).');
+  const id = await resolveId(S.profileInput);
+  const [sum, owned] = await Promise.all([
+    steam('ISteamUser/GetPlayerSummaries/v2/', { steamids: id }).catch(() => null),
+    steam('IPlayerService/GetOwnedGames/v1/', { steamid: id, include_appinfo: 1, include_played_free_games: 1 }),
+  ]);
+  const list = owned && owned.response && owned.response.games;
+  if (!list || !list.length) throw new Error('Nem látszanak a játékaid. Valószínűleg privát a játéklistád: Steam → Profil szerkesztése → Adatvédelmi beállítások → „Játékrészletek”: Nyilvános.');
+  const games = {};
+  for (const g of list) {
+    games[g.appid] = { appid: g.appid, name: g.name || ('App ' + g.appid), pt: g.playtime_forever || 0, pt2: g.playtime_2weeks || 0, last: g.rtime_last_played || 0, icon: g.img_icon_url || '' };
+  }
+  const p = sum && sum.response && sum.response.players && sum.response.players[0];
+  S.games = games;
+  S.steamid = id;
+  if (p) S.profile = { name: p.personaname, avatar: p.avatarmedium || p.avatar };
+  S.lastSync = Date.now();
+  save();
+  return list.length;
+}
+
+// ---------- Szűrés ----------
+const FILTERS = [
+  ['all', 'Mind'], ['fav', '⭐ Kedvencek'], ['playing', '▶️ Játszom'], ['backlog', '📥 Backlog'], ['done', '✅ Kijátszva'],
+  ['dropped', '⏸️ Félretéve'], ['nostatus', '🧺 Rendezetlen'], ['never', '🆕 Sosem indított'], ['short', '⏳ 2 óra alatt'],
+  ['recent', '🔥 Mostanában'], ['old', '🕸️ Rég nem játszott'], ['col', '🗂️ Gyűjtemény'], ['hidden', '🙈 Rejtett'],
+];
+function matchFilter(g, f) {
+  const m = S.meta[g.appid] || {};
+  if (f === 'hidden') return !!m.hidden;
+  if (m.hidden) return false;
+  switch (f) {
+    case 'fav': return !!m.fav;
+    case 'playing': case 'backlog': case 'done': case 'dropped': return m.status === f;
+    case 'nostatus': return !m.status;
+    case 'never': return !g.pt;
+    case 'short': return g.pt > 0 && g.pt < 120;
+    case 'recent': return g.pt2 > 0;
+    case 'old': return g.pt > 0 && g.last && (Date.now() / 1000 - g.last) > 365 * 86400;
+    case 'col': return (m.cols || []).includes(S.col);
+    default: return true;
+  }
+}
+const SORTS = {
+  playtime: (a, b) => b.pt - a.pt,
+  name: (a, b) => a.name.localeCompare(b.name, 'hu'),
+  last: (a, b) => (b.last || 0) - (a.last || 0),
+  recent: (a, b) => b.pt2 - a.pt2 || b.pt - a.pt,
+  rating: (a, b) => ((S.meta[b.appid] || {}).rating || 0) - ((S.meta[a.appid] || {}).rating || 0) || b.pt - a.pt,
+};
+function allGenres() {
+  const c = {};
+  for (const g of gamesList()) for (const x of S.genres[g.appid] || []) c[x] = (c[x] || 0) + 1;
+  return Object.entries(c).sort((a, b) => b[1] - a[1]);
+}
+function genreOptions(sel, cur, label) {
+  const gs = allGenres();
+  sel.innerHTML = `<option value="">${label}</option>` + gs.map(([g, n]) => `<option value="${esc(g)}" ${g === cur ? 'selected' : ''}>${esc(g)} (${n})</option>`).join('');
+  sel.disabled = !gs.length;
+  if (!gs.length) sel.title = 'A Beállításokban töltsd le a műfajokat';
+}
+
+// ---------- Könyvtár ----------
+function badges(g) {
+  const m = S.meta[g.appid] || {};
+  return (m.fav ? '<span class="tag">⭐</span>' : '') + (m.status ? `<span class="tag">${STATUS[m.status].i}</span>` : '') + ((m.cols || []).length ? '<span class="tag">🗂️</span>' : '');
+}
+function renderLib() {
+  const out = document.getElementById('libOut');
+  const info = document.getElementById('libInfo');
+  document.getElementById('viewToggle').textContent = S.view === 'grid' ? '☰' : '▦';
+  document.getElementById('sortSel').value = S.sort;
+  genreOptions(document.getElementById('genreSel'), S.genre, '🏷️ Minden műfaj');
+  const col = S.collections.find(c => c.id === S.col);
+  if (S.filter === 'col' && !col) S.filter = 'all';
+  document.getElementById('filterChips').innerHTML = FILTERS.filter(([k]) => k !== 'col' || col)
+    .map(([k, t]) => `<button class="chip ${S.filter === k ? 'on' : ''}" data-f="${k}">${k === 'col' ? '🗂️ ' + esc(col.name) : t}</button>`).join('');
+
+  const all = gamesList();
+  if (!all.length) {
+    info.textContent = '';
+    out.innerHTML = `<div class="card empty"><div style="font-size:40px">🎮</div><p>Még nincs betöltve a könyvtárad.</p>
+      <button class="btn primary" data-goset>⚙️ Steam profil megadása</button></div>`;
+    return;
+  }
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const list = all
+    .filter(g => matchFilter(g, S.filter))
+    .filter(g => !S.genre || (S.genres[g.appid] || []).includes(S.genre))
+    .filter(g => !q || g.name.toLowerCase().includes(q) || ((S.meta[g.appid] || {}).note || '').toLowerCase().includes(q))
+    .sort(SORTS[S.sort] || SORTS.playtime);
+  const total = list.reduce((s, g) => s + g.pt, 0);
+  info.textContent = `${list.length} játék · ${hours(total)} összesen`;
+  if (!list.length) { out.innerHTML = '<div class="empty">Nincs ilyen játék ezekkel a szűrőkkel.</div>'; return; }
+  const shown = list.slice(0, 400);
+  if (S.view === 'grid') {
+    out.innerHTML = `<div class="grid">${shown.map(g => `
+      <div class="g" data-app="${g.appid}">${imgTag(g.appid)}<div class="tags">${badges(g)}</div>
+        <div class="gb"><div class="gn">${esc(g.name)}</div>
+        <div class="small">${g.pt ? hours(g.pt) : 'sosem indítva'}${(S.meta[g.appid] || {}).rating ? ` · <span class="stars">${'★'.repeat(S.meta[g.appid].rating)}</span>` : ''}</div></div>
+      </div>`).join('')}</div>`;
+  } else {
+    out.innerHTML = `<div class="card list" style="padding:4px 10px">${shown.map(g => {
+      const m = S.meta[g.appid] || {};
+      return `<div class="li" data-app="${g.appid}">${imgTag(g.appid)}
+        <div style="min-width:0"><div class="n">${esc(g.name)}</div>
+          <div class="small">${m.status ? STATUS[m.status].i + ' ' + STATUS[m.status].t + ' · ' : ''}${ago(g.last)}${m.fav ? ' · ⭐' : ''}</div></div>
+        <div class="r">${g.pt ? hours(g.pt) : '<span class="small">–</span>'}${m.rating ? `<div class="stars small">${'★'.repeat(m.rating)}</div>` : ''}</div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  if (list.length > shown.length) out.insertAdjacentHTML('beforeend', `<p class="small">Az első ${shown.length} látszik – szűkíts kereséssel vagy szűrővel.</p>`);
+}
+document.getElementById('q').addEventListener('input', debounce(renderLib, 150));
+document.getElementById('viewToggle').onclick = () => { S.view = S.view === 'grid' ? 'list' : 'grid'; save(); renderLib(); };
+document.getElementById('sortSel').onchange = e => { S.sort = e.target.value; save(); renderLib(); };
+document.getElementById('genreSel').onchange = e => { S.genre = e.target.value; save(); renderLib(); };
+document.getElementById('filterChips').addEventListener('click', e => {
+  const c = e.target.closest('[data-f]');
+  if (c) { S.filter = c.dataset.f; save(); renderLib(); }
+});
+document.getElementById('libOut').addEventListener('click', e => {
+  if (e.target.closest('[data-goset]')) { showView('v-set'); return; }
+  const g = e.target.closest('[data-app]');
+  if (g) openGame(g.dataset.app);
+});
+
+// ---------- Adatlap ----------
+let sheetApp = null;
+function renderSheet() {
+  const g = S.games[sheetApp];
+  if (!g) return;
+  const m = S.meta[g.appid] || {};
+  const gen = S.genres[g.appid];
+  document.getElementById('sheetBody').innerHTML = `
+    <button class="close" data-close aria-label="Bezárás">✕</button>
+    ${imgTag(g.appid, 'hero')}
+    <div class="in">
+      <h2>${esc(g.name)}</h2>
+      ${gen && gen.length ? `<div class="small">${gen.map(esc).join(' · ')}</div>` : ''}
+      <div class="kv">
+        <div><b>${g.pt ? hours(g.pt) : '–'}</b><span class="small">összesen</span></div>
+        <div><b>${g.pt2 ? hours(g.pt2) : '–'}</b><span class="small">elmúlt 2 hét</span></div>
+        <div><b>${ago(g.last)}</b><span class="small">utoljára</span></div>
+      </div>
+      <div class="sec"><div class="small">Állapot</div>
+        <div class="chips wrap">${Object.entries(STATUS).map(([k, s]) => `<button class="chip ${m.status === k ? 'on' : ''}" data-st="${k}">${s.i} ${s.t}</button>`).join('')}</div></div>
+      <div class="sec"><div class="small">Értékelésed</div>
+        <div class="rate">${[1, 2, 3, 4, 5].map(n => `<button class="${(m.rating || 0) >= n ? 'on' : ''}" data-rate="${n}" aria-label="${n} csillag">★</button>`).join('')}</div></div>
+      <div class="sec chips wrap">
+        <button class="chip ${m.fav ? 'on' : ''}" data-fav>⭐ Kedvenc</button>
+        <button class="chip ${m.hidden ? 'on' : ''}" data-hide>🙈 Elrejtés</button>
+      </div>
+      <div class="sec"><div class="small">Gyűjtemények</div>
+        <div class="chips wrap">${S.collections.map(c => `<button class="chip ${(m.cols || []).includes(c.id) ? 'on' : ''}" data-col="${c.id}"><span class="dot" style="display:inline-block;width:9px;height:9px;background:${c.color}"></span> ${esc(c.name)}</button>`).join('')}
+          <button class="chip" data-newcol>＋ Új</button></div></div>
+      <div class="sec"><div class="small">Jegyzet</div>
+        <textarea id="noteBox" rows="3" placeholder="Pl. hol tartok, mit kell még megcsinálni, kivel játszom…">${esc(m.note || '')}</textarea></div>
+      <div class="sec row" style="flex-wrap:wrap">
+        <a class="btn" href="https://store.steampowered.com/app/${g.appid}/" target="_blank" rel="noopener">🛒 Steam bolt</a>
+        <a class="btn" href="https://steamdb.info/app/${g.appid}/" target="_blank" rel="noopener">📈 SteamDB</a>
+        ${!gen ? '<button class="btn" data-genre1>🏷️ Műfaj lekérése</button>' : ''}
+      </div>
+    </div>`;
+}
+function openGame(id) {
+  sheetApp = String(id);
+  renderSheet();
+  document.getElementById('sheet').hidden = false;
+  document.body.classList.add('noscroll');
+  document.getElementById('sheetBody').scrollTop = 0;
+  history.pushState({ v: currentView, sheet: 1 }, '', location.hash);
+}
+function closeSheet() {
+  document.getElementById('sheet').hidden = true;
+  document.body.classList.remove('noscroll');
+  sheetApp = null;
+  RENDER[currentView] && RENDER[currentView]();
+}
+function newCollection(name) {
+  name = (name || '').trim();
+  if (!name) return null;
+  const c = { id: 'c' + Date.now().toString(36), name, color: COLORS[S.collections.length % COLORS.length] };
+  S.collections.push(c);
+  save();
+  return c;
+}
+const sheet = document.getElementById('sheet');
+sheet.addEventListener('click', async e => {
+  if (e.target === sheet || e.target.closest('[data-close]')) { history.back(); return; }
+  const id = sheetApp;
+  if (!id) return;
+  const m = meta(id);
+  const st = e.target.closest('[data-st]');
+  const rate = e.target.closest('[data-rate]');
+  const col = e.target.closest('[data-col]');
+  if (st) m.status = m.status === st.dataset.st ? '' : st.dataset.st;
+  else if (rate) m.rating = m.rating === +rate.dataset.rate ? 0 : +rate.dataset.rate;
+  else if (e.target.closest('[data-fav]')) m.fav = !m.fav;
+  else if (e.target.closest('[data-hide]')) m.hidden = !m.hidden;
+  else if (col) { m.cols = m.cols || []; m.cols = m.cols.includes(col.dataset.col) ? m.cols.filter(x => x !== col.dataset.col) : m.cols.concat(col.dataset.col); }
+  else if (e.target.closest('[data-newcol]')) {
+    const c = newCollection(prompt('Az új gyűjtemény neve:'));
+    if (!c) return;
+    m.cols = (m.cols || []).concat(c.id);
+  } else if (e.target.closest('[data-genre1]')) {
+    e.target.closest('[data-genre1]').textContent = 'Lekérés…';
+    await fetchGenre(id).catch(() => {});
+    save();
+  } else return;
+  cleanMeta(id);
+  save();
+  renderSheet();
+});
+sheet.addEventListener('input', debounce(e => {
+  if (e.target.id !== 'noteBox' || !sheetApp) return;
+  meta(sheetApp).note = e.target.value;
+  cleanMeta(sheetApp);
+  save();
+}, 300));
+
+// ---------- Gyűjtemények ----------
+function renderCols() {
+  const out = document.getElementById('colsOut');
+  if (!S.collections.length) { out.innerHTML = '<div class="empty">Még nincs gyűjteményed. Hozz létre egyet fent, aztán a játékok adatlapján add hozzá a játékokat.</div>'; return; }
+  const count = id => Object.entries(S.meta).filter(([app, m]) => S.games[app] && (m.cols || []).includes(id)).length;
+  out.innerHTML = `<div class="card">${S.collections.map(c => `
+    <div class="col-row">
+      <span class="dot" style="background:${c.color}"></span>
+      <span class="nm" data-open="${c.id}">${esc(c.name)} <span class="small">· ${count(c.id)} játék</span></span>
+      <button class="btn" data-color="${c.id}" aria-label="Szín">🎨</button>
+      <button class="btn" data-ren="${c.id}" aria-label="Átnevezés">✏️</button>
+      <button class="btn" data-del="${c.id}" aria-label="Törlés">🗑️</button>
+    </div>`).join('')}</div>
+    <p class="small">Koppints egy gyűjtemény nevére: a Könyvtárban csak az ő játékai látszanak.</p>`;
+}
+document.getElementById('colAdd').onclick = () => {
+  const inp = document.getElementById('colName');
+  if (newCollection(inp.value)) { inp.value = ''; renderCols(); }
+};
+document.getElementById('colName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('colAdd').click(); });
+document.getElementById('colsOut').addEventListener('click', e => {
+  const b = e.target.closest('[data-open],[data-ren],[data-del],[data-color]');
+  if (!b) return;
+  const id = b.dataset.open || b.dataset.ren || b.dataset.del || b.dataset.color;
+  const c = S.collections.find(x => x.id === id);
+  if (!c) return;
+  if (b.dataset.open) { S.col = id; S.filter = 'col'; save(); showView('v-lib'); return; }
+  if (b.dataset.ren) { const n = prompt('Új név:', c.name); if (n && n.trim()) c.name = n.trim(); }
+  if (b.dataset.color) c.color = COLORS[(COLORS.indexOf(c.color) + 1) % COLORS.length];
+  if (b.dataset.del) {
+    if (!confirm(`Törlöd a(z) „${c.name}” gyűjteményt? (A játékok megmaradnak.)`)) return;
+    S.collections = S.collections.filter(x => x.id !== id);
+    for (const app of Object.keys(S.meta)) { const m = S.meta[app]; if (m.cols) { m.cols = m.cols.filter(x => x !== id); cleanMeta(app); } }
+  }
+  save(); renderCols();
+});
+
+// ---------- Mit játsszak? ----------
+function pickPool() {
+  return gamesList().filter(g => {
+    const m = S.meta[g.appid] || {};
+    if (m.hidden) return false;
+    if (S.pickGenre && !(S.genres[g.appid] || []).includes(S.pickGenre)) return false;
+    if (S.pickCol && !(m.cols || []).includes(S.pickCol)) return false;
+    switch (S.pool) {
+      case 'backlog': return m.status === 'backlog' || (!g.pt && m.status !== 'done' && m.status !== 'dropped');
+      case 'never': return !g.pt;
+      case 'unfinished': return m.status !== 'done';
+      case 'fav': return !!m.fav;
+      default: return true;
+    }
+  });
+}
+let lastPick = null;
+function renderPick(roll) {
+  document.querySelectorAll('[data-pool]').forEach(c => c.classList.toggle('on', c.dataset.pool === S.pool));
+  genreOptions(document.getElementById('pickGenre'), S.pickGenre, '🏷️ Bármilyen műfaj');
+  const pc = document.getElementById('pickCol');
+  pc.innerHTML = '<option value="">🗂️ Bármelyik gyűjtemény</option>' + S.collections.map(c => `<option value="${c.id}" ${c.id === S.pickCol ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+  pc.disabled = !S.collections.length;
+  const pool = pickPool();
+  document.getElementById('pickInfo').textContent = `${pool.length} játék közül sorsolok.`;
+  const out = document.getElementById('pickOut');
+  if (roll) {
+    if (!pool.length) { out.innerHTML = '<div class="empty">Nincs ilyen játék. Lazíts a feltételeken!</div>'; return; }
+    let g;
+    do { g = pool[Math.floor(Math.random() * pool.length)]; } while (pool.length > 1 && lastPick && g.appid === lastPick);
+    lastPick = g.appid;
+  }
+  const g = lastPick && S.games[lastPick];
+  if (!g) { out.innerHTML = ''; return; }
+  const m = S.meta[g.appid] || {};
+  out.innerHTML = `<div class="card pick-card">${imgTag(g.appid)}
+    <h2 style="margin:10px 0 2px">${esc(g.name)}</h2>
+    <div class="small">${g.pt ? hours(g.pt) + ' eddig · utoljára ' + ago(g.last) : 'Még sosem indítottad el!'}${m.status ? ' · ' + STATUS[m.status].i + ' ' + STATUS[m.status].t : ''}</div>
+    ${(S.genres[g.appid] || []).length ? `<div class="small">${S.genres[g.appid].map(esc).join(' · ')}</div>` : ''}
+    <div class="row" style="margin-top:10px;flex-wrap:wrap">
+      <button class="btn primary" data-start>▶️ Ezt kezdem!</button>
+      <button class="btn" data-again>🔁 Másikat</button>
+      <button class="btn" data-detail>ℹ️ Adatlap</button>
+    </div></div>`;
+}
+document.getElementById('poolChips').addEventListener('click', e => {
+  const c = e.target.closest('[data-pool]');
+  if (c) { S.pool = c.dataset.pool; save(); renderPick(); }
+});
+document.getElementById('pickGenre').onchange = e => { S.pickGenre = e.target.value; save(); renderPick(); };
+document.getElementById('pickCol').onchange = e => { S.pickCol = e.target.value; save(); renderPick(); };
+document.getElementById('pickBtn').onclick = () => renderPick(true);
+document.getElementById('pickOut').addEventListener('click', e => {
+  if (!lastPick) return;
+  if (e.target.closest('[data-start]')) { meta(lastPick).status = 'playing'; save(); renderPick(); }
+  else if (e.target.closest('[data-again]')) renderPick(true);
+  else if (e.target.closest('[data-detail]')) openGame(lastPick);
+});
+
+// ---------- Statisztika ----------
+function barRows(rows, max, fmt) {
+  return rows.map(([name, v, app]) => `<div class="bar-row" ${app ? `data-app="${app}" style="cursor:pointer"` : ''}>
+    <span class="nm">${esc(name)}</span><div class="bar"><i style="width:${max ? Math.max(2, v / max * 100) : 0}%"></i></div><b>${fmt(v)}</b></div>`).join('');
+}
+function renderStats() {
+  const out = document.getElementById('statsOut');
+  const all = gamesList().filter(g => !(S.meta[g.appid] || {}).hidden);
+  if (!all.length) { out.innerHTML = '<div class="empty">Előbb töltsd be a könyvtáradat a Beállításokban.</div>'; return; }
+  const total = all.reduce((s, g) => s + g.pt, 0);
+  const never = all.filter(g => !g.pt).length;
+  const recent = all.filter(g => g.pt2 > 0).sort((a, b) => b.pt2 - a.pt2);
+  const top = all.slice().sort((a, b) => b.pt - a.pt).slice(0, 10);
+  const st = {};
+  for (const g of all) { const k = (S.meta[g.appid] || {}).status || 'none'; st[k] = (st[k] || 0) + 1; }
+  const stRows = Object.entries(STATUS).map(([k, s]) => [s.i + ' ' + s.t, st[k] || 0]).concat([['🧺 Rendezetlen', st.none || 0]]);
+  const genreTime = {};
+  for (const g of all) for (const x of S.genres[g.appid] || []) genreTime[x] = (genreTime[x] || 0) + g.pt;
+  const gRows = Object.entries(genreTime).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const rated = all.filter(g => (S.meta[g.appid] || {}).rating);
+  out.innerHTML = `
+    <div class="stat-grid" style="margin-top:10px">
+      <div class="card"><div class="small">Játékok</div><div class="big">${all.length}</div></div>
+      <div class="card"><div class="small">Összes játékidő</div><div class="big">${Math.round(total / 60).toLocaleString('hu-HU')} ó</div><div class="small">${(total / 60 / 24).toLocaleString('hu-HU', { maximumFractionDigits: 1 })} nap</div></div>
+      <div class="card"><div class="small">Sosem indított</div><div class="big">${never}</div><div class="small">${Math.round(never / all.length * 100)}% a könyvtárból</div></div>
+      <div class="card"><div class="small">Elmúlt 2 hét</div><div class="big">${hours(recent.reduce((s, g) => s + g.pt2, 0))}</div><div class="small">${recent.length} játékkal</div></div>
+    </div>
+    <div class="card"><div class="small" style="margin-bottom:4px">🏆 Legtöbbet játszott</div>${barRows(top.map(g => [g.name, g.pt, g.appid]), top[0] ? top[0].pt : 0, hours)}</div>
+    ${recent.length ? `<div class="card"><div class="small" style="margin-bottom:4px">🔥 Elmúlt 2 hét</div>${barRows(recent.slice(0, 10).map(g => [g.name, g.pt2, g.appid]), recent[0].pt2, hours)}</div>` : ''}
+    <div class="card"><div class="small" style="margin-bottom:4px">📋 Állapotok</div>${barRows(stRows, all.length, n => n + ' db')}</div>
+    ${gRows.length ? `<div class="card"><div class="small" style="margin-bottom:4px">🏷️ Játékidő műfajonként</div>${barRows(gRows, gRows[0][1], v => Math.round(v / 60) + ' ó')}</div>`
+      : '<div class="card small">🏷️ A műfajok szerinti bontáshoz töltsd le a műfajokat a Beállításokban.</div>'}
+    ${rated.length ? `<div class="card"><div class="small">⭐ Átlagos értékelésed</div><div class="big">${(rated.reduce((s, g) => s + S.meta[g.appid].rating, 0) / rated.length).toFixed(1)}</div><div class="small">${rated.length} értékelt játék</div></div>` : ''}`;
+}
+document.getElementById('statsOut').addEventListener('click', e => { const r = e.target.closest('[data-app]'); if (r) openGame(r.dataset.app); });
+
+// ---------- Műfajok ----------
+async function fetchGenre(id) {
+  const r = await fetch(`https://store.steampowered.com/api/appdetails?appids=${id}&l=hungarian`);
+  if (r.status === 429) { const e = new Error('lassíts'); e.wait = true; throw e; }
+  if (!r.ok) throw new Error('bolt hiba ' + r.status);
+  const j = await r.json();
+  const d = j && j[id];
+  S.genres[id] = d && d.success && d.data && d.data.genres ? d.data.genres.map(x => x.description) : [];
+}
+let genreRun = false;
+function renderGenreInfo() {
+  const all = Object.keys(S.games);
+  const done = all.filter(id => S.genres[id]).length;
+  document.getElementById('genreInfo').textContent = all.length ? `${done} / ${all.length} játék műfaja megvan.` : 'Előbb töltsd be a könyvtárat.';
+  const b = document.getElementById('genreBtn');
+  b.textContent = genreRun ? '⏹️ Leállítás' : (done < all.length ? '🏷️ Műfajok letöltése' : '✅ Minden műfaj megvan');
+  b.disabled = !genreRun && (!all.length || done === all.length);
+}
+async function runGenres() {
+  genreRun = true;
+  renderGenreInfo();
+  let fails = 0;
+  for (const id of Object.keys(S.games).filter(x => !S.genres[x])) {
+    if (!genreRun) break;
+    try { await fetchGenre(id); fails = 0; save(); } catch (e) {
+      if (e.wait) { await sleep(60000); continue; }
+      if (++fails >= 5) { alert('A Steam bolt most nem válaszol, később próbáld újra.'); break; }
+      await sleep(4000);
+    }
+    renderGenreInfo();
+    await sleep(1500);
+  }
+  genreRun = false;
+  renderGenreInfo();
+  if (currentView !== 'v-set') RENDER[currentView] && RENDER[currentView]();
+}
+document.getElementById('genreBtn').onclick = () => { if (genreRun) { genreRun = false; renderGenreInfo(); } else runGenres(); };
+
+// ---------- Beállítások ----------
+function renderWho() {
+  const p = S.profile;
+  document.getElementById('who').innerHTML = p ? `${p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : ''}<span>${esc(p.name)}</span>` : '';
+}
+function renderSet() {
+  document.getElementById('profileIn').value = S.profileInput;
+  document.getElementById('keyIn').value = S.key;
+  const n = Object.keys(S.games).length;
+  if (!document.getElementById('syncInfo').dataset.busy) {
+    document.getElementById('syncInfo').innerHTML = n ? `✅ ${n} játék betöltve · utoljára frissítve: ${new Date(S.lastSync).toLocaleString('hu-HU')}` : '';
+  }
+  renderGenreInfo();
+}
+document.getElementById('profileIn').addEventListener('change', e => { S.profileInput = e.target.value.trim(); save(); });
+document.getElementById('keyIn').addEventListener('change', e => { S.key = e.target.value.trim(); save(); });
+document.getElementById('keyShow').onclick = () => { const k = document.getElementById('keyIn'); k.type = k.type === 'password' ? 'text' : 'password'; };
+async function doSync(silent) {
+  const info = document.getElementById('syncInfo');
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+  info.dataset.busy = 1;
+  if (!silent) info.innerHTML = '⏳ Betöltés a Steamről…';
+  try {
+    const n = await sync();
+    delete info.dataset.busy;
+    info.innerHTML = `<span class="ok">✅ ${n} játék betöltve.</span>`;
+    renderWho();
+    if (!silent) {
+      const missing = Object.keys(S.games).filter(id => !S.genres[id]).length;
+      if (missing && !genreRun && confirm(`Kész! Letöltsem a műfajokat is (${missing} játék, a háttérben megy)?`)) runGenres();
+      showView('v-lib');
+    } else RENDER[currentView] && RENDER[currentView]();
+  } catch (e) {
+    delete info.dataset.busy;
+    if (!silent) info.innerHTML = `<span class="err">⚠️ ${esc(e.message)}</span>`;
+  } finally { btn.disabled = false; }
+}
+document.getElementById('syncBtn').onclick = () => {
+  S.profileInput = document.getElementById('profileIn').value.trim();
+  S.key = document.getElementById('keyIn').value.trim();
+  save();
+  doSync(false);
+};
+document.getElementById('backupMake').onclick = () => {
+  const data = { meta: S.meta, collections: S.collections, profileInput: S.profileInput };
+  const code = 'SR1:' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  const box = document.getElementById('backupBox');
+  box.value = code;
+  box.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(code).then(() => alert('A mentőkód a vágólapra került.'), () => {});
+};
+document.getElementById('backupLoad').onclick = () => {
+  const code = document.getElementById('backupBox').value.trim();
+  try {
+    if (!code.startsWith('SR1:')) throw new Error();
+    const data = JSON.parse(decodeURIComponent(escape(atob(code.slice(4)))));
+    if (!data || typeof data.meta !== 'object') throw new Error();
+    if (!confirm('Felülírod a mostani rendezést a mentőkódban lévővel?')) return;
+    S.meta = data.meta || {};
+    S.collections = data.collections || [];
+    if (data.profileInput && !S.profileInput) S.profileInput = data.profileInput;
+    save(); renderSet();
+    alert('Kész, visszatöltve!');
+  } catch (e) { alert('Ez nem érvényes mentőkód.'); }
+};
+document.getElementById('resetAll').onclick = () => {
+  if (!confirm('Biztosan törölsz mindent (könyvtár, rendezés, gyűjtemények, API kulcs) erről a telefonról?')) return;
+  genreRun = false;
+  try { localStorage.removeItem(STORE); } catch (e) {}
+  location.reload();
+};
+
+// ---------- Navigáció ----------
+// A fülváltás és az adatlap bekerül az előzményekbe, így a telefon vissza gombja is jól működik.
+const RENDER = { 'v-lib': renderLib, 'v-cols': renderCols, 'v-pick': () => renderPick(), 'v-stats': renderStats, 'v-set': renderSet };
+let currentView = 'v-lib';
+function showView(id, push = true) {
+  if (!document.getElementById(id)) id = 'v-lib';
+  const changed = id !== currentView;
+  currentView = id;
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.view === id));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
+  RENDER[id]();
+  if (push && changed) history.pushState({ v: id }, '', '#' + id.slice(2));
+  if (changed) window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showView(b.dataset.view));
+window.addEventListener('popstate', e => {
+  if (!document.getElementById('sheet').hidden) closeSheet();
+  if (e.state && e.state.sheet) { history.back(); return; }
+  showView((e.state && e.state.v) || ('v-' + (location.hash.slice(1) || 'lib')), false);
+});
+
+renderWho();
+{
+  let start = 'v-' + (location.hash.slice(1) || 'lib');
+  if (!document.getElementById(start)) start = 'v-lib';
+  if (!Object.keys(S.games).length) start = 'v-set';
+  history.replaceState({ v: start }, '', '#' + start.slice(2));
+  showView(start, false);
+}
+// Ha régen frissült a könyvtár, csendben frissítjük.
+if (S.key && S.profileInput && Date.now() - S.lastSync > 6 * 3600 * 1000) doSync(true);
+</script>
+</body>
+</html>

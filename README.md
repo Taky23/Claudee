@@ -69,6 +69,12 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **Hideout:** az állomások szintjeinek követése, és az összes hiányzó tárgy listája becsült költséggel.
   - **Idő:** Tarkov idő (bal/jobb), trader restock visszaszámláló, PvP/PvE mód, angol vagy magyar tárgynevek.
 
+- **🗂️ Steam Rendező** (`steam-apk/`) – Android app a Steam könyvtárad rendezéséhez. A profilod linkje és egy ingyenes Steam Web API kulcs alapján betölti az összes játékodat a játékidővel együtt.
+  - **Könyvtár:** rácsos vagy listás nézet, keresés, rendezés (játékidő, név, utolsó játék, elmúlt 2 hét, értékelés), okos szűrők (kedvencek, sosem indított, 2 óra alatt, mostanában, rég nem játszott, rendezetlen, rejtett) és műfaj.
+  - **Játékonként:** állapot (Játszom / Backlog / Kijátszva / Félretéve), 1–5 csillag, kedvenc, jegyzet, elrejtés, gyűjtemények; linkek a Steam boltba és a SteamDB-re.
+  - **Gyűjtemények**, **🎲 Mit játsszak?** sorsoló (backlogból, műfajra vagy gyűjteményre szűrve), **📊 statisztika** és mentőkód.
+  - A műfajok a Steam boltból jönnek magyarul, a háttérben. A `Steam Rendező APK` workflow készíti a `SteamRendezo.apk` fájlt, ami a `steam-apk` kiadásból tölthető le.
+
 - **🎮 Gamer Zseb** (`web/gamer/`) – két dolog egy appban:
   - **Játékár-figyelő** a [CheapShark](https://www.cheapshark.com) ingyenes API-jával: akciók boltok szerint (Steam, Epic, GOG, Humble…), ingyen játékok, keresés, egy játék összes boltban elérhető ára és a valaha volt legalacsonyabb ára, figyelőlista célárral, valamint opcionális email-riasztás a CheapShark-on keresztül. Az utoljára letöltött adatokat megjegyzi, így a szolgáltatás kiesésekor is mutat valamit.
   - **Tarkov kihívás-generátor** (net nélkül): sorsol pályát, helyszínt, fegyvert, páncélszabályt és extra szabályokat, 3 nehézségi szinten, akár 5 fős csapatra. Az egyes elemek újrasorsolhatók, és pontokat meg előzményeket is vezet.

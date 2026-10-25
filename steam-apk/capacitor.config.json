@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.steamrendezo",
+  "appName": "Steam Rendező",
+  "webDir": "www",
+  "backgroundColor": "#0e141bff",
+  "android": {
+    "backgroundColor": "#0e141bff",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

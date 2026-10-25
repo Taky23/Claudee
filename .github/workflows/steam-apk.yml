@@ -1,0 +1,71 @@
+name: Steam Rendező APK (Android)
+
+on:
+  push:
+    paths: ['steam-apk/**', '.github/workflows/steam-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Függőségek telepítése
+        working-directory: steam-apk
+        run: npm install --no-audit --no-fund
+
+      - name: Android projekt létrehozása
+        working-directory: steam-apk
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Ikon és indítókép generálása
+        working-directory: steam-apk
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#16202d' --iconBackgroundColorDark '#16202d' --splashBackgroundColor '#0e141b' --splashBackgroundColorDark '#0e141b'
+
+      - name: Vissza gomb kezelése (natív MainActivity)
+        working-directory: steam-apk
+        run: cp native/MainActivity.java android/app/src/main/java/hu/taky/steamrendezo/MainActivity.java
+
+      - name: Állandó aláíró kulcs (hogy a frissítések törlés nélkül települjenek)
+        run: mkdir -p ~/.android && cp apk/debug.keystore ~/.android/debug.keystore
+
+      - name: SDK útvonal
+        working-directory: steam-apk/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: APK építése
+        working-directory: steam-apk/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: APK átnevezése
+        run: cp steam-apk/android/app/build/outputs/apk/debug/app-debug.apk SteamRendezo.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SteamRendezo-apk
+          path: SteamRendezo.apk
+
+      # Release-ből telefonon is egy koppintással letölthető (az artifacthoz bejelentkezés kell, és ZIP-ben jön).
+      - name: Kiadás (közvetlen letöltési link)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete steam-apk --yes --cleanup-tag || true
+          gh release create steam-apk SteamRendezo.apk --target "${{ github.sha }}" \
+            --title "Steam Rendező – Android (APK)" \
+            --notes "Töltsd le a SteamRendezo.apk fájlt a telefonodra, és telepítsd (az ismeretlen forrásból telepítést engedélyezni kell). Steam könyvtár rendezése: állapotok, értékelés, gyűjtemények, műfajok, Mit játsszak?, statisztika."
