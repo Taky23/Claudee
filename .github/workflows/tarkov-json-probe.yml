@@ -1,0 +1,16 @@
+name: Tarkov JSON adatszerkezet
+
+on:
+  push:
+    paths: ['tarkov-apk/scripts/json-probe.js', '.github/workflows/tarkov-json-probe.yml']
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tarkov-apk/scripts/json-probe.js
