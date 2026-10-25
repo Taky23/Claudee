@@ -61,7 +61,9 @@ const TKMap = (() => {
       try {
         const r = await fetch(u);
         if (!r.ok) continue;
-        const t = await r.text();
+        let t = await r.text();
+        // Az app natív hálózatkezelése a képeket base64-ben adhatja vissza.
+        if (!t.includes('<svg')) { try { t = decodeURIComponent(escape(atob(t.trim()))); } catch (e) {} }
         if (!t.includes('<svg')) continue;
         if (store) store.put(url, new Response(t, { headers: { 'Content-Type': 'image/svg+xml' } })).catch(() => {});
         return (svgMem[url] = t);

@@ -9,6 +9,28 @@ permissions:
   contents: write
 
 jobs:
+  # A tarkov.dev API-t élőben is kipróbáljuk (az eredmény a naplóban látszik, a buildet nem állítja meg).
+  live-api-test:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: CORS fejlécek az app szemszögéből
+        run: |
+          curl -s -D - -o /dev/null -H 'Origin: https://localhost' 'https://api.tarkov.dev/graphql?query=%7Bmaps%7Bname%7D%7D' | grep -iE '^HTTP|access-control|cf-' || true
+          curl -s -D - -o /dev/null -X OPTIONS -H 'Origin: https://localhost' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type' https://api.tarkov.dev/graphql | grep -iE '^HTTP|access-control' || true
+      - name: Playwright
+        working-directory: tarkov-apk/scripts
+        run: npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: App kipróbálása a valódi API-val
+        run: |
+          (cd web/tarkov && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 2
+          node tarkov-apk/scripts/live-test.js http://localhost:8765/index.html
+
   build:
     runs-on: ubuntu-latest
     steps:

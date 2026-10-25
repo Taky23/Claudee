@@ -327,13 +327,13 @@ function inlineVars(query, vars) {
 }
 async function gql(query, variables = {}) {
   const q = inlineVars(query, { lang: S.lang, gm: S.mode, ...variables });
-  let res = null;
-  try { res = await fetch(API + '?query=' + encodeURIComponent(q)); } catch (e) {}
+  let res = null, netErr = null;
+  try { res = await fetch(API + '?query=' + encodeURIComponent(q)); } catch (e) { netErr = e; }
   if (!res || !res.ok) {
     try {
       res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
     } catch (e) {
-      throw new Error('Nem sikerült elérni a tarkov.dev-et.');
+      throw new Error('Nem sikerült elérni a tarkov.dev-et. (' + ((e || netErr) && (e || netErr).message || 'hálózati hiba') + ')');
     }
   }
   if (!res.ok) throw new Error('A tarkov.dev hibát jelzett (' + res.status + ').');
@@ -561,7 +561,7 @@ document.getElementById('caliber').addEventListener('change', e => { S.caliber =
 async function gqlFirst(queries) {
   let err;
   for (const q of queries) {
-    try { return await gql(q); } catch (e) { err = e; }
+    try { return await gql(q); } catch (e) { err = e; console.warn('tarkov.dev lekérdezés elbukott:', e.message); }
   }
   throw err;
 }
