@@ -1132,6 +1132,15 @@ function markDone(e) {
   logEv('done', e);
   setTimeout(() => nextPopup(e.id), 400);
 }
+// Egy gombnyomásra: ha még nincs a listán, felveszi; az összes részt megnézettre állítja, és befejezett lesz.
+function allSeenDone(m) {
+  let e = S.list[m.id];
+  if (!e) e = S.list[m.id] = Object.assign(snapshot(m), { status: 'plan', progress: 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() });
+  const was = e.status, eps = e.episodes || m.episodes || 0;
+  if (eps > e.progress) { if (!e.progress) logEv('start', e); logEv('ep', e, eps - e.progress); e.progress = eps; }
+  e.status = 'done'; e.updated = Date.now(); save();
+  if (was !== 'done') markDone(e);
+}
 const STATUSES = [['watching', '▶️ Nézem'], ['plan', '📌 Tervezem'], ['done', '✅ Befejeztem'], ['paused', '⏸️ Szüneteltetem'], ['dropped', '🗑️ Abbahagytam']];
 async function openAnime(id, fromHistory) {
   const modal = $('modal');
@@ -1242,9 +1251,13 @@ function renderEps(m) {
   });
 }
 function listEditor(m, e) {
-  if (!e) return `<b>Még nincs a listádon</b><div class="chips" style="flex-wrap:wrap">${STATUSES.slice(0, 3).map(([k, n]) => `<button class="chip" data-add="${k}">${n}</button>`).join('')}</div>`;
+  // „Mind láttam" gomb: csak ha ismert a részszám, és még nem befejezett + teljes.
+  const allSeenBtn = (m.episodes && !(e && e.status === 'done' && e.progress >= e.episodes))
+    ? `<button class="btn full" id="allSeen" style="margin:10px 0 0;background:var(--grad);color:var(--on-accent);font-weight:800">✅ Mind a ${m.episodes} részt láttam → befejezett</button>` : '';
+  if (!e) return `<b>Még nincs a listádon</b><div class="chips" style="flex-wrap:wrap">${STATUSES.slice(0, 3).map(([k, n]) => `<button class="chip" data-add="${k}">${n}</button>`).join('')}</div>${allSeenBtn}`;
   return `
     <div class="chips" style="flex-wrap:wrap;padding-top:0">${STATUSES.map(([k, n]) => `<button class="chip ${e.status === k ? 'on' : ''}" data-st="${k}">${n}</button>`).join('')}</div>
+    ${allSeenBtn}
     <div class="row" style="margin-top:8px;justify-content:space-between">
       <span class="small">Hányadik résznél tartasz?</span>
       <div class="stepper"><button class="btn" data-ep="-1">−</button><span class="val" id="epVal">${e.progress}${e.episodes ? ' / ' + e.episodes : ''}</span><button class="btn hot" data-ep="1">+</button></div>
@@ -2080,6 +2093,8 @@ function bindEditor(m) {
     S.list[m.id] = Object.assign(snapshot(m), { status: b.dataset.add, progress: b.dataset.add === 'done' ? (m.episodes || 0) : 0, score: 0, rewatch: 0, note: '', added: Date.now(), updated: Date.now() });
     save(); toast('Hozzáadva a listádhoz 🌸'); rerender();
   });
+  const asb = modal.querySelector('#allSeen');
+  if (asb) asb.onclick = () => { allSeenDone(m); toast(`✅ Befejezett – mind a ${m.episodes} rész megnézve`); rerender(); renderEps(m); };
   const e = S.list[m.id];
   if (!e) return;
   const touch = () => { e.updated = Date.now(); save(); };
