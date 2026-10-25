@@ -1,0 +1,10 @@
+{
+  "appId": "hu.taky.tarkovhc",
+  "appName": "Tarkov Hardcore",
+  "webDir": "www",
+  "backgroundColor": "#0b0d0aff",
+  "android": {
+    "backgroundColor": "#0b0d0aff",
+    "allowMixedContent": false
+  }
+}

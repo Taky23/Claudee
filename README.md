@@ -120,6 +120,17 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 Helyben is kipróbálhatod: `cd web && python -m http.server`, majd nyisd meg a `http://localhost:8000` címet.
 
+## ☢️ Tarkov Hardcore (Android app)
+
+Önálló Android app (`tarkov-hardcore-apk/`), net nélkül működik: véletlenszerű, **kemény Escape from Tarkov szerződéseket** sorsol.
+
+- **3 nehézség:** Kemény (2 szabály, 3 újrasorsolás), Hardcore (3 szabály, 1 újrasorsolás, kötött extract, időlimit), Őrület (4 szabály, nincs újrasorsolás, átkozott fegyverek, ×4 pont).
+- **Szerződés:** pálya, napszak, fő cél (bossvadászat, PMC-ölés, fejlövések, szellem-raid, loot, tárgy, helyszín, túlélés), extract, időlimit, szabályok, és játékosonként fegyver, lőszer, páncél, gyógyszer, felszerelés. 1–5 fős csapat.
+- **Nincs visszaút:** el kell fogadni a raid előtt, utána raid-időzítő fut. Ha egy látott Hardcore/Őrület szerződés helyett újat kérsz, az megfutamodás (pontlevonás, széria nullázódik).
+- **Büntetés** bukás esetén, amit le kell tudnod, **napi kihívás** (mindenkinek ugyanaz), pontok, széria-bónusz, rangok (Timmytól a Tarkov istenig), statisztika pályánként, és a szerződés kimásolható a haveroknak.
+
+A kész `TarkovHardcore.apk` a GitHub **Releases** oldalán van (a `.github/workflows/tarkov-hardcore-apk.yml` építi). Generátor teszt: `node tarkov-hardcore-apk/test/gen.test.js`.
+
 ## 💻 EPUB Fordító (Windows program)
 
 Asztali program (`desktop/epub-fordito/`): **EPUB → TXT**, **TXT → EPUB**, és **angol → magyar fordítás DeepL-lel** úgy, hogy az EPUB szerkezete (fejezetek, kiemelések, képek, tartalomjegyzék) megmarad. A fordítás magyar idézőjeleket használ, a kész részeket menti, így megszakítás vagy elfogyott keret után folytatható. A kész `EpubFordito.exe` a GitHub **Releases** oldalán van (a `.github/workflows/epub-fordito.yml` építi Windowson). Részletek: [desktop/epub-fordito/README.md](desktop/epub-fordito/README.md).

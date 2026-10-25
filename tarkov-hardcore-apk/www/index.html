@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d0a">
+<title>Tarkov Hardcore</title>
+<style>
+:root {
+  --bg: #0b0d0a; --panel: #14170f; --panel2: #1b1f15; --line: #2c3322;
+  --text: #d9d6c3; --dim: #8a8b78; --acc: #c8b46a; --red: #d0412f; --red2: #7a1f16; --ok: #6f9c4a;
+  --mono: ui-monospace, "Roboto Mono", "DejaVu Sans Mono", monospace;
+  --cond: "Roboto Condensed", "sans-serif-condensed", "Arial Narrow", system-ui, sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 var(--cond); }
+body { padding: env(safe-area-inset-top) 0 calc(64px + env(safe-area-inset-bottom)); min-height: 100vh;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px); }
+button { font: inherit; color: inherit; cursor: pointer; }
+header { padding: 18px 16px 6px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+header h1 { margin: 0; font-size: 22px; letter-spacing: .14em; text-transform: uppercase; font-weight: 800; }
+header h1 span { color: var(--red); }
+header .rank { font: 12px var(--mono); color: var(--acc); text-align: right; white-space: nowrap; }
+main { padding: 0 16px 16px; max-width: 560px; margin: 0 auto; }
+.tab { display: none; } .tab.on { display: block; }
+.lbl { font: 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin: 14px 0 6px; }
+.seg { display: flex; gap: 6px; }
+.seg button { flex: 1; padding: 10px 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; font-weight: 700; }
+.seg button.on { border-color: var(--acc); color: var(--acc); background: #1f1d12; }
+.seg.d button.on[data-d="3"] { border-color: var(--red); color: #ff7a63; background: #241210; }
+.hint { color: var(--dim); font-size: 13px; margin: 6px 0 0; }
+.big { width: 100%; margin-top: 16px; padding: 16px; border: 1px solid var(--red); background: linear-gradient(#2a1310, #1c0d0b);
+  color: #ffb4a6; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; border-radius: 3px; font-size: 16px; }
+.big:active { transform: translateY(1px); }
+.big.alt { border-color: var(--line); background: var(--panel); color: var(--text); }
+.card { margin-top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; position: relative; overflow: hidden; }
+.card .head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--panel2); border-bottom: 1px dashed var(--line);
+  font: 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.card .head b { color: var(--acc); font-weight: 600; }
+.stamp { position: absolute; right: 10px; top: 44px; transform: rotate(-12deg); border: 2px solid var(--red); color: var(--red);
+  font: 700 13px var(--mono); padding: 2px 8px; letter-spacing: .15em; opacity: .85; pointer-events: none; }
+.stamp.ok { border-color: var(--ok); color: var(--ok); }
+.row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border-bottom: 1px solid #1d2117; }
+.row:last-child { border-bottom: 0; }
+.row .k { width: 84px; flex: none; font: 11px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+.row .v { flex: 1; }
+.row .v.map { font-size: 22px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #efe9cf; }
+.row .v.obj { font-weight: 700; color: #f1e3a6; }
+.rr { flex: none; width: 34px; height: 30px; border: 1px solid var(--line); background: #10130c; border-radius: 3px; color: var(--acc); font-size: 15px; }
+.rr:disabled { opacity: .25; }
+.player { border-top: 1px solid var(--line); }
+.player .ph { padding: 8px 12px 0; font: 12px var(--mono); color: var(--acc); letter-spacing: .1em; text-transform: uppercase; }
+.punish { margin: 0; padding: 10px 12px; background: #1d0f0c; border-top: 1px solid var(--red2); color: #ff9c8a; font-size: 14px; }
+.punish b { font: 11px var(--mono); letter-spacing: .1em; display: block; color: var(--red); margin-bottom: 2px; }
+.foot { display: flex; justify-content: space-between; padding: 8px 12px; font: 12px var(--mono); color: var(--dim); background: var(--panel2); border-top: 1px dashed var(--line); }
+.foot b { color: var(--acc); }
+.btns { display: flex; gap: 8px; margin-top: 10px; }
+.btns button { flex: 1; padding: 13px 8px; border-radius: 3px; border: 1px solid var(--line); background: var(--panel); font-weight: 800; letter-spacing: .05em; }
+.btns .go { border-color: var(--ok); color: #b9e29a; background: #141c0e; }
+.btns .die { border-color: var(--red); color: #ff9c8a; background: #1d0f0c; }
+.timer { margin-top: 16px; padding: 12px; border: 1px solid var(--line); background: #0f120c; text-align: center; border-radius: 3px; }
+.timer .t { font: 700 40px var(--mono); letter-spacing: .05em; }
+.timer .s { font: 12px var(--mono); color: var(--dim); }
+.timer.late { border-color: var(--red); } .timer.late .t { color: var(--red); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.stats div { background: var(--panel); border: 1px solid var(--line); padding: 10px 6px; text-align: center; border-radius: 3px; }
+.stats b { display: block; font: 700 22px var(--mono); color: #efe9cf; }
+.stats span { font: 10px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.rankbox { margin-top: 12px; padding: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; }
+.rankbox .n { font-size: 26px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.bar { height: 8px; background: #0b0d0a; border: 1px solid var(--line); margin-top: 8px; }
+.bar i { display: block; height: 100%; background: var(--acc); }
+.hist { padding: 8px 12px; border-bottom: 1px solid #1d2117; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+.hist small { color: var(--dim); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+.maps .hist span:last-child { font-family: var(--mono); font-size: 13px; }
+.link { background: none; border: 0; color: var(--dim); text-decoration: underline; padding: 12px 0; font-size: 13px; }
+nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: #0e100b; border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+nav button { flex: 1; padding: 10px 0 12px; background: none; border: 0; color: var(--dim); font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+nav button i { display: block; font-style: normal; font-size: 20px; margin-bottom: 2px; }
+nav button.on { color: var(--acc); box-shadow: inset 0 2px 0 var(--acc); }
+.toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); background: #262b1c; border: 1px solid var(--acc); padding: 10px 14px; border-radius: 3px;
+  font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 9; max-width: 90vw; text-align: center; }
+.toast.on { opacity: 1; }
+.empty { color: var(--dim); text-align: center; padding: 28px 12px; font-size: 14px; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
+.modal.on { display: flex; }
+.modal .box { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 16px; max-width: 420px; width: 100%; }
+.modal h3 { margin: 0 0 8px; letter-spacing: .06em; text-transform: uppercase; }
+.modal p { margin: 0 0 12px; color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tarkov <span>Hardcore</span></h1>
+  <div class="rank" id="hdrRank"></div>
+</header>
+<main>
+  <section class="tab on" id="t-gen">
+    <div class="lbl">Nehézség</div>
+    <div class="seg d" id="diffSeg"></div>
+    <p class="hint" id="diffHint"></p>
+    <div class="lbl">Csapat</div>
+    <div class="seg" id="playerSeg"></div>
+    <div id="genOut"></div>
+  </section>
+
+  <section class="tab" id="t-daily">
+    <p class="hint">Minden nap egy új Hardcore szerződés. Mindenkinek ugyanaz, így a haverokkal össze tudjátok mérni. Egy próbálkozás, újrasorsolás nincs.</p>
+    <div id="dailyOut"></div>
+  </section>
+
+  <section class="tab" id="t-stats">
+    <div id="statsOut"></div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="gen" class="on"><i>☢️</i>Szerződés</button>
+  <button data-tab="daily"><i>📅</i>Napi</button>
+  <button data-tab="stats"><i>🎖️</i>Profil</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="box"><h3 id="mTitle"></h3><p id="mText"></p><div class="btns" id="mBtns"></div></div></div>
+
+<script src="gen.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

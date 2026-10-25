@@ -1,0 +1,84 @@
+name: Tarkov Hardcore APK (Android)
+
+on:
+  push:
+    paths: ['tarkov-hardcore-apk/**', '.github/workflows/tarkov-hardcore-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generátor tesztek
+        working-directory: tarkov-hardcore-apk
+        run: node test/gen.test.js
+
+      - name: Függőségek telepítése
+        working-directory: tarkov-hardcore-apk
+        run: npm install --no-audit --no-fund
+
+      - name: Android projekt létrehozása
+        working-directory: tarkov-hardcore-apk
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Ikon és indítókép generálása
+        working-directory: tarkov-hardcore-apk
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#0b0d0a' --iconBackgroundColorDark '#0b0d0a' --splashBackgroundColor '#0b0d0a' --splashBackgroundColorDark '#0b0d0a'
+
+      - name: Vissza gomb kezelése (natív MainActivity)
+        working-directory: tarkov-hardcore-apk
+        run: cp native/MainActivity.java android/app/src/main/java/hu/taky/tarkovhc/MainActivity.java
+
+      - name: Rezgés engedély
+        working-directory: tarkov-hardcore-apk
+        run: |
+          node -e '
+            const fs=require("fs");const p="android/app/src/main/AndroidManifest.xml";let m=fs.readFileSync(p,"utf8");
+            if(!m.includes("android.permission.VIBRATE")){m=m.replace("</manifest>","    <uses-permission android:name=\"android.permission.VIBRATE\" />\n</manifest>");fs.writeFileSync(p,m);}
+            console.log(m.includes("VIBRATE")?"VIBRATE ok":"hiba");
+          '
+
+      - name: Állandó aláíró kulcs (hogy a frissítések törlés nélkül települjenek)
+        run: mkdir -p ~/.android && cp apk/debug.keystore ~/.android/debug.keystore
+
+      - name: SDK útvonal
+        working-directory: tarkov-hardcore-apk/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: APK építése
+        working-directory: tarkov-hardcore-apk/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: APK átnevezése
+        run: cp tarkov-hardcore-apk/android/app/build/outputs/apk/debug/app-debug.apk TarkovHardcore.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TarkovHardcore-apk
+          path: TarkovHardcore.apk
+
+      # Release-ből telefonon is egy koppintással letölthető (az artifacthoz bejelentkezés kell, és ZIP-ben jön).
+      - name: Kiadás (közvetlen letöltési link)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete tarkov-hardcore-apk --yes --cleanup-tag || true
+          gh release create tarkov-hardcore-apk TarkovHardcore.apk --target "${{ github.sha }}" \
+            --title "Tarkov Hardcore – Android (APK)" \
+            --notes "Töltsd le a TarkovHardcore.apk fájlt a telefonodra, és telepítsd (az ismeretlen forrásból telepítést engedélyezni kell). Véletlenszerű hardcore Escape from Tarkov szerződések: 3 nehézség, 1–5 fős csapat, napi kihívás, büntetések, pontok és rangok. Net nélkül működik."
