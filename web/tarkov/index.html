@@ -318,22 +318,22 @@ function clearCache() {
   try { Object.keys(localStorage).filter(k => k.startsWith('tarkov-cache:')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
 }
 
-// A változókat beírjuk a lekérdezésbe, így sima GET kérés mehet ki: ehhez nem kell CORS preflight,
-// és a tarkov.dev gyorsítótára is ki tudja szolgálni.
+// A változókat beírjuk a lekérdezésbe, így a kérés egyszerű marad.
 function inlineVars(query, vars) {
   return query
     .replace(/^\s*query\s*\([^)]*\)\s*/, '')
     .replace(/\$(\w+)/g, (_, k) => (k === 'lang' || k === 'gm') ? vars[k] : JSON.stringify(vars[k]));
 }
+// Úgy kérdezünk, mint maga a tarkov.dev oldal: POST, Content-Type fejléc nélkül. Így „egyszerű” kérés,
+// nincs CORS előellenőrzés (OPTIONS), amit az API elutasít. A GET-et ma már 422-vel visszadobja.
 async function gql(query, variables = {}) {
-  const q = inlineVars(query, { lang: S.lang, gm: S.mode, ...variables });
-  let res = null, netErr = null;
-  try { res = await fetch(API + '?query=' + encodeURIComponent(q)); } catch (e) { netErr = e; }
-  if (!res || !res.ok) {
-    try {
-      res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
-    } catch (e) {
-      throw new Error('Nem sikerült elérni a tarkov.dev-et. (' + ((e || netErr) && (e || netErr).message || 'hálózati hiba') + ')');
+  const q = inlineVars(query, { lang: S.lang, gm: S.mode, ...variables }).replace(/\s{2,}/g, ' ');
+  let res = null;
+  try {
+    res = await fetch(API, { method: 'POST', headers: { Accept: 'application/json' }, body: JSON.stringify({ query: q }) });
+  } catch (e) {
+    try { res = await fetch(API + '?query=' + encodeURIComponent(q)); } catch (e2) {
+      throw new Error('Nem sikerült elérni a tarkov.dev-et. (' + (e.message || 'hálózati hiba') + ')');
     }
   }
   if (!res.ok) throw new Error('A tarkov.dev hibát jelzett (' + res.status + ').');

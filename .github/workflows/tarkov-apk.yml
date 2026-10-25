@@ -21,6 +21,8 @@ jobs:
       - name: CORS fejlécek az app szemszögéből
         run: |
           curl -s -D - -o /dev/null -H 'Origin: https://localhost' 'https://api.tarkov.dev/graphql?query=%7Bmaps%7Bname%7D%7D' | grep -iE '^HTTP|access-control|cf-' || true
+          echo '--- POST (mint a tarkov.dev oldal) ---'
+          curl -s -D - -H 'Origin: https://localhost' -H 'Accept: application/json' --data '{"query":"{ maps { name } }"}' https://api.tarkov.dev/graphql | grep -iE '^HTTP|access-control|"data"' | cut -c1-200 || true
           curl -s -D - -o /dev/null -X OPTIONS -H 'Origin: https://localhost' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type' https://api.tarkov.dev/graphql | grep -iE '^HTTP|access-control' || true
       - name: Playwright
         working-directory: tarkov-apk/scripts

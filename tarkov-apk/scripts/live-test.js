@@ -36,7 +36,7 @@ const { chromium } = require('playwright');
   await p.click('nav [data-view="v-price"]');
   await p.fill('#q', 'salewa');
   await p.waitForSelector('#priceOut .card, #priceOut .err', { timeout: 30000 }).catch(() => {});
-  const items = await p.locator('#priceOut .card').count();
+  const items = await p.locator('#priceOut .card .item').count();
   check('Árkeresés', items > 0, `${items} találat`);
 
   await p.click('nav [data-view="v-ammo"]');
