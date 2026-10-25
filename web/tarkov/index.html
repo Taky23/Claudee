@@ -282,7 +282,6 @@ textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid va
 <script src="maps-data.js"></script>
 <script src="map.js"></script>
 <script>
-const API = 'https://api.tarkov.dev/graphql';
 const STORE = 'tarkov-seged-v1';
 const DAY = 24 * 3600 * 1000;
 
@@ -298,49 +297,179 @@ const S = Object.assign({
 }, loadState());
 function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
 
-// Nagyobb, ritkán változó adatok gyorsítótárazva (questek, hideout, lőszer).
-const mem = {};
-function cacheKey(name) { return `tarkov-cache:${name}:${S.mode}:${S.lang}`; }
+// ---------- Adatok (json.tarkov.dev) ----------
+// A tarkov.dev GraphQL API-ja (api.tarkov.dev) jelenleg minden kérést 422-vel elutasít, ezért a tarkov.dev
+// oldal saját JSON adatfájljait használjuk. Ezekben a nevek fordítási kulcsok; a szöveg külön
+// <fájl>_<nyelv> fájlban van. A letöltött adatot IndexedDB-ben tartjuk, így net nélkül is megy.
+const JSON_API = 'https://json.tarkov.dev/';
+const idb = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('tarkov-seged', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+  const run = (mode, fn) => open().then(db => new Promise(res => {
+    const tx = db.transaction('kv', mode);
+    const q = fn(tx.objectStore('kv'));
+    tx.oncomplete = () => res(q && q.result);
+    tx.onerror = tx.onabort = () => res(undefined);
+  })).catch(() => undefined);
+  return { get: k => run('readonly', s => s.get(k)), set: (k, v) => run('readwrite', s => s.put(v, k)), clear: () => run('readwrite', s => s.clear()) };
+})();
+
+const mem = {}, inflight = {};
+function cacheKey(name) { return `${name}:${S.mode}:${S.lang}`; }
 async function cached(name, ttl, fetcher) {
   const key = cacheKey(name);
-  if (mem[key]) return mem[key];
-  try {
-    const c = JSON.parse(localStorage.getItem(key));
-    if (c && Date.now() - c.t < ttl) return (mem[key] = c.d);
-  } catch (e) {}
-  const d = await fetcher();
-  mem[key] = d;
-  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d })); } catch (e) {}
-  return d;
+  if (mem[key] && Date.now() - mem[key].t < ttl) return mem[key].d;
+  if (inflight[key]) return inflight[key];
+  return (inflight[key] = (async () => {
+    const c = await idb.get(key);
+    if (c && Date.now() - c.t < ttl) { mem[key] = c; return c.d; }
+    try {
+      const d = await fetcher();
+      mem[key] = { t: Date.now(), d };
+      idb.set(key, mem[key]);
+      return d;
+    } catch (e) {
+      // Net nélkül a régebbi adat is jobb a semminél.
+      if (c) { mem[key] = c; return c.d; }
+      throw e;
+    }
+  })().finally(() => { delete inflight[key]; }));
 }
 function clearCache() {
   Object.keys(mem).forEach(k => delete mem[k]);
-  try { Object.keys(localStorage).filter(k => k.startsWith('tarkov-cache:')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+  idb.clear();
 }
+// A régi verzió localStorage-ban tartotta a gyorsítótárat; az már csak a helyet foglalja.
+try { Object.keys(localStorage).filter(k => k.startsWith('tarkov-cache:')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
 
-// A változókat beírjuk a lekérdezésbe, így a kérés egyszerű marad.
-function inlineVars(query, vars) {
-  return query
-    .replace(/^\s*query\s*\([^)]*\)\s*/, '')
-    .replace(/\$(\w+)/g, (_, k) => (k === 'lang' || k === 'gm') ? vars[k] : JSON.stringify(vars[k]));
-}
-// Úgy kérdezünk, mint maga a tarkov.dev oldal: POST, Content-Type fejléc nélkül. Így „egyszerű” kérés,
-// nincs CORS előellenőrzés (OPTIONS), amit az API elutasít. A GET-et ma már 422-vel visszadobja.
-async function gql(query, variables = {}) {
-  const q = inlineVars(query, { lang: S.lang, gm: S.mode, ...variables }).replace(/\s{2,}/g, ' ');
-  let res = null;
-  try {
-    res = await fetch(API, { method: 'POST', headers: { Accept: 'application/json' }, body: JSON.stringify({ query: q }) });
-  } catch (e) {
-    try { res = await fetch(API + '?query=' + encodeURIComponent(q)); } catch (e2) {
-      throw new Error('Nem sikerült elérni a tarkov.dev-et. (' + (e.message || 'hálózati hiba') + ')');
-    }
+async function jget(path) {
+  let res;
+  try { res = await fetch(JSON_API + path); } catch (e) {
+    throw new Error('Nem sikerült elérni a tarkov.dev-et. (' + (e.message || 'hálózati hiba') + ')');
   }
   if (!res.ok) throw new Error('A tarkov.dev hibát jelzett (' + res.status + ').');
-  const j = await res.json();
-  if (!j.data) throw new Error(j.errors && j.errors[0] ? j.errors[0].message : 'Ismeretlen hiba');
-  return j.data;
+  return res.json();
 }
+// Egy adatfájl a kiválasztott nyelv (és tartaléknak az angol) fordításaival.
+async function tdev(name) {
+  const gm = S.mode === 'pve' ? 'pve' : 'regular';
+  const opt = p => jget(p).then(j => j.data || {}, () => ({}));
+  const [main, d1, d2] = await Promise.all([jget(`${gm}/${name}`), opt(`${gm}/${name}_${S.lang}`), S.lang === 'en' ? {} : opt(`${gm}/${name}_en`)]);
+  return { data: main.data, tr: k => (k == null ? k : (d1[k] ?? d2[k] ?? k)) };
+}
+
+// A flea piaci díj a tarkov.dev képletével (közelítés).
+function fleaFee(base, price, flea) {
+  if (!base || !price) return 0;
+  const ti = flea.sellOfferFeeRate ?? 0.05, tr = flea.sellRequirementFeeRate ?? 0.05;
+  let p0 = Math.log10(base / price), pr = Math.log10(price / base);
+  if (price < base) p0 = Math.pow(p0, 1.08); else pr = Math.pow(pr, 1.08);
+  return Math.round(base * ti * Math.pow(4, p0) + price * tr * Math.pow(4, pr));
+}
+
+const loadTraderNames = () => cached('traders', DAY, async () => {
+  const { data, tr } = await tdev('traders');
+  const out = {};
+  for (const t of Object.values(data)) out[t.id] = { id: t.id, name: tr(t.name), normalizedName: t.normalizedName };
+  return out;
+});
+
+const loadItems = () => cached('items', 30 * 60 * 1000, async () => {
+  const [{ data, tr }, traders] = await Promise.all([tdev('items'), loadTraderNames()]);
+  const flea = data.fleaMarket || {};
+  const out = {};
+  for (const r of Object.values(data.items)) {
+    const it = {
+      id: r.id, name: tr(r.name), shortName: tr(r.shortName), normalizedName: r.normalizedName, width: r.width, height: r.height,
+      iconLink: r.iconLink, wikiLink: r.wikiLink, link: r.link, types: r.types || [], basePrice: r.basePrice,
+      avg24hPrice: r.avg24hPrice, lastLowPrice: r.lastLowPrice, low24hPrice: r.low24hPrice, high24hPrice: r.high24hPrice,
+      lastOfferCount: r.lastOfferCount, changeLast48hPercent: r.changeLast48hPercent,
+      sellFor: (r.sellToTrader || []).map(s => ({ price: s.price, currency: s.currency, priceRUB: s.priceRUB, vendor: traders[s.trader] || { name: '?', normalizedName: '?' } })),
+      fleaMarketFee: r.lastLowPrice ? fleaFee(r.basePrice, r.lastLowPrice, flea) : 0,
+    };
+    const p = r.properties;
+    if (p && p.propertiesType === 'ItemPropertiesAmmo') {
+      it.ammo = { caliber: p.caliber, damage: p.damage, penetrationPower: p.penetrationPower, armorDamage: p.armorDamage, fragmentationChance: p.fragmentationChance, initialSpeed: p.initialSpeed, projectileCount: p.projectileCount, tracer: p.tracer };
+    }
+    out[r.id] = it;
+  }
+  return out;
+});
+
+const loadMaps = () => cached('maps', DAY, async () => {
+  const { data, tr } = await tdev('maps');
+  return Object.values(data.maps).map(m => ({
+    id: m.id, name: tr(m.name), normalizedName: m.normalizedName,
+    extracts: (m.extracts || []).map(e => ({ name: tr(e.name), faction: e.faction, position: e.position })),
+    transits: (m.transits || []).map(t => ({ description: tr(t.description), position: t.position })),
+  }));
+});
+
+// Questek és a céljaik térképes adatai egyben (egy letöltésből).
+let lastTasks = null;
+const loadTaskBundle = () => cached('tasks', DAY, async () => {
+  const [{ data, tr }, items, traders, maps] = await Promise.all([tdev('tasks'), loadItems(), loadTraderNames(), loadMaps()]);
+  const mapById = {};
+  for (const m of maps) mapById[m.id] = { id: m.id, name: m.name };
+  const mapRef = id => mapById[id] || { id, name: id };
+  const itemRef = id => { const i = items[id]; return i ? { id, name: i.name, shortName: i.shortName } : { id, name: id, shortName: '' }; };
+  const qItems = data.questItems || {};
+  const qRef = id => { const q = qItems[id]; return q ? { id, name: tr(q.name), shortName: tr(q.shortName) } : { id, name: '?', shortName: '' }; };
+  const tasks = [], geo = {};
+  for (const t of Object.values(data.tasks)) {
+    const fin = t.finishRewards || {};
+    tasks.push({
+      id: t.id, name: tr(t.name), normalizedName: t.normalizedName, minPlayerLevel: t.minPlayerLevel,
+      kappaRequired: !!t.kappaRequired, lightkeeperRequired: !!t.lightkeeperRequired, wikiLink: t.wikiLink,
+      experience: t.experience, factionName: t.factionName,
+      trader: traders[t.trader] || { name: '?', normalizedName: 'unknown' },
+      map: t.map ? mapRef(t.map) : null,
+      taskRequirements: (t.taskRequirements || []).map(r => ({ task: { id: r.task }, status: r.status })),
+      neededKeys: (t.neededKeys || []).map(k => ({ map: k.map ? mapRef(k.map) : null, keys: (k.keys || []).map(itemRef) })),
+      finishRewards: {
+        traderStanding: (fin.traderStanding || []).map(s => ({ trader: traders[s.trader] || { name: '?' }, standing: s.standing })),
+        items: (fin.items || []).map(i => ({ count: i.count, item: itemRef(i.item) })),
+      },
+      objectives: (t.objectives || []).map(o => {
+        const g = {};
+        if (o.zones && o.zones.length) g.zones = o.zones.filter(z => z.position).map(z => ({ map: { id: z.map }, position: z.position, outline: z.outline }));
+        if (o.possibleLocations && o.possibleLocations.length) g.possibleLocations = o.possibleLocations.map(l => ({ map: { id: l.map }, positions: l.positions || [] }));
+        if (o.markerItem) g.markerItem = itemRef(o.markerItem);
+        if (o.questItem) g.questItem = qRef(o.questItem);
+        if (o.useAny && o.useAny.length) g.useAny = o.useAny.map(itemRef);
+        if (Object.keys(g).length) geo[o.id] = g;
+        return {
+          id: o.id, type: o.type, description: tr(o.description), optional: !!o.optional, count: o.count, foundInRaid: !!o.foundInRaid,
+          maps: (o.maps || []).map(mapRef), items: o.items ? o.items.map(itemRef) : (o.item ? [itemRef(o.item)] : undefined),
+        };
+      }),
+    });
+  }
+  return { tasks, geo };
+});
+const loadTasks = () => loadTaskBundle().then(b => (lastTasks = b.tasks));
+const loadTaskGeo = () => loadTaskBundle().then(b => b.geo);
+
+const loadHideout = () => cached('hideout', DAY, async () => {
+  const [{ data, tr }, items] = await Promise.all([tdev('hideout'), loadItems()]);
+  return Object.values(data).map(st => ({
+    id: st.id, name: tr(st.name), normalizedName: st.normalizedName,
+    levels: (st.levels || []).map(l => ({
+      level: l.level,
+      itemRequirements: (l.itemRequirements || []).map(r => {
+        const i = items[r.item] || {};
+        return { count: r.count, item: { id: r.item, name: i.name || r.item, shortName: i.shortName, lastLowPrice: i.lastLowPrice, avg24hPrice: i.avg24hPrice } };
+      }),
+    })),
+  }));
+});
+
+const loadAmmo = () => loadItems().then(items => Object.values(items).filter(i => i.ammo && i.ammo.caliber).map(i => Object.assign({ item: i }, i.ammo)));
 
 // ---------- Segédek ----------
 const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -349,12 +478,6 @@ const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = se
 const errHtml = e => `<div class="card"><p class="err">⚠️ ${esc(e.message)}</p><p class="small">Van internet? Ha igen, lehet, hogy a tarkov.dev épp akadozik – próbáld újra pár perc múlva.</p><button class="btn full" data-retry>🔄 Újra</button></div>`;
 
 // ---------- Árak ----------
-const ITEM_FIELDS = `
-  id name shortName width height iconLink wikiLink link types
-  avg24hPrice lastLowPrice changeLast48hPercent fleaMarketFee
-  sellFor { price currency priceRUB vendor { name normalizedName } }
-`;
-
 function priceInfo(it) {
   const noFlea = (it.types || []).includes('noFlea');
   const traders = (it.sellFor || []).filter(s => s.vendor.normalizedName !== 'flea-market');
@@ -405,12 +528,9 @@ async function itemDetails(card, id) {
   box.hidden = false;
   box.innerHTML = '<span class="small">Betöltés…</span>';
   try {
-    const d = await gql(`query($ids:[ID],$lang:LanguageCode,$gm:GameMode){ items(ids:$ids, lang:$lang, gameMode:$gm){
-      id low24hPrice high24hPrice lastOfferCount wikiLink link
-      sellFor { priceRUB price currency vendor { name normalizedName } }
-      usedInTasks { id name trader { name } }
-    } }`, { ids: [id] });
-    const it = d.items[0];
+    const [items, tasks] = await Promise.all([loadItems(), loadTasks()]);
+    const it = Object.assign({}, items[id]);
+    it.usedInTasks = tasks.filter(t => t.objectives.some(o => (o.items || []).some(i => i.id === id)));
     const traders = it.sellFor.filter(s => s.vendor.normalizedName !== 'flea-market').sort((a, b) => b.priceRUB - a.priceRUB);
     box.innerHTML = `
       <p><span class="muted">24 óra:</span> ${rub(it.low24hPrice)} – ${rub(it.high24hPrice)} · <span class="muted">ajánlat:</span> ${it.lastOfferCount ?? '–'}</p>
@@ -461,12 +581,19 @@ async function renderPrices(list, emptyText) {
 const search = debounce(async q => {
   if (priceView !== 'search') return;
   if (q.length < 2) { priceOut.innerHTML = '<p class="small">Írd be egy tárgy nevét (legalább 2 betű).</p>'; return; }
-  priceOut.innerHTML = '<p class="loading">Keresés…</p>';
+  priceOut.innerHTML = '<p class="loading">Keresés… (első alkalommal pár MB árlista töltődik le)</p>';
   try {
-    const d = await gql(`query($name:String,$lang:LanguageCode,$gm:GameMode){ items(name:$name, lang:$lang, gameMode:$gm, limit:25){ ${ITEM_FIELDS} } }`, { name: q });
+    const all = Object.values(await loadItems());
     if (document.getElementById('q').value.trim() !== q) return;
-    lastResults = d.items;
-    renderPrices(d.items, 'Nincs találat. Próbáld angolul vagy rövidebben (pl. „graphics”, „ledx”).');
+    const ql = q.toLowerCase(), slug = ql.replace(/\s+/g, '-');
+    const score = i => {
+      const sn = (i.shortName || '').toLowerCase(), n = (i.name || '').toLowerCase();
+      return sn === ql ? 0 : n.startsWith(ql) || sn.startsWith(ql) ? 1 : 2;
+    };
+    const hits = all.filter(i => (i.name || '').toLowerCase().includes(ql) || (i.shortName || '').toLowerCase().includes(ql) || (i.normalizedName || '').includes(slug))
+      .sort((a, b) => score(a) - score(b) || a.name.length - b.name.length).slice(0, 25);
+    lastResults = hits;
+    renderPrices(hits, 'Nincs találat. Próbáld angolul vagy rövidebben (pl. „graphics”, „ledx”).');
   } catch (e) { priceOut.innerHTML = errHtml(e); }
 }, 350);
 
@@ -475,8 +602,8 @@ async function showFavs() {
   if (!ids.length) { priceOut.innerHTML = '<p class="small">Még nincs kedvenced. Keresésnél a ☆ gombbal adhatsz hozzá – így egy pillantással látod az árukat.</p>'; return; }
   priceOut.innerHTML = '<p class="loading">Árak frissítése…</p>';
   try {
-    const d = await gql(`query($ids:[ID],$lang:LanguageCode,$gm:GameMode){ items(ids:$ids, lang:$lang, gameMode:$gm){ ${ITEM_FIELDS} } }`, { ids });
-    renderPrices(d.items.sort((a, b) => a.name.localeCompare(b.name)), '');
+    const items = await loadItems();
+    renderPrices(ids.map(id => items[id]).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)), '');
   } catch (e) { priceOut.innerHTML = errHtml(e); }
 }
 
@@ -522,11 +649,6 @@ function penColor(p) {
   if (p >= 20) return '#a3e635';
   return '#9ca3af';
 }
-const loadAmmo = () => cached('ammo', DAY / 2, async () => (await gql(`query($lang:LanguageCode,$gm:GameMode){ ammo(lang:$lang, gameMode:$gm){
-  caliber damage penetrationPower armorDamage fragmentationChance initialSpeed projectileCount tracer
-  item { id name shortName lastLowPrice avg24hPrice types }
-} }`)).ammo.filter(a => a && a.item));
-
 async function renderAmmo() {
   const out = document.getElementById('ammoOut');
   let ammo;
@@ -557,72 +679,6 @@ async function renderAmmo() {
 document.getElementById('caliber').addEventListener('change', e => { S.caliber = e.target.value; save(); renderAmmo(); });
 
 // ---------- Questek ----------
-// Először a bővebb lekérdezést próbáljuk; ha a tarkov.dev séma épp nem ismer egy mezőt, jön az egyszerűbb.
-async function gqlFirst(queries) {
-  let err;
-  for (const q of queries) {
-    try { return await gql(q); } catch (e) { err = e; console.warn('tarkov.dev lekérdezés elbukott:', e.message); }
-  }
-  throw err;
-}
-const TASK_HEAD = `id name normalizedName minPlayerLevel kappaRequired lightkeeperRequired wikiLink trader { name normalizedName } map { id name }`;
-const loadTasks = () => cached('tasks2', DAY, async () => (await gqlFirst([
-  `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ ${TASK_HEAD} experience factionName
-    taskRequirements { task { id } status }
-    neededKeys { keys { id name shortName } map { id name } }
-    finishRewards { traderStanding { trader { name } standing } items { count item { id name shortName } } }
-    objectives { id type description optional maps { id name }
-      ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
-      ... on TaskObjectiveShoot { count }
-    }
-  } }`,
-  `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ ${TASK_HEAD} factionName
-    taskRequirements { task { id } status }
-    objectives { id type description optional maps { id name }
-      ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
-    }
-  } }`,
-  `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ ${TASK_HEAD}
-    objectives { id type description optional
-      ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
-    }
-  } }`,
-])).tasks);
-
-// A célok térképes adatai (zónák, questtárgyak lelőhelyei) külön jönnek. Ha az egyben kérés elbukik,
-// típusonként külön próbáljuk, és ami sikerül, azt összefésüljük.
-const ZONE_FIELDS = 'zones { id map { id } position { x y z } outline { x y z } top bottom }';
-const GEO_PARTS = [
-  `... on TaskObjectiveBasic { ${ZONE_FIELDS} }`,
-  `... on TaskObjectiveMark { markerItem { id name shortName } ${ZONE_FIELDS} }`,
-  `... on TaskObjectiveQuestItem { questItem { id name shortName } possibleLocations { map { id } positions { x y z } } ${ZONE_FIELDS} }`,
-  `... on TaskObjectiveItem { ${ZONE_FIELDS} }`,
-  `... on TaskObjectiveUseItem { useAny { id name shortName } ${ZONE_FIELDS} }`,
-];
-const loadTaskGeo = () => cached('taskgeo', DAY, async () => {
-  const q = parts => `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ id objectives { id ${parts.join(' ')} } } }`;
-  let results;
-  try { results = [await gql(q(GEO_PARTS))]; } catch (e) {
-    results = (await Promise.allSettled(GEO_PARTS.map(p => gql(q([p]))))).filter(r => r.status === 'fulfilled').map(r => r.value);
-    if (!results.length) throw e;
-  }
-  const geo = {};
-  for (const d of results) for (const t of d.tasks) for (const o of t.objectives) {
-    const g = {};
-    if (o.zones && o.zones.length) g.zones = o.zones.filter(z => z && z.position);
-    if (o.possibleLocations && o.possibleLocations.length) g.possibleLocations = o.possibleLocations;
-    for (const k of ['markerItem', 'questItem', 'useAny']) if (o[k]) g[k] = o[k];
-    if (Object.keys(g).length) geo[o.id] = Object.assign(geo[o.id] || {}, g);
-  }
-  return geo;
-});
-const loadMaps = () => cached('maps', DAY, async () => (await gqlFirst([
-  `query($lang:LanguageCode,$gm:GameMode){ maps(lang:$lang, gameMode:$gm){ id name normalizedName
-    extracts { name faction position { x y z } } transits { description position { x y z } } } }`,
-  `query($lang:LanguageCode,$gm:GameMode){ maps(lang:$lang, gameMode:$gm){ id name normalizedName extracts { name faction position { x y z } } } }`,
-  `query($lang:LanguageCode,$gm:GameMode){ maps(lang:$lang, gameMode:$gm){ id name normalizedName } }`,
-])).maps);
-
 const hasGeo = (geo, o) => { const g = geo && geo[o.id]; return !!g && (!!(g.zones && g.zones.length) || (g.possibleLocations || []).some(l => (l.positions || []).length)); };
 const COUNTED = ['giveItem', 'findItem', 'shoot', 'plantItem', 'giveQuestItem', 'findQuestItem', 'useItem', 'sellItem'];
 const isCounted = o => o.count > 1 && COUNTED.includes(o.type);
@@ -631,7 +687,7 @@ function objIsDone(t, o) {
 }
 function toggleObjective(taskId, objId) {
   let o = null;
-  for (const t of (mem[cacheKey('tasks2')] || [])) if (t.id === taskId) o = t.objectives.find(x => x.id === objId);
+  for (const t of (lastTasks || [])) if (t.id === taskId) o = t.objectives.find(x => x.id === objId);
   const on = !(S.doneObj[objId] || (o && isCounted(o) && (S.objCount[objId] || 0) >= o.count));
   if (on) { S.doneObj[objId] = 1; if (o && isCounted(o)) S.objCount[objId] = o.count; }
   else { delete S.doneObj[objId]; delete S.objCount[objId]; }
@@ -867,11 +923,6 @@ document.getElementById('lvl').addEventListener('change', e => { S.level = Math.
 document.getElementById('tq').addEventListener('input', debounce(renderTasks, 200));
 
 // ---------- Hideout ----------
-const loadHideout = () => cached('hideout', DAY, async () => (await gql(`query($lang:LanguageCode,$gm:GameMode){ hideoutStations(lang:$lang, gameMode:$gm){
-  id name normalizedName
-  levels { level itemRequirements { count item { id name shortName lastLowPrice avg24hPrice } } }
-} }`)).hideoutStations);
-
 let hideoutView = 'stations';
 async function renderHideout() {
   const out = document.getElementById('hideoutOut');
@@ -945,7 +996,8 @@ async function renderTraders() {
     if (traderLoading) return;
     traderLoading = true;
     try {
-      traders = (await gql(`query($lang:LanguageCode,$gm:GameMode){ traders(lang:$lang, gameMode:$gm){ name resetTime } }`)).traders;
+      const { data, tr } = await tdev('traders');
+      traders = Object.values(data).map(t => ({ name: tr(t.name), resetTime: t.resetTime }));
       traderFetched = Date.now();
     } catch (e) { out.innerHTML = errHtml(e); return; } finally { traderLoading = false; }
   }

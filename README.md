@@ -58,7 +58,7 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **🩸 A Kód** (`web/kod/`) – Dexter-szerű, korlátlanul játszható igazságosztó-játék. Minden játékbeli nap egy akta: a nyomokból kell kiválasztanod a valódi tettest (ha ártatlant választasz, vége), aztán egy olyan időpontot és helyszínt, ahol nincs tanú. Minden extra nyom és felderítés növeli Bakó őrmester gyanúját, és 100%-nál lebuksz. A játék addig tart, amíg le nem buksz, a nehézség napról napra nő. A túlélt napokból top 10-es ranglista készül a telefonon.
 
-- **🎯 Tarkov Segéd** (`web/tarkov/`) – Escape from Tarkov segédapp a [tarkov.dev](https://tarkov.dev) nyilvános API-jával:
+- **🎯 Tarkov Segéd** (`web/tarkov/`) – Escape from Tarkov segédapp a [tarkov.dev](https://tarkov.dev) nyilvános JSON adataival (`json.tarkov.dev`; a GraphQL API jelenleg nem fogad kéréseket):
   - **Árak:** élő flea ár (legolcsóbb és 24 órás átlag, 48 órás változás), legjobb trader ár, rekeszenkénti érték, és hogy flea-n vagy traderen érdemes-e eladni (a flea díjjal számolva). Szól, ha a tárgy még kell a questjeidhez vagy a hideoutodhoz. Kedvencekkel.
   - **Lőszer:** kaliberenkénti táblázat sebzéssel, átütéssel, páncélsebzéssel, fragmentációval és árral.
   - **Questek:** állapot szerint (elérhető / követett ⭐ / zárolt / kész), a szinted, a frakciód és az előfeltételek alapján. Célonként pipálható, a darabszámos céloknál számlálóval. Látszik, mi kell előtte, mit nyit meg, mi a jutalom és milyen kulcs kell. Késznek jelöléskor az előfeltételeket is kipipálja. Kappa és Lightkeeper haladássáv, plusz „Kell még” lista a leadandó tárgyakról (FIR jelöléssel).
