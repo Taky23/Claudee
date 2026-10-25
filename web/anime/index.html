@@ -608,6 +608,15 @@ async function toggleNotify() {
   save(); doUpdateNative(); renderProfile();
   toast(S.notify ? '🔔 Értesítés bekapcsolva' : 'Értesítés kikapcsolva');
 }
+// 18+/ecchi tartalom mutatása. Be: a kereső, szezon, trending, naptár stb. a felnőtt tartalmat is hozza
+// (pl. Redo of Healer, World's End Harem, Harem in the Labyrinth). Váltás után újratöltünk, hogy a
+// gyorsítótárban lévő, felnőtt nélküli listák is frissüljenek.
+function toggleAdult() {
+  if (!S.adult && !confirm('Bekapcsolod a 18+ / ecchi tartalmat?\n\nEzután a keresőben, a szezonoknál és a listákban felnőtt (18+) animék is megjelenhetnek. Csak akkor kapcsold be, ha elmúltál 18.')) return;
+  S.adult = !S.adult; save();
+  toast(S.adult ? '🔞 18+ tartalom bekapcsolva' : '18+ tartalom kikapcsolva');
+  setTimeout(() => location.reload(), 400);
+}
 // ---------- 🎨 Témák ----------
 // [kulcs, név, leírás, kiemelő szín, háttér]
 const THEMES = [['dark', 'Sötét (alapértelmezett)', 'Mély és letisztult, vörös', '#e53935', '#0a0a0c'], ['ejfel', 'Éjféli anime', 'Lila éjszaka csillagokkal', '#ff4fa3', '#090716'],
@@ -835,6 +844,9 @@ const errHtml = e => {
 };
 
 const CARD = `id idMal title { romaji english native } coverImage { large color } averageScore episodes duration format genres seasonYear status nextAiringEpisode { episode airingAt }`;
+// 18+/ecchi szűrő: alapból kiszűrjük a felnőtt tartalmat; ha a beállításban be van kapcsolva, nem szűrünk.
+// (A lekérdezés szövegének része, így a gyorsítótár kulcsa is változik be/ki kapcsoláskor.)
+const af = () => S.adult ? '' : 'isAdult: false';
 const FULL = `${CARD} bannerImage description(asHtml: false) season studios(isMain: true) { nodes { name } } popularity siteUrl trailer { id site } streamingEpisodes { title url site }
   characters(perPage: 10, sort: [ROLE, RELEVANCE]) { edges { role node { name { full } image { medium } } } }
   recommendations(perPage: 8, sort: RATING_DESC) { nodes { mediaRecommendation { ${CARD} } } }
@@ -940,10 +952,10 @@ async function renderHome() {
   const nx = nextSeason();
   try {
     const d = await gql(`query($season: MediaSeason, $year: Int, $ns: MediaSeason, $ny: Int) {
-      next: Page(perPage: 15) { media(type: ANIME, season: $ns, seasonYear: $ny, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } }
-      trending: Page(perPage: 15) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${CARD} bannerImage description(asHtml: false) } }
-      season: Page(perPage: 15) { media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} } }
-      top: Page(perPage: 15) { media(type: ANIME, sort: SCORE_DESC, isAdult: false, format_in: [TV, MOVIE, ONA]) { ${CARD} } }
+      next: Page(perPage: 15) { media(type: ANIME, season: $ns, seasonYear: $ny, sort: POPULARITY_DESC, ${af()}, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } }
+      trending: Page(perPage: 15) { media(type: ANIME, sort: TRENDING_DESC, ${af()}) { ${CARD} bannerImage description(asHtml: false) } }
+      season: Page(perPage: 15) { media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, ${af()}, ${SEASON_FILTER}) { ${CARD} } }
+      top: Page(perPage: 15) { media(type: ANIME, sort: SCORE_DESC, ${af()}, format_in: [TV, MOVIE, ONA]) { ${CARD} } }
     }`, { season, year, ns: nx.season, ny: nx.year }).then(d => {
       try { localStorage.setItem('anime-hub-home', JSON.stringify({ t: Date.now(), d })); } catch (e) {}
       return d;
@@ -996,7 +1008,7 @@ async function openSeason(kind, fromHistory) {
       for (let page = 1; page <= 12; page++) {
         if (page > 1) modal.innerHTML = `<p class="loading">Betöltés… (${list.length} anime eddig)</p>`;
         const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
-          media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: sn.season, y: sn.year, p: page }, 60 * 60 * 1000);
+          media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, ${af()}, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: sn.season, y: sn.year, p: page }, 60 * 60 * 1000);
         list = list.concat(d.Page.media);
         if (!d.Page.pageInfo.hasNextPage) break;
       }
@@ -1073,20 +1085,20 @@ async function doSearch(q) {
   try {
     let html;
     if (sTab === 'anime') {
-      const d = await gql(`query($s: String) { Page(perPage: 24) { media(search: $s, type: ANIME, isAdult: false, sort: SEARCH_MATCH) { ${CARD} } } }`, { s: q })
+      const d = await gql(`query($s: String) { Page(perPage: 24) { media(search: $s, type: ANIME, ${af()}, sort: SEARCH_MATCH) { ${CARD} } } }`, { s: q })
         .catch(async () => ({ Page: { media: jList(await jikan(`/anime?q=${encodeURIComponent(q)}&limit=24&sfw=true`)) } }));
       html = d.Page.media.length ? `${sec('', 'Találatok')}<div class="pgrid">${d.Page.media.map(poster).join('')}</div>` : '<p class="small">Nincs találat. Próbáld angol vagy japán címmel.</p>';
     } else if (sTab === 'char') {
       const d = await gql(`query($s: String) { Page(perPage: 15) { characters(search: $s, sort: [SEARCH_MATCH]) { id name { full native } image { medium }
         media(perPage: 8, sort: [POPULARITY_DESC], type: ANIME) { nodes { ${CARD} isAdult } } } } }`, { s: q });
-      const cs = d.Page.characters.map(c => Object.assign(c, { an: c.media.nodes.filter(m => !m.isAdult) })).filter(c => c.an.length);
+      const cs = d.Page.characters.map(c => Object.assign(c, { an: c.media.nodes.filter(m => S.adult || !m.isAdult) })).filter(c => c.an.length);
       html = cs.length ? cs.map(c => `<div class="card charc"><img src="${esc(c.image && c.image.medium)}" alt="" loading="lazy"><div class="grow" style="min-width:0">
         <b>${esc(c.name.full)}</b>${c.name.native ? `<div class="small">${esc(c.name.native)}</div>` : ''}
         <div class="mini-sh">${c.an.map(m => `<img src="${esc(cover(m))}" alt="" title="${esc(title(m))}" data-id="${m.id}">`).join('')}</div></div></div>`).join('') : '<p class="small">Nincs ilyen szereplő.</p>';
     } else {
       const d = await gql(`query($s: String) { Page(perPage: 8) { studios(search: $s, sort: [SEARCH_MATCH]) { id name
         media(sort: [POPULARITY_DESC], perPage: 15, isMain: true) { nodes { ${CARD} isAdult type } } } } }`, { s: q });
-      const st = d.Page.studios.map(x => Object.assign(x, { an: x.media.nodes.filter(m => !m.isAdult && m.type === 'ANIME') })).filter(x => x.an.length);
+      const st = d.Page.studios.map(x => Object.assign(x, { an: x.media.nodes.filter(m => (S.adult || !m.isAdult) && m.type === 'ANIME') })).filter(x => x.an.length);
       html = st.length ? st.map(x => `${sec('', `🎬 ${esc(x.name)}`)}<div class="shelf">${x.an.map(poster).join('')}</div>`).join('') : '<p class="small">Nincs ilyen stúdió.</p>';
     }
     if ($('q').value.trim() !== q) return;
@@ -1098,7 +1110,7 @@ async function renderSearchHome() {
   const box = $('sHome');
   if (!box.innerHTML) box.innerHTML = '<p class="loading">Betöltés…</p>';
   try {
-    const d = await gql(`query { Page(perPage: 8) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { ${CARD} } } }`, {}, 30 * 60 * 1000);
+    const d = await gql(`query { Page(perPage: 8) { media(type: ANIME, sort: TRENDING_DESC, ${af()}) { ${CARD} } } }`, {}, 30 * 60 * 1000);
     const fav = Object.values(S.list).filter(x => x.id > 0 && (x.score >= 7 || x.status === 'done')).sort((a, b) => (b.score || 0) - (a.score || 0) || b.updated - a.updated).slice(0, 4);
     let recs = [];
     if (fav.length) {
@@ -1107,7 +1119,7 @@ async function renderSearchHome() {
         const seen = new Set();
         for (const m of r.Page.media) for (const n of m.recommendations.nodes) {
           const x = n.mediaRecommendation;
-          if (x && !x.isAdult && !S.list[x.id] && !seen.has(x.id)) { seen.add(x.id); recs.push(x); }
+          if (x && (S.adult || !x.isAdult) && !S.list[x.id] && !seen.has(x.id)) { seen.add(x.id); recs.push(x); }
         }
       } catch (e) { /* az ajánlók nélkül is megy */ }
     }
@@ -1868,7 +1880,7 @@ async function discFill() {
   try {
     const sorts = ['TRENDING_DESC', 'POPULARITY_DESC', 'SCORE_DESC'];
     const d = await gql(`query($p: Int, $s: [MediaSort]) { Page(page: $p, perPage: 50) {
-      media(type: ANIME, isAdult: false, sort: $s, format_in: [TV, MOVIE, ONA, OVA], popularity_greater: 3000) { ${CARD} bannerImage description(asHtml: false) } } }`,
+      media(type: ANIME, ${af()}, sort: $s, format_in: [TV, MOVIE, ONA, OVA], popularity_greater: 3000) { ${CARD} bannerImage description(asHtml: false) } } }`,
       { p: 1 + Math.floor(Math.random() * 8), s: [sorts[Math.floor(Math.random() * sorts.length)]] }, 60 * 60 * 1000);
     S.discSkip = S.discSkip || [];
     const skip = new Set(S.discSkip);
@@ -1913,7 +1925,7 @@ async function loadSeasonList(season, year, onProg) {
   for (let page = 1; page <= 12; page++) {
     if (onProg) onProg(list.length);
     const d = await gql(`query($s: MediaSeason, $y: Int, $p: Int) { Page(page: $p, perPage: 50) { pageInfo { hasNextPage }
-      media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, isAdult: false, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: season, y: year, p: page }, 60 * 60 * 1000);
+      media(type: ANIME, season: $s, seasonYear: $y, sort: POPULARITY_DESC, ${af()}, ${SEASON_FILTER}) { ${CARD} startDate { year month day } } } }`, { s: season, y: year, p: page }, 60 * 60 * 1000);
     list = list.concat(d.Page.media);
     if (!d.Page.pageInfo.hasNextPage) break;
   }
@@ -1982,7 +1994,7 @@ $('traceIn').addEventListener('change', async e => {
     const j = await r.json().catch(() => ({}));
     if (r.status === 402 || r.status === 429) throw new Error('Elfogyott a havi ingyenes keresési keret, vagy túl gyorsan kerestél. Próbáld később.');
     if (!r.ok || j.error) throw new Error(j.error || 'A képkereső most nem válaszol.');
-    traceResult = { preview: traceResult.preview, results: (j.result || []).filter(x => x.anilist && !x.anilist.isAdult).slice(0, 5) };
+    traceResult = { preview: traceResult.preview, results: (j.result || []).filter(x => x.anilist && (S.adult || !x.anilist.isAdult)).slice(0, 5) };
   } catch (err) {
     traceResult = { preview: traceResult.preview, error: err.message === 'Failed to fetch' ? 'Nem érem el a képkeresőt. Van internet?' : err.message };
   }
@@ -2382,7 +2394,7 @@ async function renderCal() {
       all = all.concat(d.Page.airingSchedules);
       more = d.Page.pageInfo.hasNextPage; page++;
     }
-    all = all.filter(a => a.media && !a.media.isAdult && (!S.calMine || S.list[a.media.id]));
+    all = all.filter(a => a.media && (S.adult || !a.media.isAdult) && (!S.calMine || S.list[a.media.id]));
     const byDay = {};
     for (const a of all) { const k = new Date(a.airingAt * 1000).toDateString(); (byDay[k] = byDay[k] || []).push(a); }
     // „Volt” nézetben a nap részeit a legfrissebbtől lefelé mutatjuk.
@@ -2472,10 +2484,10 @@ async function loadMoodImgs() {
   moodLoading = true;
   try {
     const keys = Object.keys(MOODS), res = {};
-    const d = await gql(`query { ${keys.map((k, i) => `${k}: Page(page: ${i % 3 + 1}, perPage: 1) { media(type: ANIME, isAdult: false, sort: POPULARITY_DESC, genre_in: ${JSON.stringify(MOODS[k][1])}) { coverImage { large } } }`).join(' ')} }`, {}, 24 * 3600 * 1000);
+    const d = await gql(`query { ${keys.map((k, i) => `${k}: Page(page: ${i % 3 + 1}, perPage: 1) { media(type: ANIME, ${af()}, sort: POPULARITY_DESC, genre_in: ${JSON.stringify(MOODS[k][1])}) { coverImage { large } } }`).join(' ')} }`, {}, 24 * 3600 * 1000);
     for (const k of keys) { const m = d[k] && d[k].media[0]; if (m) res[k] = m.coverImage.large; }
     // Műfajonként egy népszerű borító (a 2. helyezettet, hogy kevesebb legyen az ismétlődés)
-    const d2 = await gql(`query { ${ALL_GENRES.map((x, i) => `g${i}: Page(page: 2, perPage: 1) { media(type: ANIME, isAdult: false, sort: POPULARITY_DESC, genre: ${JSON.stringify(x)}) { coverImage { large } } }`).join(' ')} }`, {}, 24 * 3600 * 1000);
+    const d2 = await gql(`query { ${ALL_GENRES.map((x, i) => `g${i}: Page(page: 2, perPage: 1) { media(type: ANIME, ${af()}, sort: POPULARITY_DESC, genre: ${JSON.stringify(x)}) { coverImage { large } } }`).join(' ')} }`, {}, 24 * 3600 * 1000);
     ALL_GENRES.forEach((x, i) => { const m = d2['g' + i] && d2['g' + i].media[0]; if (m) res['g' + i] = m.coverImage.large; });
     moodImg = res;
     try { localStorage.setItem(MOOD_IMG_KEY, JSON.stringify({ t: Date.now(), d: res })); } catch (e) {}
@@ -2530,7 +2542,7 @@ $('pickBtn').onclick = async () => {
     // A legszűkebb csoporttal kérdezünk (ha van benne műfaj, arra, különben a kategória címkéire), a többire a telefonon szűrünk.
     const base = groups.length ? groups.reduce((a, b) => (b.g.length + b.t.length < a.g.length + a.t.length ? b : a)) : null;
     const fetchPage = p => gql(`query($g: [String], $t: [String], $f: [MediaFormat], $p: Int, $el: Int, $eg: Int, $sc: Int) { Page(page: $p, perPage: 50) {
-      media(type: ANIME, genre_in: $g, tag_in: $t, format_in: $f, isAdult: false, sort: POPULARITY_DESC, averageScore_greater: $sc, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} tags { name rank } } } }`,
+      media(type: ANIME, genre_in: $g, tag_in: $t, format_in: $f, ${af()}, sort: POPULARITY_DESC, averageScore_greater: $sc, episodes_lesser: $el, episodes_greater: $eg) { ${CARD} tags { name rank } } } }`,
       { g: base && base.g.length ? base.g : null, t: base && !base.g.length ? base.t : null, f: formats, p, el: eps.episodes_lesser, eg: eps.episodes_greater, sc: groups.length > 1 ? 60 : 68 }, 60 * 60 * 1000).then(d => d.Page.media.filter(m => !S.list[m.id]));
     const p0 = 1 + Math.floor(Math.random() * (groups.length > 1 ? 3 : 2));
     let all = await fetchPage(p0);
@@ -2634,6 +2646,7 @@ function renderProfile() {
       <div class="setrow" data-set="themes"><span class="ic">🎨</span>Témák<span class="sw">${THEMES.slice(0, 5).map(t => `<i style="background:${t[3]}"></i>`).join('')}</span><span class="ch">›</span></div>
       <div class="setrow" data-set="data"><span class="ic">💾</span>Mentés és visszaállítás<span class="ch">›</span></div>
       <div class="setrow" data-set="recaps"><span class="ic">📖</span>Mentett összefoglalók<span class="ch">›</span></div>
+      <div class="setrow" data-set="adult"><span class="ic">🔞</span>18+ / ecchi tartalom<span class="ch">${S.adult ? 'Be' : 'Ki'} ›</span></div>
       <div class="setrow" data-set="about"><span class="ic">ⓘ</span>Névjegy és adatvédelem<span class="ch">›</span></div>
     </div>`;
   const setP = (obj) => { S.prof = Object.assign({}, S.prof, obj); save(); renderProfile(); renderAvatar(); };
@@ -2650,6 +2663,7 @@ function renderProfile() {
   $('profOut').querySelectorAll('[data-set]').forEach(r => r.onclick = () => {
     const k = r.dataset.set;
     if (k === 'notify') toggleNotify(); else if (k === 'themes') openThemes(); else if (k === 'recaps') openRecaps(); else if (k === 'about') openAbout();
+    else if (k === 'adult') toggleAdult();
     else { S.meTab = 'data'; save(); renderMe(); pushNav(); setTimeout(() => { const h = $(k === 'mal' ? 'malHead' : 'backupHead'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }
   });
 }
