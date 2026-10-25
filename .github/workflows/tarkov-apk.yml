@@ -18,6 +18,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: API próbák (válasz szövege)
+        run: |
+          UA='Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36'
+          echo '--- POST egyszerű ---'; curl -s -w '\n[%{http_code}]\n' --data '{"query":"{ maps { name } }"}' https://api.tarkov.dev/graphql | cut -c1-400
+          echo '--- POST json + UA + tarkov.dev origin ---'; curl -s -w '\n[%{http_code}]\n' -A "$UA" -H 'Origin: https://tarkov.dev' -H 'Referer: https://tarkov.dev/' -H 'Content-Type: application/json' -H 'Accept: application/json' --data '{"query":"{ maps { name } }"}' https://api.tarkov.dev/graphql | cut -c1-400
+          echo '--- POST query+variables ---'; curl -s -w '\n[%{http_code}]\n' -A "$UA" -H 'Content-Type: application/json' --data '{"query":"query { maps { name } }","variables":{}}' https://api.tarkov.dev/graphql | cut -c1-400
+          echo '--- json.tarkov.dev ---'
+          for path in regular/tasks regular/maps regular/items regular/tasks_hu; do curl -s -o /tmp/j -w "$path [%{http_code}] %{size_download} bájt %{content_type}\n" -A "$UA" -H 'Origin: https://localhost' -D /tmp/h "https://json.tarkov.dev/$path"; grep -i access-control /tmp/h || true; head -c 300 /tmp/j; echo; done
       - name: CORS fejlécek az app szemszögéből
         run: |
           curl -s -D - -o /dev/null -H 'Origin: https://localhost' 'https://api.tarkov.dev/graphql?query=%7Bmaps%7Bname%7D%7D' | grep -iE '^HTTP|access-control|cf-' || true
