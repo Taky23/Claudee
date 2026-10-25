@@ -61,7 +61,11 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 - **🎯 Tarkov Segéd** (`web/tarkov/`) – Escape from Tarkov segédapp a [tarkov.dev](https://tarkov.dev) nyilvános API-jával:
   - **Árak:** élő flea ár (legolcsóbb és 24 órás átlag, 48 órás változás), legjobb trader ár, rekeszenkénti érték, és hogy flea-n vagy traderen érdemes-e eladni (a flea díjjal számolva). Szól, ha a tárgy még kell a questjeidhez vagy a hideoutodhoz. Kedvencekkel.
   - **Lőszer:** kaliberenkénti táblázat sebzéssel, átütéssel, páncélsebzéssel, fragmentációval és árral.
-  - **Questek:** traderenként, Kappa-szűrővel, keresővel és pipálható haladással.
+  - **Questek:** állapot szerint (elérhető / követett ⭐ / zárolt / kész), a szinted, a frakciód és az előfeltételek alapján. Célonként pipálható, a darabszámos céloknál számlálóval. Látszik, mi kell előtte, mit nyit meg, mi a jutalom és milyen kulcs kell. Késznek jelöléskor az előfeltételeket is kipipálja. Kappa és Lightkeeper haladássáv, plusz „Kell még” lista a leadandó tárgyakról (FIR jelöléssel).
+  - **Térkép:** a tarkov.dev interaktív térképein (Leaflet) mutatja, hova kell lerakni a tárgyat vagy markert, hova kell elmenni (a zóna körvonalával), és hol lehet felvenni a questtárgyakat. Van emeletváltó, kijáratok, a jelölőből késznek jelölhető cél, és a questnél a „📍 Térképen” gomb.
+  - **Raid terv:** a kiválasztott pályán csinálható questcélok, a viendő tárgyak (lerakás, marker) és a szükséges kulcsok.
+  - **Mentőkód:** a teljes haladás kimenthető egy szövegbe, és visszatölthető.
+  - **Android app (APK):** a `tarkov-apk/` mappa és a `Tarkov Segéd APK` workflow ugyanezt a webappot az APK-ba csomagolja (`TarkovSeged.apk`). A main ágon a `tarkov-apk` kiadásba kerül, más ágon a workflow futás artifactjaként tölthető le. A térképbeállítások frissítése: `python3 tarkov-apk/scripts/update-maps.py`.
   - **Hideout:** az állomások szintjeinek követése, és az összes hiányzó tárgy listája becsült költséggel.
   - **Idő:** Tarkov idő (bal/jobb), trader restock visszaszámláló, PvP/PvE mód, angol vagy magyar tárgynevek.
 

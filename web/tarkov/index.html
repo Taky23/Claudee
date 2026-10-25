@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
 :root {
   --bg: #11130f;
@@ -102,6 +103,46 @@ nav button span { display: block; font-size: 21px; }
 nav button.active { color: var(--accent); }
 a { color: var(--accent); }
 .need-list .r { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card-2); color: var(--text); font: 12px ui-monospace, monospace; resize: vertical; }
+.btn.sm { padding: 6px 10px; font-size: 13px; }
+.warn { color: var(--warn); }
+.badge.lock { color: var(--warn); }
+.badge.ok { color: var(--ok); }
+.task.locked > .top > div > b { color: var(--muted); }
+.task.done { opacity: .5; }
+.task li.obj { display: flex; gap: 6px; align-items: flex-start; justify-content: space-between; margin: 4px 0; list-style: none; }
+.task ul { padding-left: 0; }
+.task li.obj .ol { display: flex; gap: 6px; align-items: flex-start; flex: 1; min-width: 0; }
+.task li.obj input[type=checkbox] { width: 18px; height: 18px; margin: 1px 0 0; }
+.task li.odone .ol span { text-decoration: line-through; opacity: .7; }
+.oacts { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+.cnt { display: inline-flex; align-items: center; gap: 4px; color: var(--text); }
+.cnt button, .pin { min-width: 30px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-2); color: var(--text); font-weight: 800; cursor: pointer; padding: 0 6px; }
+.qfilters { gap: 8px; margin: 2px 0 4px; }
+.qfilters select { flex: 1; padding: 8px 10px; font-size: 14px; }
+.lvl { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.lvl input { width: 56px; padding: 7px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--card-2); color: var(--text); font: inherit; font-size: 15px; }
+.prog { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px; }
+.prog span { width: 96px; flex-shrink: 0; }
+.prog .bar { flex: 1; height: 8px; border-radius: 99px; background: var(--card-2); overflow: hidden; }
+.prog .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.prog b { width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+.mapbox { height: calc(100dvh - 240px - env(safe-area-inset-bottom)); min-height: 300px; border-radius: 14px; border: 1px solid var(--line); overflow: hidden; background: #0c0d0a; margin-top: 6px; }
+.leaflet-container { background: #0c0d0a; font: 13px/1.4 system-ui, sans-serif; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card); color: var(--text); border: 1px solid var(--line); }
+.leaflet-popup-content { margin: 10px 12px; }
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+.leaflet-bar a { background: var(--card); color: var(--text); border-bottom-color: var(--line); }
+.leaflet-control-attribution { background: rgba(17, 19, 15, .75) !important; color: var(--muted); }
+.tk-svg .hidden-layer { display: none; }
+.tk-svg.off-level g.base-layer { opacity: .3; }
+.mk { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; background: rgba(20, 22, 18, .9); border: 2px solid #e5e200; box-shadow: 0 1px 4px #000; }
+.mk.mk-locked { border-color: #888; opacity: .75; }
+.mk.mk-done { border-color: var(--ok); opacity: .6; }
+.mk.mk-tracked { border-color: #ffb020; background: #3a2c08; transform: scale(1.12); }
+.pop .btn { padding: 6px 9px; font-size: 12px; }
+.legend { margin-top: 0; }
+#raidOut .task ul { padding-left: 18px; }
 </style>
 </head>
 <body>
@@ -132,14 +173,43 @@ a { color: var(--accent); }
   <!-- QUESTEK -->
   <section class="view" id="v-tasks">
     <div class="sticky">
-      <input type="search" id="tq" placeholder="Quest vagy tárgy keresése…" autocomplete="off">
-      <div class="chips" id="traderChips"></div>
+      <input type="search" id="tq" placeholder="Quest, cél vagy tárgy keresése…" autocomplete="off">
       <div class="chips">
-        <button class="chip" id="kappaChip">🎒 Csak Kappa</button>
-        <button class="chip" id="doneChip">✅ Kész is látszik</button>
+        <button class="chip" data-qv="avail">✅ Elérhető</button>
+        <button class="chip" data-qv="tracked">⭐ Követett</button>
+        <button class="chip" data-qv="locked">🔒 Zárolt</button>
+        <button class="chip" data-qv="done">✔️ Kész</button>
+        <button class="chip" data-qv="all">Mind</button>
+        <button class="chip" data-qv="needs">📦 Kell még</button>
       </div>
     </div>
+    <div class="card" id="qSummary"></div>
+    <div class="chips" id="traderChips"></div>
+    <div class="row qfilters">
+      <select id="qmap"></select>
+      <button class="chip" id="kappaChip">🎒 Kappa</button>
+      <label class="lvl">Szinted <input type="number" id="lvl" min="0" max="79" inputmode="numeric" placeholder="–"></label>
+    </div>
     <div id="tasksOut" class="loading">Betöltés…</div>
+  </section>
+
+  <!-- TÉRKÉP -->
+  <section class="view" id="v-map">
+    <div class="row" style="padding-top:8px">
+      <select id="mapSel"></select>
+    </div>
+    <div class="chips">
+      <button class="chip" data-mf="tracked">⭐ Követett</button>
+      <button class="chip" data-mf="avail">✅ Elérhető</button>
+      <button class="chip" data-mf="all">📋 Minden nem kész</button>
+      <button class="chip" id="extractChip">🚪 Kijáratok</button>
+      <button class="chip" id="raidChip">🎒 Raid terv</button>
+    </div>
+    <div id="mapBox" class="mapbox"></div>
+    <div class="chips" id="floorChips" hidden></div>
+    <p class="small" id="mapInfo"></p>
+    <p class="small legend">📥 lerakás · 📡 marker · 👣 odamenni · 📦 questtárgy · 🔧 tárgyhasználat · 🎯 egyéb zóna · <span style="color:#7cc36a">●</span> PMC <span style="color:#5fb3e8">●</span> Scav <span style="color:#e8b24a">●</span> közös kijárat</p>
+    <div id="raidOut"></div>
   </section>
 
   <!-- HIDEOUT -->
@@ -173,6 +243,12 @@ a { color: var(--accent); }
         <button class="chip" data-mode="pve">PvE</button>
       </div>
       <div class="row" style="margin-bottom:8px">
+        <span style="flex:1">Frakció</span>
+        <button class="chip" data-fac="">Mindkettő</button>
+        <button class="chip" data-fac="USEC">USEC</button>
+        <button class="chip" data-fac="BEAR">BEAR</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
         <span style="flex:1">Tárgy- és questnevek nyelve</span>
         <button class="chip" data-lang="en">English</button>
         <button class="chip" data-lang="hu">Magyar</button>
@@ -181,6 +257,15 @@ a { color: var(--accent); }
       <button class="btn full" id="resetProgress">🗑️ Quest- és hideout-haladás törlése</button>
       <p class="small">Adatok: <a href="https://tarkov.dev" target="_blank" rel="noopener">tarkov.dev</a> (közösségi, nem hivatalos). A haladásodat csak ez a telefon tárolja.</p>
     </div>
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">💾 Haladás mentése / visszatöltése</div>
+      <p class="small" style="margin-top:0">A mentőkódot tedd el (pl. üzenetben magadnak). Új telefonon vagy újratelepítés után ide beillesztve visszakapod a questeket, követéseket, hideoutot és kedvenceket.</p>
+      <textarea id="backupBox" rows="3" placeholder="Ide kerül / ide illeszd a mentőkódot"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" style="flex:1" id="backupMake">📤 Kód készítése</button>
+        <button class="btn" style="flex:1" id="backupLoad">📥 Visszatöltés</button>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -188,10 +273,14 @@ a { color: var(--accent); }
   <button class="active" data-view="v-price"><span>💰</span>Árak</button>
   <button data-view="v-ammo"><span>🔫</span>Lőszer</button>
   <button data-view="v-tasks"><span>📋</span>Questek</button>
+  <button data-view="v-map"><span>🗺️</span>Térkép</button>
   <button data-view="v-hideout"><span>🏠</span>Hideout</button>
   <button data-view="v-time"><span>⏱️</span>Idő</button>
 </nav>
 
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="maps-data.js"></script>
+<script src="map.js"></script>
 <script>
 const API = 'https://api.tarkov.dev/graphql';
 const STORE = 'tarkov-seged-v1';
@@ -202,7 +291,11 @@ function loadState() {
   try { const s = JSON.parse(localStorage.getItem(STORE)); if (s) return s; } catch (e) {}
   return {};
 }
-const S = Object.assign({ mode: 'regular', lang: 'en', favs: {}, doneTasks: {}, built: {}, kappaOnly: false, showDone: false, trader: 'all', caliber: '' }, loadState());
+const S = Object.assign({
+  mode: 'regular', lang: 'en', favs: {}, doneTasks: {}, built: {}, kappaOnly: false, trader: 'all', caliber: '',
+  doneObj: {}, objCount: {}, tracked: {}, level: 0, faction: '', qv: 'avail', qmap: 'all',
+  mapKey: 'customs', mapFilter: 'avail', showExtracts: true,
+}, loadState());
 function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
 
 // Nagyobb, ritkán változó adatok gyorsítótárazva (questek, hideout, lőszer).
@@ -341,9 +434,10 @@ async function getNeeds() {
     for (const t of tasks) {
       if (S.doneTasks[t.id]) continue;
       for (const o of t.objectives) {
-        if (o.type !== 'giveItem' || !o.items || !o.items.length) continue;
+        if (o.type !== 'giveItem' || !o.items || !o.items.length || objIsDone(t, o)) continue;
+        const left = o.count - Math.min(S.objCount[o.id] || 0, o.count);
         // Ha több tárgy is elfogadott, mindegyiknél jelezzük.
-        for (const it of o.items) { add(it.id, 'task', o.count); if (o.foundInRaid) add(it.id, 'fir', o.count); }
+        for (const it of o.items) { add(it.id, 'task', left); if (o.foundInRaid) add(it.id, 'fir', left); }
       }
     }
     for (const st of stations) {
@@ -463,60 +557,313 @@ async function renderAmmo() {
 document.getElementById('caliber').addEventListener('change', e => { S.caliber = e.target.value; save(); renderAmmo(); });
 
 // ---------- Questek ----------
-const loadTasks = () => cached('tasks', DAY, async () => (await gql(`query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){
-  id name minPlayerLevel kappaRequired lightkeeperRequired wikiLink
-  trader { name normalizedName } map { name }
-  objectives { id type description optional
-    ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
+// Először a bővebb lekérdezést próbáljuk; ha a tarkov.dev séma épp nem ismer egy mezőt, jön az egyszerűbb.
+async function gqlFirst(queries) {
+  let err;
+  for (const q of queries) {
+    try { return await gql(q); } catch (e) { err = e; }
   }
-} }`)).tasks);
+  throw err;
+}
+const TASK_HEAD = `id name normalizedName minPlayerLevel kappaRequired lightkeeperRequired wikiLink trader { name normalizedName } map { id name }`;
+const loadTasks = () => cached('tasks2', DAY, async () => (await gqlFirst([
+  `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ ${TASK_HEAD} experience factionName
+    taskRequirements { task { id } status }
+    neededKeys { keys { id name shortName } map { id name } }
+    finishRewards { traderStanding { trader { name } standing } items { count item { id name shortName } } }
+    objectives { id type description optional maps { id name }
+      ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
+      ... on TaskObjectiveShoot { count }
+    }
+  } }`,
+  `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ ${TASK_HEAD} factionName
+    taskRequirements { task { id } status }
+    objectives { id type description optional maps { id name }
+      ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
+    }
+  } }`,
+  `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ ${TASK_HEAD}
+    objectives { id type description optional
+      ... on TaskObjectiveItem { count foundInRaid items { id name shortName } }
+    }
+  } }`,
+])).tasks);
+
+// A célok térképes adatai (zónák, questtárgyak lelőhelyei) külön jönnek. Ha az egyben kérés elbukik,
+// típusonként külön próbáljuk, és ami sikerül, azt összefésüljük.
+const ZONE_FIELDS = 'zones { id map { id } position { x y z } outline { x y z } top bottom }';
+const GEO_PARTS = [
+  `... on TaskObjectiveBasic { ${ZONE_FIELDS} }`,
+  `... on TaskObjectiveMark { markerItem { id name shortName } ${ZONE_FIELDS} }`,
+  `... on TaskObjectiveQuestItem { questItem { id name shortName } possibleLocations { map { id } positions { x y z } } ${ZONE_FIELDS} }`,
+  `... on TaskObjectiveItem { ${ZONE_FIELDS} }`,
+  `... on TaskObjectiveUseItem { useAny { id name shortName } ${ZONE_FIELDS} }`,
+];
+const loadTaskGeo = () => cached('taskgeo', DAY, async () => {
+  const q = parts => `query($lang:LanguageCode,$gm:GameMode){ tasks(lang:$lang, gameMode:$gm){ id objectives { id ${parts.join(' ')} } } }`;
+  let results;
+  try { results = [await gql(q(GEO_PARTS))]; } catch (e) {
+    results = (await Promise.allSettled(GEO_PARTS.map(p => gql(q([p]))))).filter(r => r.status === 'fulfilled').map(r => r.value);
+    if (!results.length) throw e;
+  }
+  const geo = {};
+  for (const d of results) for (const t of d.tasks) for (const o of t.objectives) {
+    const g = {};
+    if (o.zones && o.zones.length) g.zones = o.zones.filter(z => z && z.position);
+    if (o.possibleLocations && o.possibleLocations.length) g.possibleLocations = o.possibleLocations;
+    for (const k of ['markerItem', 'questItem', 'useAny']) if (o[k]) g[k] = o[k];
+    if (Object.keys(g).length) geo[o.id] = Object.assign(geo[o.id] || {}, g);
+  }
+  return geo;
+});
+const loadMaps = () => cached('maps', DAY, async () => (await gqlFirst([
+  `query($lang:LanguageCode,$gm:GameMode){ maps(lang:$lang, gameMode:$gm){ id name normalizedName
+    extracts { name faction position { x y z } } transits { description position { x y z } } } }`,
+  `query($lang:LanguageCode,$gm:GameMode){ maps(lang:$lang, gameMode:$gm){ id name normalizedName extracts { name faction position { x y z } } } }`,
+  `query($lang:LanguageCode,$gm:GameMode){ maps(lang:$lang, gameMode:$gm){ id name normalizedName } }`,
+])).maps);
+
+const hasGeo = (geo, o) => { const g = geo && geo[o.id]; return !!g && (!!(g.zones && g.zones.length) || (g.possibleLocations || []).some(l => (l.positions || []).length)); };
+const COUNTED = ['giveItem', 'findItem', 'shoot', 'plantItem', 'giveQuestItem', 'findQuestItem', 'useItem', 'sellItem'];
+const isCounted = o => o.count > 1 && COUNTED.includes(o.type);
+function objIsDone(t, o) {
+  return !!(S.doneTasks[t.id] || S.doneObj[o.id] || (isCounted(o) && (S.objCount[o.id] || 0) >= o.count));
+}
+function toggleObjective(taskId, objId) {
+  let o = null;
+  for (const t of (mem[cacheKey('tasks2')] || [])) if (t.id === taskId) o = t.objectives.find(x => x.id === objId);
+  const on = !(S.doneObj[objId] || (o && isCounted(o) && (S.objCount[objId] || 0) >= o.count));
+  if (on) { S.doneObj[objId] = 1; if (o && isCounted(o)) S.objCount[objId] = o.count; }
+  else { delete S.doneObj[objId]; delete S.objCount[objId]; }
+  save();
+}
+
+// Állapot: done (kész), available (most felvehető / folyamatban), locked (zárolt), other (másik frakcióé).
+function factionOk(t) { return !S.faction || !t.factionName || t.factionName === 'Any' || t.factionName === S.faction; }
+function computeStates(tasks) {
+  const byId = {}, unlocks = {};
+  for (const t of tasks) byId[t.id] = t;
+  for (const t of tasks) for (const r of t.taskRequirements || []) if (r.task && byId[r.task.id]) (unlocks[r.task.id] = unlocks[r.task.id] || []).push(t.id);
+  const res = {};
+  const visit = (t, depth = 0) => {
+    if (res[t.id]) return res[t.id];
+    const r = { state: 'available', why: [], unlocks: unlocks[t.id] || [] };
+    res[t.id] = r;
+    if (S.doneTasks[t.id]) { r.state = 'done'; return r; }
+    if (!factionOk(t)) { r.state = 'other'; r.why.push(t.factionName + ' quest'); return r; }
+    if (S.level && t.minPlayerLevel > S.level) r.why.push(t.minPlayerLevel + '. szint kell');
+    for (const q of t.taskRequirements || []) {
+      const p = q.task && byId[q.task.id];
+      if (!p || S.doneTasks[p.id]) continue;
+      const st = q.status || ['complete'];
+      // Ha elég, hogy az előző quest el legyen kezdve, akkor az is jó, ha az most felvehető.
+      if (!st.includes('complete') && !st.includes('failed') && depth < 60 && visit(p, depth + 1).state === 'available') continue;
+      r.why.push('előbb: ' + p.name);
+    }
+    if (r.why.length) r.state = 'locked';
+    return r;
+  };
+  for (const t of tasks) visit(t);
+  return res;
+}
+function ancestorsTodo(t, byId, acc = new Set()) {
+  for (const q of t.taskRequirements || []) {
+    const p = q.task && byId[q.task.id];
+    if (!p || acc.has(p.id) || S.doneTasks[p.id]) continue;
+    if (!(q.status || ['complete']).includes('complete')) continue;
+    acc.add(p.id);
+    ancestorsTodo(p, byId, acc);
+  }
+  return acc;
+}
+
+const openTasks = new Set();
+let taskGeo = null;
+const STATE_BADGE = { locked: '<span class="badge lock">🔒 zárolt</span>', done: '<span class="badge ok">✔ kész</span>', other: '<span class="badge">más frakció</span>' };
+
+function objLine(t, o, geo) {
+  const tDone = !!S.doneTasks[t.id];
+  const done = objIsDone(t, o);
+  const n = Math.min(S.objCount[o.id] || 0, o.count || 0);
+  return `<li class="obj ${done ? 'odone' : ''}">
+    <label class="ol"><input type="checkbox" data-obj="${o.id}" data-otask="${t.id}" ${done ? 'checked' : ''} ${tDone ? 'disabled' : ''}>
+      <span>${o.optional ? '(opcionális) ' : ''}${esc(o.description)}${o.type === 'giveItem' && o.count ? ` <b>×${o.count}${o.foundInRaid ? ' FIR' : ''}</b>` : ''}</span></label>
+    <span class="oacts">
+      ${isCounted(o) && !tDone ? `<span class="cnt"><button data-cnt="${o.id}" data-d="-1">−</button><b>${n}/${o.count}</b><button data-cnt="${o.id}" data-d="1">+</button></span>` : ''}
+      ${hasGeo(geo, o) ? `<button class="pin" data-pin="${o.id}" data-ptask="${t.id}" aria-label="Térképen">📍</button>` : ''}
+    </span>
+  </li>`;
+}
+
+function taskDetails(t, byId, st) {
+  const link = id => byId[id] ? `<a href="#" data-goto="${id}">${S.doneTasks[id] ? '✅' : '•'} ${esc(byId[id].name)}</a>` : '';
+  const reqs = (t.taskRequirements || []).filter(q => q.task && byId[q.task.id]);
+  const rw = t.finishRewards || {};
+  const keys = (t.neededKeys || []).flatMap(k => (k.keys || []).map(i => i.shortName || i.name));
+  return `<div class="details">
+    ${st.why.length && st.state === 'locked' ? `<p class="warn">🔒 ${esc(st.why.join(' · '))}</p>` : ''}
+    ${reqs.length ? `<p class="muted">Előtte kell:</p>${reqs.map(q => `<p>${link(q.task.id)}${(q.status || []).includes('complete') || !q.status ? '' : ` <span class="small">(${esc(q.status.join('/'))})</span>`}</p>`).join('')}` : ''}
+    ${st.unlocks.length ? `<p class="muted">Ez nyitja meg:</p>${st.unlocks.map(id => `<p>${link(id)}</p>`).join('')}` : ''}
+    ${keys.length ? `<p class="muted">🔑 Kulcsok:</p><p>${esc([...new Set(keys)].join(', '))}</p>` : ''}
+    ${t.experience || (rw.traderStanding || []).length || (rw.items || []).length ? `<p class="muted">Jutalom:</p><p>
+      ${t.experience ? `${t.experience.toLocaleString('hu-HU')} XP` : ''}
+      ${(rw.traderStanding || []).map(s => ` · ${esc(s.trader.name)} ${s.standing > 0 ? '+' : ''}${s.standing}`).join('')}
+      ${(rw.items || []).length ? '<br>' + rw.items.map(i => `${esc(i.item.shortName || i.item.name)} ×${i.count.toLocaleString('hu-HU')}`).join(', ') : ''}</p>` : ''}
+    ${t.wikiLink ? `<p><a href="${esc(t.wikiLink)}" target="_blank" rel="noopener">📖 Wiki leírás</a></p>` : ''}
+  </div>`;
+}
+
+function taskCard(t, st, byId, geo) {
+  const objs = t.objectives;
+  const doneObjs = objs.filter(o => objIsDone(t, o)).length;
+  const anyGeo = objs.some(o => hasGeo(geo, o));
+  return `
+    <div class="task ${st.state}" id="task-${t.id}">
+      <div class="top">
+        <input type="checkbox" data-task="${t.id}" ${S.doneTasks[t.id] ? 'checked' : ''} aria-label="Kész">
+        <div style="flex:1;min-width:0">
+          <b>${esc(t.name)}</b>${t.kappaRequired ? '<span class="badge">KAPPA</span>' : ''}${t.lightkeeperRequired ? '<span class="badge">LK</span>' : ''}${STATE_BADGE[st.state] || ''}
+          <div class="small">${esc(t.trader.name)} · ${t.minPlayerLevel ? t.minPlayerLevel + '. szinttől' : 'bármikor'}${t.map ? ' · ' + esc(t.map.name) : ''}${objs.length > 1 ? ` · ${doneObjs}/${objs.length} cél` : ''}</div>
+          ${st.state === 'locked' && !openTasks.has(t.id) ? `<div class="small warn">🔒 ${esc(st.why[0])}${st.why.length > 1 ? ' …' : ''}</div>` : ''}
+          <ul>${objs.map(o => objLine(t, o, geo)).join('')}</ul>
+          ${openTasks.has(t.id) ? taskDetails(t, byId, st) : ''}
+          <div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap">
+            <button class="btn sm" data-open="${t.id}">${openTasks.has(t.id) ? '▴ Kevesebb' : '▾ Részletek'}</button>
+            ${anyGeo ? `<button class="btn sm" data-pin="${objs.find(o => hasGeo(geo, o) && !objIsDone(t, o))?.id || objs.find(o => hasGeo(geo, o)).id}" data-ptask="${t.id}">📍 Térképen</button>` : ''}
+          </div>
+        </div>
+        <button class="star ${S.tracked[t.id] ? 'on' : ''}" data-track="${t.id}" aria-label="Követés">${S.tracked[t.id] ? '★' : '☆'}</button>
+      </div>
+    </div>`;
+}
+
+function renderNeedsList(tasks, out) {
+  const agg = {};
+  for (const t of tasks) {
+    if (S.doneTasks[t.id] || !factionOk(t)) continue;
+    for (const o of t.objectives) {
+      if (o.type !== 'giveItem' || !o.items || !o.items.length || objIsDone(t, o)) continue;
+      const left = o.count - Math.min(S.objCount[o.id] || 0, o.count);
+      const it = o.items[0];
+      const a = agg[it.id] = agg[it.id] || { it, n: 0, fir: 0, tasks: [] };
+      a.n += left; if (o.foundInRaid) a.fir += left;
+      a.tasks.push(t.name + (o.items.length > 1 ? ' (több tárgy is jó)' : ''));
+    }
+  }
+  const list = Object.values(agg).sort((a, b) => b.fir - a.fir || a.it.name.localeCompare(b.it.name));
+  out.innerHTML = list.length ? `
+    <p class="small">📦 Ennyi tárgyat kell még leadnod a nem kész questekhez. FIR = raidben talált legyen.</p>
+    <div class="card need-list">${list.map(a => `<div class="r"><span>${esc(a.it.name)}<br><span class="small">${esc([...new Set(a.tasks)].join(', '))}</span></span>
+      <b style="text-align:right">×${a.n}${a.fir ? `<br><span class="small warn">${a.fir} FIR</span>` : ''}</b></div>`).join('')}</div>`
+    : '<div class="card">🎉 Nincs több leadandó tárgy.</div>';
+}
 
 async function renderTasks() {
   const out = document.getElementById('tasksOut');
   let tasks;
   try { tasks = await loadTasks(); } catch (e) { out.innerHTML = errHtml(e); return; }
+  if (!taskGeo) loadTaskGeo().then(g => { taskGeo = g; if (document.getElementById('v-tasks').classList.contains('active')) renderTasks(); }).catch(() => {});
+  const byId = {};
+  for (const t of tasks) byId[t.id] = t;
+  const states = computeStates(tasks);
+
+  document.querySelectorAll('[data-qv]').forEach(c => c.classList.toggle('on', c.dataset.qv === S.qv));
   const traders = [...new Map(tasks.map(t => [t.trader.normalizedName, t.trader.name])).entries()];
-  const chips = document.getElementById('traderChips');
-  chips.innerHTML = `<button class="chip ${S.trader === 'all' ? 'on' : ''}" data-tr="all">Mind</button>` +
+  document.getElementById('traderChips').innerHTML = `<button class="chip ${S.trader === 'all' ? 'on' : ''}" data-tr="all">Minden trader</button>` +
     traders.map(([k, n]) => `<button class="chip ${S.trader === k ? 'on' : ''}" data-tr="${esc(k)}">${esc(n)}</button>`).join('');
+  const maps = [...new Map(tasks.flatMap(t => (t.map ? [t.map] : []).concat(...t.objectives.map(o => o.maps || []))).map(m => [m.id, m.name])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  document.getElementById('qmap').innerHTML = `<option value="all">🗺️ Minden pálya</option>` +
+    maps.map(([id, n]) => `<option value="${esc(id)}" ${S.qmap === id ? 'selected' : ''}>${esc(n)}</option>`).join('');
   document.getElementById('kappaChip').classList.toggle('on', S.kappaOnly);
-  document.getElementById('doneChip').classList.toggle('on', S.showDone);
+  document.getElementById('lvl').value = S.level || '';
+
+  const mine = tasks.filter(t => factionOk(t));
+  const kappa = mine.filter(t => t.kappaRequired), lk = mine.filter(t => t.lightkeeperRequired);
+  const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const kd = kappa.filter(t => S.doneTasks[t.id]).length, ld = lk.filter(t => S.doneTasks[t.id]).length, ad = mine.filter(t => S.doneTasks[t.id]).length;
+  const avail = mine.filter(t => states[t.id].state === 'available').length;
+  document.getElementById('qSummary').innerHTML = `
+    <div class="prog"><span>Összes</span><div class="bar"><i style="width:${pct(ad, mine.length)}%"></i></div><b>${ad}/${mine.length}</b></div>
+    ${kappa.length ? `<div class="prog"><span>🎒 Kappa</span><div class="bar"><i style="width:${pct(kd, kappa.length)}%"></i></div><b>${kd}/${kappa.length}</b></div>` : ''}
+    ${lk.length ? `<div class="prog"><span>🗼 Lightkeeper</span><div class="bar"><i style="width:${pct(ld, lk.length)}%"></i></div><b>${ld}/${lk.length}</b></div>` : ''}
+    <div class="small">✅ ${avail} quest elérhető most · ⭐ ${Object.keys(S.tracked).filter(id => byId[id] && !S.doneTasks[id]).length} követett</div>`;
+
+  out.className = '';
+  if (S.qv === 'needs') { renderNeedsList(tasks, out); return; }
 
   const q = document.getElementById('tq').value.trim().toLowerCase();
-  const scope = tasks.filter(t => (S.trader === 'all' || t.trader.normalizedName === S.trader) && (!S.kappaOnly || t.kappaRequired));
-  const doneCount = scope.filter(t => S.doneTasks[t.id]).length;
-  const list = scope
-    .filter(t => S.showDone || !S.doneTasks[t.id])
-    .filter(t => !q || t.name.toLowerCase().includes(q) || t.objectives.some(o => (o.items || []).some(i => i.name.toLowerCase().includes(q) || (i.shortName || '').toLowerCase().includes(q))))
-    .sort((a, b) => (a.minPlayerLevel || 0) - (b.minPlayerLevel || 0) || a.name.localeCompare(b.name));
-  out.className = '';
-  out.innerHTML = `
-    <p class="small">✅ ${doneCount} / ${scope.length} kész${S.kappaOnly ? ' (Kappa)' : ''}</p>
-    <div class="card">${list.length ? list.map(t => `
-      <div class="task ${S.doneTasks[t.id] ? 'done' : ''}">
-        <div class="top">
-          <input type="checkbox" data-task="${t.id}" ${S.doneTasks[t.id] ? 'checked' : ''}>
-          <div style="flex:1">
-            <b>${esc(t.name)}</b>${t.kappaRequired ? '<span class="badge">KAPPA</span>' : ''}${t.lightkeeperRequired ? '<span class="badge">LK</span>' : ''}
-            <div class="small">${esc(t.trader.name)} · ${t.minPlayerLevel ? t.minPlayerLevel + '. szinttől' : 'bármikor'}${t.map ? ' · ' + esc(t.map.name) : ''}
-              ${t.wikiLink ? ` · <a href="${esc(t.wikiLink)}" target="_blank" rel="noopener">wiki</a>` : ''}</div>
-            <ul>${t.objectives.map(o => `<li>${o.optional ? '(opcionális) ' : ''}${esc(o.description)}${o.type === 'giveItem' && o.count ? ` <b>×${o.count}${o.foundInRaid ? ' FIR' : ''}</b>` : ''}</li>`).join('')}</ul>
-          </div>
-        </div>
-      </div>`).join('') : '<p class="small">Nincs ilyen quest.</p>'}</div>`;
+  const wantState = { avail: s => s === 'available', locked: s => s === 'locked', done: s => s === 'done', tracked: () => true, all: s => s !== 'other' }[S.qv] || (() => true);
+  const list = tasks
+    .filter(t => wantState(states[t.id].state))
+    .filter(t => S.qv !== 'tracked' || S.tracked[t.id])
+    .filter(t => S.trader === 'all' || t.trader.normalizedName === S.trader)
+    .filter(t => !S.kappaOnly || t.kappaRequired)
+    .filter(t => S.qmap === 'all' || (t.map && t.map.id === S.qmap) || t.objectives.some(o => (o.maps || []).some(m => m.id === S.qmap)))
+    .filter(t => !q || t.name.toLowerCase().includes(q) || t.objectives.some(o => (o.description || '').toLowerCase().includes(q) || (o.items || []).some(i => i.name.toLowerCase().includes(q) || (i.shortName || '').toLowerCase().includes(q))))
+    .sort((a, b) => (S.tracked[b.id] ? 1 : 0) - (S.tracked[a.id] ? 1 : 0) || (a.minPlayerLevel || 0) - (b.minPlayerLevel || 0) || a.name.localeCompare(b.name));
+  const EMPTY = {
+    tracked: 'Még nem követsz questet. Koppints a ☆ gombra azoknál, amiket épp csinálsz: ezek kerülnek előre, és a térkép is ezeket mutatja.',
+    avail: 'Nincs elérhető quest ezekkel a szűrőkkel. Állítsd be a szintedet, vagy jelöld késznek a már megcsinált questeket.',
+  };
+  out.innerHTML = `<p class="small">${list.length} quest</p>
+    <div class="card">${list.length ? list.slice(0, 300).map(t => taskCard(t, states[t.id], byId, taskGeo)).join('') : `<p class="small">${EMPTY[S.qv] || 'Nincs ilyen quest.'}</p>`}</div>
+    ${list.length > 300 ? '<p class="small">Az első 300 látszik – szűkíts kereséssel vagy traderrel.</p>' : ''}`;
 }
-document.getElementById('tasksOut').addEventListener('change', e => {
+
+function openQuest(id) {
+  S.qv = 'all'; S.trader = 'all'; S.qmap = 'all'; S.kappaOnly = false; save();
+  document.getElementById('tq').value = '';
+  openTasks.add(id);
+  showView('v-tasks');
+  setTimeout(() => { const el = document.getElementById('task-' + id); if (el) el.scrollIntoView({ block: 'center' }); }, 60);
+}
+
+const tasksOut = document.getElementById('tasksOut');
+tasksOut.addEventListener('change', async e => {
   const id = e.target.dataset.task;
-  if (!id) return;
-  if (e.target.checked) S.doneTasks[id] = 1; else delete S.doneTasks[id];
-  save(); renderTasks();
+  if (id) {
+    if (e.target.checked) {
+      const tasks = await loadTasks();
+      const byId = {};
+      for (const t of tasks) byId[t.id] = t;
+      const anc = ancestorsTodo(byId[id], byId);
+      if (anc.size && confirm(`Ehhez ${anc.size} korábbi quest is kell, ami még nincs kipipálva. Azokat is késznek jelöljem?`)) anc.forEach(a => S.doneTasks[a] = 1);
+      S.doneTasks[id] = 1;
+    } else delete S.doneTasks[id];
+    save(); renderTasks();
+    return;
+  }
+  if (e.target.dataset.obj) { toggleObjective(e.target.dataset.otask, e.target.dataset.obj); renderTasks(); }
 });
+tasksOut.addEventListener('click', async e => {
+  const tr = e.target.closest('[data-track]');
+  if (tr) { if (S.tracked[tr.dataset.track]) delete S.tracked[tr.dataset.track]; else S.tracked[tr.dataset.track] = 1; save(); renderTasks(); return; }
+  const op = e.target.closest('[data-open]');
+  if (op) { const i = op.dataset.open; if (openTasks.has(i)) openTasks.delete(i); else openTasks.add(i); renderTasks(); return; }
+  const cnt = e.target.closest('[data-cnt]');
+  if (cnt) {
+    const tasks = await loadTasks();
+    const o = tasks.flatMap(t => t.objectives).find(x => x.id === cnt.dataset.cnt);
+    if (!o) return;
+    S.objCount[o.id] = Math.max(0, Math.min(o.count, (S.objCount[o.id] || 0) + +cnt.dataset.d));
+    if (S.objCount[o.id] < o.count) delete S.doneObj[o.id];
+    save(); renderTasks();
+    return;
+  }
+  const pin = e.target.closest('[data-pin]');
+  if (pin) { TKMap.focus(pin.dataset.ptask, pin.dataset.pin); return; }
+  const go = e.target.closest('[data-goto]');
+  if (go) { e.preventDefault(); openQuest(go.dataset.goto); }
+});
+document.querySelectorAll('[data-qv]').forEach(c => c.onclick = () => { S.qv = c.dataset.qv; save(); renderTasks(); });
 document.getElementById('traderChips').addEventListener('click', e => {
   const c = e.target.closest('[data-tr]');
   if (c) { S.trader = c.dataset.tr; save(); renderTasks(); }
 });
+document.getElementById('qmap').addEventListener('change', e => { S.qmap = e.target.value; save(); renderTasks(); });
 document.getElementById('kappaChip').onclick = () => { S.kappaOnly = !S.kappaOnly; save(); renderTasks(); };
-document.getElementById('doneChip').onclick = () => { S.showDone = !S.showDone; save(); renderTasks(); };
+document.getElementById('lvl').addEventListener('change', e => { S.level = Math.max(0, Math.min(79, parseInt(e.target.value, 10) || 0)); save(); renderTasks(); });
 document.getElementById('tq').addEventListener('input', debounce(renderTasks, 200));
 
 // ---------- Hideout ----------
@@ -628,24 +975,57 @@ function syncSettings() {
   document.getElementById('modeTag').textContent = S.mode === 'pve' ? 'PvE' : 'PvP';
   document.querySelectorAll('[data-mode]').forEach(c => c.classList.toggle('on', c.dataset.mode === S.mode));
   document.querySelectorAll('[data-lang]').forEach(c => c.classList.toggle('on', c.dataset.lang === S.lang));
+  document.querySelectorAll('[data-fac]').forEach(c => c.classList.toggle('on', c.dataset.fac === S.faction));
 }
+document.querySelectorAll('[data-fac]').forEach(c => c.onclick = () => { S.faction = c.dataset.fac; save(); syncSettings(); });
+
+// Mentőkód: a haladás JSON-ja base64-ben (ékezetbiztosan).
+const PROGRESS_KEYS = ['doneTasks', 'doneObj', 'objCount', 'tracked', 'built', 'favs', 'level', 'faction', 'mode'];
+document.getElementById('backupMake').onclick = () => {
+  const data = {};
+  PROGRESS_KEYS.forEach(k => data[k] = S[k]);
+  const code = 'TS1:' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  const box = document.getElementById('backupBox');
+  box.value = code;
+  box.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(code).then(() => alert('A mentőkód a vágólapra került.'), () => {});
+};
+document.getElementById('backupLoad').onclick = () => {
+  const code = document.getElementById('backupBox').value.trim();
+  try {
+    if (!code.startsWith('TS1:')) throw new Error();
+    const data = JSON.parse(decodeURIComponent(escape(atob(code.slice(4)))));
+    if (typeof data !== 'object' || !data) throw new Error();
+    if (!confirm('Felülírod a mostani haladást a mentőkódban lévővel?')) return;
+    PROGRESS_KEYS.forEach(k => { if (k in data) S[k] = data[k]; });
+    save(); syncSettings();
+    alert('Kész, visszatöltve!');
+  } catch (e) { alert('Ez nem érvényes mentőkód.'); }
+};
 document.querySelectorAll('[data-mode]').forEach(c => c.onclick = () => { S.mode = c.dataset.mode; traders = null; save(); syncSettings(); renderTraders(); });
 document.querySelectorAll('[data-lang]').forEach(c => c.onclick = () => { S.lang = c.dataset.lang; traders = null; save(); syncSettings(); renderTraders(); });
 document.getElementById('refresh').onclick = () => { clearCache(); alert('Kész! A következő megnyitáskor friss adatok töltődnek be.'); };
 document.getElementById('resetProgress').onclick = () => {
-  if (!confirm('Biztosan törlöd a kész questeket és a hideout szinteket?')) return;
-  S.doneTasks = {}; S.built = {}; save();
+  if (!confirm('Biztosan törlöd a kész questeket, a követéseket és a hideout szinteket?')) return;
+  S.doneTasks = {}; S.doneObj = {}; S.objCount = {}; S.tracked = {}; S.built = {}; save();
 };
 
 // ---------- Navigáció ----------
-const RENDER = { 'v-ammo': renderAmmo, 'v-tasks': renderTasks, 'v-hideout': renderHideout, 'v-price': () => setPriceView(priceView) };
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === b.dataset.view));
-  if (b.dataset.view === 'v-time') startClock(); else stopClock();
-  if (RENDER[b.dataset.view]) RENDER[b.dataset.view]();
-  window.scrollTo(0, 0);
-});
+// Minden fülváltás bekerül az előzményekbe, így a telefon vissza gombja az előző fülre visz.
+const RENDER = { 'v-ammo': renderAmmo, 'v-tasks': renderTasks, 'v-hideout': renderHideout, 'v-price': () => setPriceView(priceView), 'v-map': () => TKMap.render() };
+function showView(id, push = true) {
+  if (!document.getElementById(id)) id = 'v-price';
+  const changed = !document.getElementById(id).classList.contains('active');
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.view === id));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
+  document.body.classList.toggle('on-map', id === 'v-map');
+  if (id === 'v-time') startClock(); else stopClock();
+  if (RENDER[id]) RENDER[id]();
+  if (push && changed) history.pushState({ v: id }, '', '#' + id.slice(2));
+  if (changed) window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showView(b.dataset.view));
+window.addEventListener('popstate', e => showView((e.state && e.state.v) || ('v-' + (location.hash.slice(1) || 'price')), false));
 
 document.addEventListener('click', e => {
   if (!e.target.closest('[data-retry]')) return;
@@ -654,7 +1034,14 @@ document.addEventListener('click', e => {
 });
 
 syncSettings();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+TKMap.init();
+{
+  const start = 'v-' + (location.hash.slice(1) || 'price');
+  history.replaceState({ v: start }, '', location.hash || '#price');
+  showView(start, false);
+}
+// Az Android appban a fájlok eleve a telefonon vannak, ott nem kell service worker.
+if ('serviceWorker' in navigator && !window.Capacitor) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // Offline gyorsítótár: az app hálózat nélkül is elindul.
-const CACHE = 'tarkov-v2';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'tarkov-v3';
+const FILES = ['./', 'index.html', 'map.js', 'maps-data.js', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

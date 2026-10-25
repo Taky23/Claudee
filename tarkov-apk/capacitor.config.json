@@ -1,0 +1,10 @@
+{
+  "appId": "hu.taky.tarkov",
+  "appName": "Tarkov Segéd",
+  "webDir": "www",
+  "backgroundColor": "#11130fff",
+  "android": {
+    "backgroundColor": "#11130fff",
+    "allowMixedContent": false
+  }
+}
