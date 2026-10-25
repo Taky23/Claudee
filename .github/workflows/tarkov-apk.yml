@@ -66,8 +66,8 @@ jobs:
           name: TarkovSeged-apk
           path: TarkovSeged.apk
 
-      - name: Kiadás (csak a main ágon)
-        if: github.ref == 'refs/heads/main'
+      # Release-ből telefonon is egy koppintással letölthető (az artifacthoz bejelentkezés kell, és ZIP-ben jön).
+      - name: Kiadás (közvetlen letöltési link)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
