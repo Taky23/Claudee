@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Csak az AniList (adatok), a Jikan (tartalék MyAnimeList-adatok, ha az AniList nem válaszol), a MyMemory (leírás fordítása), a trace.moe (képkeresés, csak a feltöltött kép) és az AnimeThemes (openingek), valamint a Wikidata és a Wikipédia (részenkénti összefoglalók) érhető el; a listád a telefonon marad. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe https://cdn.myanimelist.net; media-src 'self' blob: https://media.trace.moe https://v.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://api.jikan.moe https://www.wikidata.org https://en.wikipedia.org https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://s4.anilist.co https://img.anili.st https://media.trace.moe https://cdn.myanimelist.net; media-src 'self' blob: https://media.trace.moe https://animethemes.moe https://*.animethemes.moe; connect-src 'self' https://graphql.anilist.co https://api.jikan.moe https://www.wikidata.org https://en.wikipedia.org https://api.mymemory.translated.net https://api.trace.moe https://api.animethemes.moe https://graphql.animethemes.moe; frame-src 'none'; object-src 'none'; base-uri 'self'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#07060f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1282,45 +1282,98 @@ function listEditor(m, e) {
     <button class="btn full" id="rmList" style="color:#ff8095">Törlés a listáról</button>`;
 }
 // ---------- 🎵 Openingek és endingek (AnimeThemes) ----------
+// Két úton próbáljuk: először az új GraphQL API, aztán a régi (elavult) REST API. A lassú válasz miatt 20 mp a türelmi idő.
+// A sikeres eredményt a telefonon is eltesszük 7 napra, így legközelebb azonnal megjelenik (és net nélkül is).
 const themesMem = {};
+const THEMES_TTL = 7 * 24 * 3600 * 1000;
+function normTheme(type, sequence, title, artists, link) {
+  return { type, sequence: sequence || 1, title: title || '', artists: artists.filter(Boolean).join(', '), link: link || '' };
+}
+async function themesGraphQL(m) {
+  const query = `query($id:[Int!]){findAnimeByExternalSite(site:${m.fallback ? 'MAL' : 'ANILIST'},id:$id){animethemes{type sequence song{title{romaji native} performances{as artist{name{main}}}} animethemeentries{videos{edges{node{link}}}}}}}`;
+  const r = await fetchT('https://graphql.animethemes.moe/', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ query, variables: { id: [m.fallback ? m.idMal : m.id] } }),
+  }, 20000);
+  if (!r.ok) throw new Error('GraphQL ' + r.status);
+  const j = await r.json();
+  if (j.errors && j.errors.length) throw new Error('GraphQL: ' + (j.errors[0].message || 'hiba'));
+  const list = (j.data && j.data.findAnimeByExternalSite) || [];
+  return list.flatMap(a => a.animethemes || []).map(t => {
+    const song = t.song || {};
+    const title = song.title ? (song.title.romaji || song.title.native) : '';
+    const artists = (song.performances || []).map(p => p.as || (p.artist && p.artist.name && p.artist.name.main));
+    const link = (t.animethemeentries || []).flatMap(en => ((en.videos && en.videos.edges) || []).map(e => e.node && e.node.link))[0];
+    return normTheme(t.type, t.sequence, title, artists, link);
+  });
+}
+async function themesREST(m) {
+  const r = await fetchT(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=${m.fallback ? 'MyAnimeList' : 'AniList'}&filter[external_id]=${m.fallback ? m.idMal : m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`, { headers: { Accept: 'application/json' } }, 20000);
+  if (!r.ok) throw new Error('REST ' + r.status);
+  const j = await r.json();
+  return (j.anime || []).flatMap(a => a.animethemes || []).map(t => {
+    const song = t.song || {};
+    const link = (t.animethemeentries || []).flatMap(en => en.videos || [])[0];
+    return normTheme(t.type, t.sequence, song.title, (song.artists || []).map(a => a.name), link && link.link);
+  });
+}
+async function fetchThemes(m) {
+  const key = 'themes:' + (m.fallback ? 'mal' : 'al') + ':' + (m.fallback ? m.idMal : m.id);
+  try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && Date.now() - c.t < THEMES_TTL) return c.v; } catch (e) {}
+  let v, errs = [];
+  for (const fn of [themesGraphQL, themesREST]) {
+    try { v = await fn(m); break; } catch (e) { errs.push(e.name === 'AbortError' ? fn.name + ': időtúllépés' : e.message); }
+  }
+  if (!v) {
+    try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c) return c.v; } catch (e) {}
+    const err = new Error(errs.join(' · ')); throw err;
+  }
+  v = v.filter(t => t.type === 'OP' || t.type === 'ED')
+    .sort((a, b) => (a.type === b.type ? a.sequence - b.sequence : a.type === 'OP' ? -1 : 1));
+  // Ugyanaz a dal többször is szerepelhet (több évad egy bejegyzésben) – a duplikátumokat kiszűrjük.
+  const seen = new Set(); v = v.filter(t => { const k = t.type + t.sequence + t.title; if (seen.has(k)) return false; seen.add(k); return true; });
+  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), v })); } catch (e) {}
+  return v;
+}
 async function loadThemes(m) {
   const out = () => $('themesOut');
   const name = title(m);
   const yt = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
   const ytm = q => `https://music.youtube.com/search?q=${encodeURIComponent(q)}`;
+  const ytLinks = `<div class="row" style="margin-top:6px;flex-wrap:wrap;gap:6px">
+      <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${yt(name + ' opening')}" target="_blank" rel="noopener noreferrer">📺 Opening YouTube-on</a>
+      <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${yt(name + ' ending')}" target="_blank" rel="noopener noreferrer">📺 Ending YouTube-on</a></div>`;
   let themes = themesMem[m.id];
   if (!themes) {
-    try {
-      const r = await fetchT(`https://api.animethemes.moe/anime?filter[has]=resources&filter[site]=${m.fallback ? 'MyAnimeList' : 'AniList'}&filter[external_id]=${m.fallback ? m.idMal : m.id}&include=animethemes.animethemeentries.videos,animethemes.song.artists`);
-      if (!r.ok) throw new Error();
-      const j = await r.json();
-      themes = ((j.anime && j.anime[0] && j.anime[0].animethemes) || []).filter(t => t.type === 'OP' || t.type === 'ED')
-        .sort((a, b) => (a.type === b.type ? (a.sequence || 1) - (b.sequence || 1) : a.type === 'OP' ? -1 : 1));
-      themesMem[m.id] = themes;
-    } catch (e) {
-      if (out()) out().innerHTML = `<p class="small">Most nem érem el a dal-adatbázist. <a href="${yt(name + ' opening')}" target="_blank" rel="noopener noreferrer">Keresés YouTube-on ↗</a></p>`;
+    if (out()) out().innerHTML = '<p class="small">Dalok betöltése… (az AnimeThemes néha lassú, akár 20 mp)</p>';
+    try { themes = themesMem[m.id] = await fetchThemes(m); }
+    catch (e) {
+      if (out()) {
+        out().innerHTML = `<p class="small">Most nem érem el a dal-adatbázist (AnimeThemes). <span class="muted">${esc(e.message)}</span></p>
+          <button class="btn" id="themesRetry" style="padding:5px 10px;font-size:12px">🔄 Újra</button>${ytLinks}`;
+        $('themesRetry').onclick = () => loadThemes(m);
+      }
       return;
     }
   }
   if (!out()) return;
-  if (!themes.length) { out().innerHTML = `<p class="small">Ehhez az animéhez nincs dal-adat. <a href="${yt(name + ' opening')}" target="_blank" rel="noopener noreferrer">Keresés YouTube-on ↗</a></p>`; return; }
+  if (!themes.length) { out().innerHTML = `<p class="small">Ehhez az animéhez még nincs dal az AnimeThemes adatbázisában (friss évadoknál ez gyakori).</p>${ytLinks}`; return; }
   out().innerHTML = '<div class="card" style="padding:4px 12px">' + themes.map((t, i) => {
-    const song = t.song || {}, artists = (song.artists || []).map(a => a.name).join(', ');
-    const video = (t.animethemeentries || []).flatMap(en => en.videos || [])[0];
-    const q = `${song.title || ''} ${artists}`.trim() || `${name} ${t.type}${t.sequence || ''}`;
+    const q = `${t.title} ${t.artists}`.trim() || `${name} ${t.type}${t.sequence}`;
     return `<div class="song" style="padding:8px 0;border-bottom:1px solid var(--line)">
-      <b>${t.type === 'OP' ? '🎬 Opening' : '🌙 Ending'} ${t.sequence || 1}:</b> ${esc(song.title || '?')}${artists ? ` <span class="muted">– ${esc(artists)}</span>` : ''}
+      <b>${t.type === 'OP' ? '🎬 Opening' : '🌙 Ending'} ${t.sequence}:</b> ${esc(t.title || '?')}${t.artists ? ` <span class="muted">– ${esc(t.artists)}</span>` : ''}
       <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:6px">
-        ${video ? `<button class="btn" data-play="${i}" style="padding:5px 10px;font-size:12px">▶️ Lejátszás itt</button>` : ''}
+        ${t.link ? `<button class="btn" data-play="${i}" style="padding:5px 10px;font-size:12px">▶️ Lejátszás itt</button>` : ''}
         <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${yt(q + ' ' + name + ' ' + (t.type === 'OP' ? 'opening' : 'ending'))}" target="_blank" rel="noopener noreferrer">📺 YouTube</a>
         <a class="btn" style="padding:5px 10px;font-size:12px;text-decoration:none" href="${ytm(q)}" target="_blank" rel="noopener noreferrer">🎵 YouTube Music</a>
       </div><div data-vid="${i}"></div></div>`;
   }).join('') + '</div><p class="small">Dal-adatok: AnimeThemes.moe</p>';
   out().querySelectorAll('[data-play]').forEach(b => b.onclick = () => {
     const i = +b.dataset.play, t = themes[i];
-    const v = (t.animethemeentries || []).flatMap(en => en.videos || [])[0];
     const box = out().querySelector(`[data-vid="${i}"]`);
-    box.innerHTML = box.innerHTML ? '' : `<video src="${esc(v.link)}" controls autoplay playsinline style="width:100%;border-radius:10px;margin-top:6px;background:#000"></video>`;
+    box.innerHTML = box.innerHTML ? '' : `<video src="${esc(t.link)}" controls autoplay playsinline style="width:100%;border-radius:10px;margin-top:6px;background:#000"></video>`;
+    const v = box.querySelector('video');
+    if (v) v.onerror = () => { box.innerHTML = `<p class="small">A videó nem játszható le itt. <a href="${esc(t.link)}" target="_blank" rel="noopener noreferrer">Megnyitás böngészőben ↗</a></p>`; };
   });
 }
 
