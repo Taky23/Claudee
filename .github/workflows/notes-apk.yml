@@ -37,12 +37,17 @@ jobs:
         working-directory: notes-apk
         run: npx @capacitor/assets generate --android --iconBackgroundColor '#0e1116' --iconBackgroundColorDark '#0e1116' --splashBackgroundColor '#0e1116' --splashBackgroundColorDark '#0e1116'
 
-      - name: Vissza gomb natív kezelő bemásolása
+      - name: Vissza gomb natív kezelő + kamera engedélyek
         working-directory: notes-apk
         run: |
           base=android/app/src/main
           mkdir -p "$base/java/hu/taky/jegyzetek"
           cp native/java/MainActivity.java "$base/java/hu/taky/jegyzetek/MainActivity.java"
+          node -e '
+            const fs=require("fs");const p="android/app/src/main/AndroidManifest.xml";let m=fs.readFileSync(p,"utf8");
+            const perms=`    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n`;
+            if(!m.includes("android.permission.CAMERA")){m=m.replace("<application",perms+"\n    <application");fs.writeFileSync(p,m);console.log("Kamera engedélyek hozzáadva");}else{console.log("Mar hozzaadva");}
+          '
 
       - name: Állandó aláíró kulcs (hogy a frissítések törlés nélkül települjenek)
         run: mkdir -p ~/.android && cp notes-apk/debug.keystore ~/.android/debug.keystore

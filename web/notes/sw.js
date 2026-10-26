@@ -1,6 +1,6 @@
 // Offline gyorsítótár: az app internet nélkül is elindul. Az adatok (jegyzetek, média)
 // az IndexedDB-ben vannak, amit ez nem érint – csak a programfájlokat cache-eljük.
-const CACHE = 'jegyzetek-v1';
+const CACHE = 'jegyzetek-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
