@@ -22,8 +22,9 @@
   header .sp { flex: 1; }
   .iconbtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); display: grid; place-items: center; font-size: 19px; }
   main { padding: 14px; max-width: 760px; margin: 0 auto; }
-  .searchbar { display: none; margin-bottom: 12px; }
-  .searchbar.show { display: block; }
+  .searchbar { display: block; margin-bottom: 12px; position: relative; }
+  .searchbar input { padding-left: 38px; }
+  .searchbar::before { content: "🔍"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; opacity: .7; pointer-events: none; }
   input, textarea, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; width: 100%; outline: none; }
   input:focus, textarea:focus { border-color: var(--accent); }
   textarea { resize: none; line-height: 1.55; }
@@ -88,13 +89,49 @@
   .chips { display: flex; gap: 8px; flex-wrap: wrap; }
   .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
   .chip.on { background: var(--grad); color: var(--on-accent); border: 0; }
+  /* Összes link nézet */
+  .linkitem { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; }
+  .linkitem .lk { flex: 1; min-width: 0; }
+  .linkitem .lk b { display: block; font-size: 14px; word-break: break-word; }
+  .linkitem .lk span { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .linkitem .lk .from { color: var(--accent2); }
+  /* Kuka */
+  .trashrow { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; }
+  .trashrow .ti { flex: 1; min-width: 0; }
+  .trashrow .ti b { display: block; font-size: 14px; word-break: break-word; }
+  .trashrow .ti span { font-size: 12px; color: var(--muted); }
+  /* PIN zár */
+  .lock { position: fixed; inset: 0; z-index: 60; background: var(--bg); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; }
+  .lock.show { display: flex; }
+  .lock .ic { font-size: 50px; }
+  .lock h2 { margin: 0; font-size: 20px; }
+  .lock .dots { display: flex; gap: 12px; height: 18px; }
+  .lock .dots i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--muted); display: inline-block; }
+  .lock .dots i.on { background: var(--accent); border-color: var(--accent); }
+  .lock .err { color: var(--danger); font-size: 14px; min-height: 18px; }
+  .pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 14px; }
+  .pad button { height: 72px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 26px; font-weight: 600; }
+  .pad button.wide { font-size: 16px; }
+  /* Kamera */
+  .cam { position: fixed; inset: 0; z-index: 50; background: #000; display: none; flex-direction: column; }
+  .cam.show { display: flex; }
+  .cam video { flex: 1; width: 100%; object-fit: cover; background: #000; }
+  .cam .bar { padding: 18px 20px calc(24px + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #000; }
+  .cam .shoot { width: 72px; height: 72px; border-radius: 50%; border: 5px solid #fff; background: #fff; }
+  .cam .shoot.rec { background: var(--danger); border-color: var(--danger); }
+  .cam .cbtn { min-width: 64px; color: #fff; background: rgba(255,255,255,.14); border: 0; border-radius: 12px; padding: 10px; font: inherit; font-weight: 600; }
+  .cam .mode { position: absolute; top: calc(14px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+  .cam .mode button { background: rgba(0,0,0,.5); color: #fff; border: 1px solid rgba(255,255,255,.25); border-radius: 99px; padding: 6px 14px; font: inherit; font-size: 13px; font-weight: 700; }
+  .cam .mode button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .cam .rectime { position: absolute; top: calc(56px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); color: #fff; background: rgba(0,0,0,.5); padding: 3px 10px; border-radius: 99px; font-size: 13px; font-weight: 700; display: none; }
+  .cam .rectime.show { display: block; }
 </style>
 </head>
 <body>
 <header>
   <h1>📓 Jegyzetek</h1>
   <div class="sp"></div>
-  <button class="iconbtn" id="searchBtn" aria-label="Keresés">🔍</button>
+  <button class="iconbtn" id="linksBtn" aria-label="Összes link">🔗</button>
   <button class="iconbtn" id="setBtn" aria-label="Beállítások">⚙️</button>
 </header>
 <main>
@@ -120,6 +157,7 @@
     <div class="sec">
       <h4>Képek és videók <span class="small" id="edMediaNote" style="text-transform:none;letter-spacing:0"></span></h4>
       <div class="media" id="edMedia"></div>
+      <button class="btn full ghost" id="camBtn" style="margin-top:8px">📷 Kamera (az appon belül)</button>
       <input type="file" id="fileIn" accept="image/*,video/*" multiple hidden>
     </div>
 
@@ -145,6 +183,11 @@
   <div class="top"><button class="iconbtn" id="setBack" aria-label="Vissza">‹</button><h1 style="font-size:17px;margin:0 0 0 4px">⚙️ Beállítások</h1></div>
   <div class="body">
     <div class="sec">
+      <h4>Biztonság</h4>
+      <button class="btn full" id="pinBtn" style="margin-bottom:8px">🔐 App-zár (PIN)</button>
+      <button class="btn full" id="trashBtn">🗑️ Kuka <span class="small" id="trashCount" style="margin-left:auto"></span></button>
+    </div>
+    <div class="sec">
       <h4>Biztonsági mentés</h4>
       <p class="small">Minden a telefonodon tárolódik (semmi nem megy fel szerverre). Alkalmanként érdemes lementeni, hogy újratelepítéskor se vesszen el semmi. A mentés a képeket és videókat is tartalmazza, ezért nagy fájl lehet.</p>
       <button class="btn full" id="expBtn" style="margin-bottom:8px">💾 Mentés fájlba</button>
@@ -160,6 +203,45 @@
       <p class="small">Jegyzetek – privát jegyzet-, média- és linktár. Az adataid csak ezen az eszközön vannak, offline is működik.</p>
     </div>
   </div>
+</div>
+
+<!-- Összes link -->
+<div class="sheet" id="links">
+  <div class="top"><button class="iconbtn" id="linksBack" aria-label="Vissza">‹</button><h1 style="font-size:17px;margin:0 0 0 4px">🔗 Összes link</h1></div>
+  <div class="body">
+    <div class="searchbar"><input type="search" id="linkQ" placeholder="Keresés a linkek közt…" autocomplete="off"></div>
+    <div id="linksOut"></div>
+  </div>
+</div>
+
+<!-- Kuka -->
+<div class="sheet" id="trash">
+  <div class="top"><button class="iconbtn" id="trashBack" aria-label="Vissza">‹</button><h1 style="font-size:17px;margin:0 0 0 4px">🗑️ Kuka</h1></div>
+  <div class="body">
+    <p class="small">A törölt jegyzetek 30 napig itt maradnak, utána véglegesen törlődnek.</p>
+    <div id="trashOut"></div>
+  </div>
+</div>
+
+<!-- Kamera -->
+<div class="cam" id="cam">
+  <div class="mode"><button data-cm="photo" class="on">📷 Fotó</button><button data-cm="video">🎬 Videó</button></div>
+  <div class="rectime" id="recTime">0:00</div>
+  <video id="camView" autoplay playsinline muted></video>
+  <div class="bar">
+    <button class="cbtn" id="camCancel">Mégse</button>
+    <button class="shoot" id="camShoot" aria-label="Felvétel"></button>
+    <button class="cbtn" id="camSwitch">🔄</button>
+  </div>
+</div>
+
+<!-- PIN zár -->
+<div class="lock" id="lock">
+  <div class="ic">🔐</div>
+  <h2 id="lockTitle">Add meg a PIN-kódot</h2>
+  <div class="dots" id="lockDots"></div>
+  <div class="err" id="lockErr"></div>
+  <div class="pad" id="lockPad"></div>
 </div>
 
 <!-- Média nézegető -->
@@ -225,7 +307,20 @@ function normUrl(u) { u = (u || '').trim(); if (!u) return ''; if (!/^https?:\/\
 function fmtDate(t) { return new Date(t).toLocaleDateString('hu-HU', { year: 'numeric', month: 'short', day: 'numeric' }); }
 
 /* ---------- Lista ---------- */
-async function loadNotes() { notes = await dbNotes(); render(); }
+let allNotes = [];
+async function hardDelete(n) { for (const mid of (n.media || [])) await dbDelMedia(mid); await dbDelNote(n.id); }
+async function purgeTrash() {
+  const cutoff = Date.now() - 30 * 86400000;
+  for (const n of allNotes.filter(n => n.trashed && n.trashed < cutoff)) await hardDelete(n);
+}
+async function loadNotes() {
+  allNotes = await dbNotes();
+  await purgeTrash();
+  allNotes = await dbNotes();
+  notes = allNotes.filter(n => !n.trashed);
+  render();
+}
+function trashedNotes() { return allNotes.filter(n => n.trashed).sort((a, b) => b.trashed - a.trashed); }
 function sorters() {
   return { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, title: (a, b) => (a.title || '').localeCompare(b.title || '', 'hu') }[sort];
 }
@@ -345,11 +440,10 @@ $('edSave').onclick = () => history.back();
 $('edBack').onclick = () => history.back();
 $('edDel').onclick = async () => {
   if (!cur || cur._new) return;
-  const backup = stripNote(cur), mediaIds = cur.media.slice();
-  await dbDelNote(cur.id);
+  const clean = stripNote(cur);
+  await dbPutNote(Object.assign({}, clean, { trashed: Date.now() }));
   closeEditor(); await loadNotes();
-  lastDeleted = { note: backup };
-  toast('Jegyzet törölve', async () => { await dbPutNote(backup); await loadNotes(); });
+  toast('A Kukába került', async () => { await dbPutNote(clean); await loadNotes(); });
 };
 $('edTitle').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('edBody').focus(); } });
 function autoGrow() { const t = $('edBody'); t.style.height = 'auto'; t.style.height = Math.max(120, t.scrollHeight) + 'px'; }
@@ -366,11 +460,13 @@ function closeViewer(skipBack) { $('vBox').innerHTML = ''; $('viewer').classList
 $('vClose').onclick = () => history.back();
 
 /* ---------- Keresés / beállítások ---------- */
-$('searchBtn').onclick = () => { const b = $('searchbar'); b.classList.toggle('show'); if (b.classList.contains('show')) $('q').focus(); else { $('q').value = ''; render(); } };
 $('q').addEventListener('input', render);
 $('addBtn').onclick = () => openEditor(null);
-$('setBtn').onclick = () => { $('settings').classList.add('show'); pushNav('settings'); usage(); };
+$('setBtn').onclick = () => { $('settings').classList.add('show'); pushNav('settings'); usage(); setSettings(); };
 $('setBack').onclick = () => history.back();
+$('linksBtn').onclick = openLinks;
+$('linksBack').onclick = () => history.back();
+$('trashBack').onclick = () => history.back();
 
 async function usage() {
   try { const e = await navigator.storage.estimate(); const mb = (e.usage || 0) / 1048576; $('usage').textContent = `Használt tárhely: ~${mb < 1 ? (mb * 1024).toFixed(0) + ' KB' : mb.toFixed(1) + ' MB'} · ${notes.length} jegyzet`; }
@@ -408,17 +504,140 @@ $('impIn').onchange = async e => {
   } catch (e) { toast('Nem sikerült beolvasni a mentést'); }
 };
 
+/* ---------- Összes link ---------- */
+function openLinks() { $('linkQ').value = ''; renderLinks(); $('links').classList.add('show'); pushNav('links'); setTimeout(() => $('linkQ').focus(), 60); }
+function renderLinks() {
+  const qv = $('linkQ').value.trim().toLowerCase();
+  const rows = [];
+  notes.forEach(n => (n.links || []).forEach(l => rows.push({ l, n })));
+  const filt = rows.filter(r => !qv || (r.l.url + ' ' + (r.l.label || '') + ' ' + (r.n.title || '')).toLowerCase().includes(qv));
+  $('linksOut').innerHTML = filt.length ? filt.map((r, i) => `<div class="linkitem" data-i="${i}">
+      <div class="lk"><b>${esc(r.l.label || r.l.url)}</b><span>${esc(r.l.url)}</span>${r.n.title ? `<span class="from">📓 ${esc(r.n.title)}</span>` : ''}</div>
+      <a class="btn ghost" href="${esc(r.l.url)}" target="_blank" rel="noopener noreferrer">↗</a></div>`).join('')
+    : `<p class="small" style="text-align:center;padding:30px">${rows.length ? 'Nincs találat.' : 'Még nincs elmentett linked. Egy jegyzetben a „🔗 Link hozzáadása" gombbal menthetsz.'}</p>`;
+  $('linksOut').querySelectorAll('.linkitem').forEach(el => { const r = filt[+el.dataset.i]; el.querySelector('.lk').onclick = () => { history.back(); setTimeout(() => openEditor(notes.find(x => x.id === r.n.id)), 70); }; });
+}
+$('linkQ').addEventListener('input', renderLinks);
+
+/* ---------- Kuka ---------- */
+function openTrash() { renderTrash(); $('trash').classList.add('show'); pushNav('trash'); }
+function renderTrash() {
+  const t = trashedNotes();
+  $('trashOut').innerHTML = t.length ? t.map(n => `<div class="trashrow">
+      <div class="ti"><b>${esc(n.title || '(cím nélküli)')}</b><span>Törölve: ${fmtDate(n.trashed)} · ${Math.max(0, 30 - Math.floor((Date.now() - n.trashed) / 86400000))} nap múlva végleg</span></div>
+      <button class="btn ghost" data-restore="${n.id}">↩️</button>
+      <button class="btn ghost danger" data-del="${n.id}">✕</button></div>`).join('')
+    : '<p class="small" style="text-align:center;padding:30px">A Kuka üres.</p>';
+  $('trashOut').querySelectorAll('[data-restore]').forEach(b => b.onclick = async () => { const n = allNotes.find(x => x.id === b.dataset.restore); if (n) { delete n.trashed; await dbPutNote(stripNote(n)); await loadNotes(); renderTrash(); toast('Visszaállítva'); } });
+  $('trashOut').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (!confirm('Végleg törlöd? Ez nem vonható vissza.')) return; const n = allNotes.find(x => x.id === b.dataset.del); if (n) { await hardDelete(n); await loadNotes(); renderTrash(); toast('Véglegesen törölve'); } });
+}
+
+/* ---------- Kamera (az appon belül, nem a galériába) ---------- */
+let camStream = null, camMode = 'photo', camFacing = 'environment', mediaRec = null, recChunks = [], recTimer = null;
+async function openCam() { $('cam').classList.add('show'); pushNav('cam'); setMode('photo'); await startCam(); }
+async function startCam() {
+  stopCam();
+  try { camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing }, audio: camMode === 'video' }); $('camView').srcObject = camStream; }
+  catch (e) {
+    toast('Nem érem el a kamerát – a rendszer kamerát nyitom');
+    closeCam();
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = camMode === 'video' ? 'video/*' : 'image/*'; inp.capture = 'environment';
+    inp.onchange = () => { if (inp.files[0]) addMediaFile(inp.files[0]); };
+    inp.click();
+  }
+}
+function stopCam() { if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; } if (recTimer) { clearInterval(recTimer); recTimer = null; } $('recTime').classList.remove('show'); $('camShoot').classList.remove('rec'); }
+function closeCam(skipBack) { stopCam(); mediaRec = null; recChunks = []; $('cam').classList.remove('show'); if (!skipBack && history.state && history.state.sheet === 'cam') history.back(); }
+function setMode(m) { camMode = m; document.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === m)); }
+async function addMediaFile(file) {
+  const type = (file.type || '').startsWith('video') ? 'video' : 'image';
+  const m = { id: uid(), type, blob: file, name: file.name || '', size: file.size || 0, created: Date.now() };
+  try { await dbPutMedia(m); if (cur) { cur.media.push(m.id); renderEdMedia(); } toast('Hozzáadva'); }
+  catch (e) { toast('Nem fért el a tárhelyen 😕'); }
+}
+document.querySelectorAll('[data-cm]').forEach(b => b.onclick = async () => { if (camMode !== b.dataset.cm && !mediaRec) { setMode(b.dataset.cm); await startCam(); } });
+$('camCancel').onclick = () => history.back();
+$('camSwitch').onclick = async () => { if (!mediaRec) { camFacing = camFacing === 'environment' ? 'user' : 'environment'; await startCam(); } };
+$('camShoot').onclick = async () => {
+  if (!camStream) return;
+  if (camMode === 'photo') {
+    const v = $('camView'), c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0);
+    c.toBlob(async b => { if (b) { await addMediaFile(new File([b], 'foto-' + Date.now() + '.jpg', { type: 'image/jpeg' })); history.back(); } }, 'image/jpeg', 0.9);
+  } else if (!mediaRec) {
+    try {
+      recChunks = []; mediaRec = new MediaRecorder(camStream);
+      mediaRec.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+      mediaRec.onstop = async () => { const b = new Blob(recChunks, { type: recChunks[0] ? recChunks[0].type : 'video/webm' }); await addMediaFile(new File([b], 'video-' + Date.now() + '.webm', { type: b.type })); history.back(); };
+      mediaRec.start(); $('camShoot').classList.add('rec');
+      let s = 0; $('recTime').textContent = '0:00'; $('recTime').classList.add('show');
+      recTimer = setInterval(() => { s++; $('recTime').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
+    } catch (e) { toast('A videórögzítés nem támogatott itt'); mediaRec = null; }
+  } else { mediaRec.stop(); mediaRec = null; }
+};
+$('camBtn').onclick = openCam;
+
+/* ---------- PIN-zár ---------- */
+const PINKEY = 'jegyzetek-pin';
+let pinInput = '', pinMode = 'unlock', pinFirst = '', hiddenAt = 0;
+async function sha(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function hasPin() { try { return !!localStorage.getItem(PINKEY); } catch (e) { return false; } }
+function buildPad() {
+  $('lockPad').innerHTML = [1,2,3,4,5,6,7,8,9].map(n => `<button data-k="${n}">${n}</button>`).join('') + `<button class="wide" data-k="c">⌫</button><button data-k="0">0</button><button class="wide" data-k="ok">OK</button>`;
+  $('lockPad').querySelectorAll('[data-k]').forEach(b => b.onclick = () => padKey(b.dataset.k));
+}
+function drawDots() { $('lockDots').innerHTML = Array.from({ length: Math.max(4, pinInput.length) }, (_, i) => `<i class="${i < pinInput.length ? 'on' : ''}"></i>`).join(''); }
+function padKey(k) {
+  $('lockErr').textContent = '';
+  if (k === 'c') { pinInput = pinInput.slice(0, -1); drawDots(); return; }
+  if (k === 'ok') return padSubmit();
+  if (pinInput.length >= 8) return;
+  pinInput += k; drawDots();
+  if (pinInput.length >= 4 && pinMode === 'unlock') padSubmit();
+}
+async function padSubmit() {
+  if (pinInput.length < 4) { $('lockErr').textContent = 'Legalább 4 számjegy'; return; }
+  if (pinMode === 'unlock') {
+    if (await sha(pinInput) === localStorage.getItem(PINKEY)) { pinInput = ''; $('lock').classList.remove('show'); }
+    else { pinInput = ''; drawDots(); $('lockErr').textContent = 'Hibás kód'; }
+  } else if (pinMode === 'set') { pinFirst = pinInput; pinInput = ''; drawDots(); $('lockTitle').textContent = 'Írd be még egyszer'; pinMode = 'confirm'; }
+  else if (pinMode === 'confirm') {
+    if (pinInput === pinFirst) { try { localStorage.setItem(PINKEY, await sha(pinInput)); } catch (e) {} pinInput = ''; $('lock').classList.remove('show'); toast('PIN beállítva 🔐'); setSettings(); }
+    else { pinInput = ''; pinFirst = ''; drawDots(); $('lockTitle').textContent = 'Új PIN (min. 4 számjegy)'; $('lockErr').textContent = 'Nem egyezett, próbáld újra'; pinMode = 'set'; }
+  }
+}
+function showLock(mode) { pinMode = mode; pinInput = ''; pinFirst = ''; $('lockErr').textContent = ''; $('lockTitle').textContent = mode === 'unlock' ? 'Add meg a PIN-kódot' : 'Új PIN (min. 4 számjegy)'; drawDots(); $('lock').classList.add('show'); }
+function setupPin() { if (hasPin()) { if (confirm('Kikapcsolod a PIN-zárat?')) { try { localStorage.removeItem(PINKEY); } catch (e) {} toast('PIN kikapcsolva'); setSettings(); } } else showLock('set'); }
+
+/* ---------- Beállítások állapot ---------- */
+function setSettings() {
+  const tc = trashedNotes().length;
+  $('trashCount').textContent = tc ? tc + ' db' : '';
+  $('pinBtn').textContent = hasPin() ? '🔐 App-zár kikapcsolása' : '🔐 App-zár beállítása (PIN)';
+}
+$('pinBtn').onclick = setupPin;
+$('trashBtn').onclick = openTrash;
+
 /* ---------- Navigáció (vissza gomb kezelése) ---------- */
 history.replaceState({ root: true }, '');
 function pushNav(sheet) { history.pushState({ sheet }, ''); }
 addEventListener('popstate', () => {
   // Felülről lefelé zárjuk a rétegeket.
+  if ($('cam').classList.contains('show')) { closeCam(true); return; }
   if ($('viewer').classList.contains('show')) { closeViewer(true); return; }
+  if ($('trash').classList.contains('show')) { $('trash').classList.remove('show'); return; }
+  if ($('links').classList.contains('show')) { $('links').classList.remove('show'); return; }
   if ($('editor').classList.contains('show')) { saveEditor(); return; }
   if ($('settings').classList.contains('show')) { $('settings').classList.remove('show'); return; }
 });
 
 /* ---------- Indítás ---------- */
+buildPad();
+if (hasPin()) showLock('unlock');
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) hiddenAt = Date.now();
+  else if (hasPin() && hiddenAt && Date.now() - hiddenAt > 15000 && !$('cam').classList.contains('show')) showLock('unlock');
+});
 renderSortChips();
 loadNotes().then(usage);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
