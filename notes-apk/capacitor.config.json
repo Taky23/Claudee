@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.jegyzetek",
+  "appName": "Jegyzetek",
+  "webDir": "www",
+  "backgroundColor": "#0e1116ff",
+  "android": {
+    "backgroundColor": "#0e1116ff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/notes/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}
