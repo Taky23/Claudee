@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob: data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'">
+<title>Jegyzetek</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0e1116; --card: #161b22; --card2: #1c2230; --line: #263040;
+    --text: #e8edf4; --muted: #8b97a8; --accent: #2bd4a7; --accent2: #38bdf8;
+    --grad: linear-gradient(135deg, #2bd4a7, #38bdf8); --on-accent: #06211b; --danger: #ff7a90;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: env(safe-area-inset-bottom); }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(14,17,22,.88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 14px 10px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 19px; margin: 0; font-weight: 800; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
+  header .sp { flex: 1; }
+  .iconbtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); display: grid; place-items: center; font-size: 19px; }
+  main { padding: 14px; max-width: 760px; margin: 0 auto; }
+  .searchbar { display: none; margin-bottom: 12px; }
+  .searchbar.show { display: block; }
+  input, textarea, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; width: 100%; outline: none; }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: none; line-height: 1.55; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (min-width: 620px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  .note { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 13px; overflow: hidden; min-height: 86px; display: flex; flex-direction: column; gap: 6px; }
+  .note.pin::after { content: "📌"; position: absolute; top: 9px; right: 10px; font-size: 13px; }
+  .note .cstrip { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .note h3 { margin: 0; font-size: 15px; font-weight: 700; padding-right: 16px; word-break: break-word; }
+  .note p { margin: 0; font-size: 13px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+  .note .meta { margin-top: auto; display: flex; gap: 10px; font-size: 12px; color: var(--muted); padding-top: 4px; }
+  .note .thumbs { display: flex; gap: 4px; }
+  .note .thumbs img, .note .thumbs .vid { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: var(--card2); }
+  .note .thumbs .vid { display: grid; place-items: center; font-size: 15px; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .empty .big { font-size: 46px; margin-bottom: 10px; }
+  .fab { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); width: 60px; height: 60px; border-radius: 20px; border: 0; background: var(--grad); color: var(--on-accent); font-size: 30px; font-weight: 700; box-shadow: 0 8px 24px rgba(43,212,167,.35); display: grid; place-items: center; z-index: 11; }
+  /* Szerkesztő / nézegető */
+  .sheet { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: none; flex-direction: column; }
+  .sheet.show { display: flex; }
+  .sheet .top { display: flex; align-items: center; gap: 8px; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; border-bottom: 1px solid var(--line); }
+  .sheet .top .sp { flex: 1; }
+  .sheet .body { flex: 1; overflow: auto; padding: 14px; max-width: 760px; width: 100%; margin: 0 auto; }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+  .btn.hot { background: var(--grad); color: var(--on-accent); border: 0; font-weight: 800; }
+  .btn.full { width: 100%; justify-content: center; }
+  .btn.danger { color: var(--danger); }
+  .btn.ghost { background: transparent; }
+  .ttl { font-size: 20px; font-weight: 800; border: 0; background: transparent; padding: 6px 2px; border-radius: 0; border-bottom: 1px solid var(--line); }
+  .ttl:focus { border-color: var(--accent); }
+  .bodyin { min-height: 120px; border: 0; background: transparent; padding: 8px 2px; }
+  .sec { margin-top: 18px; }
+  .sec h4 { margin: 0 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
+  .media { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (min-width: 520px) { .media { grid-template-columns: repeat(4, 1fr); } }
+  .media .m { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: var(--card2); border: 1px solid var(--line); }
+  .media .m img, .media .m video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .media .m .pv { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; color: #fff; text-shadow: 0 1px 6px #000; pointer-events: none; }
+  .media .m .rm { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; display: grid; place-items: center; }
+  .media .add { display: grid; place-items: center; aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: 12px; background: transparent; color: var(--muted); font-size: 13px; text-align: center; gap: 2px; flex-direction: column; }
+  .media .add span { font-size: 24px; }
+  .linkrow { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .linkrow .lk { flex: 1; min-width: 0; }
+  .linkrow .lk b { display: block; font-size: 14px; word-break: break-word; }
+  .linkrow .lk span { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .linkrow a, .linkrow button { flex-shrink: 0; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .swatches i { width: 30px; height: 30px; border-radius: 50%; display: inline-block; border: 2px solid transparent; }
+  .swatches i.on { border-color: var(--text); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row.wrap { flex-wrap: wrap; }
+  .toggle { display: flex; align-items: center; gap: 8px; }
+  /* Nézegető */
+  .viewer { position: fixed; inset: 0; z-index: 30; background: #000; display: none; align-items: center; justify-content: center; }
+  .viewer.show { display: flex; }
+  .viewer img, .viewer video { max-width: 100%; max-height: 100%; }
+  .viewer .close { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 14px; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: 22px; }
+  .toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #fff; color: #111; padding: 11px 18px; border-radius: 14px; font-weight: 700; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 40; max-width: 88vw; text-align: center; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast .undo { color: var(--accent); margin-left: 10px; font-weight: 800; pointer-events: auto; padding: 4px 2px; }
+  .small { font-size: 13px; color: var(--muted); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+  .chip.on { background: var(--grad); color: var(--on-accent); border: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📓 Jegyzetek</h1>
+  <div class="sp"></div>
+  <button class="iconbtn" id="searchBtn" aria-label="Keresés">🔍</button>
+  <button class="iconbtn" id="setBtn" aria-label="Beállítások">⚙️</button>
+</header>
+<main>
+  <div class="searchbar" id="searchbar"><input type="search" id="q" placeholder="Keresés a jegyzetek közt…" autocomplete="off"></div>
+  <div class="chips" id="sortChips" style="margin-bottom:12px"></div>
+  <div class="grid" id="list"></div>
+  <div class="empty" id="empty" style="display:none"><div class="big">🗒️</div><b>Még nincs jegyzeted</b><p class="small">Koppints a + gombra, és írj egy jegyzetet, tölts fel képet/videót vagy ments el egy linket.</p></div>
+</main>
+<button class="fab" id="addBtn" aria-label="Új jegyzet">+</button>
+
+<!-- Szerkesztő -->
+<div class="sheet" id="editor">
+  <div class="top">
+    <button class="iconbtn" id="edBack" aria-label="Vissza">‹</button>
+    <div class="sp"></div>
+    <button class="btn ghost danger" id="edDel">🗑️</button>
+    <button class="btn hot" id="edSave">Kész</button>
+  </div>
+  <div class="body">
+    <input class="ttl" id="edTitle" placeholder="Cím" maxlength="120">
+    <textarea class="bodyin" id="edBody" placeholder="Írd ide a jegyzeted…"></textarea>
+
+    <div class="sec">
+      <h4>Képek és videók <span class="small" id="edMediaNote" style="text-transform:none;letter-spacing:0"></span></h4>
+      <div class="media" id="edMedia"></div>
+      <input type="file" id="fileIn" accept="image/*,video/*" multiple hidden>
+    </div>
+
+    <div class="sec">
+      <h4>Linkek</h4>
+      <div id="edLinks"></div>
+      <button class="btn full ghost" id="addLink">🔗 Link hozzáadása</button>
+    </div>
+
+    <div class="sec">
+      <h4>Szín és rögzítés</h4>
+      <div class="row wrap" style="justify-content:space-between">
+        <div class="swatches" id="edColors"></div>
+        <label class="toggle"><input type="checkbox" id="edPin" style="width:auto"> 📌 Rögzített</label>
+      </div>
+    </div>
+    <p class="small" id="edInfo" style="margin-top:20px"></p>
+  </div>
+</div>
+
+<!-- Beállítások -->
+<div class="sheet" id="settings">
+  <div class="top"><button class="iconbtn" id="setBack" aria-label="Vissza">‹</button><h1 style="font-size:17px;margin:0 0 0 4px">⚙️ Beállítások</h1></div>
+  <div class="body">
+    <div class="sec">
+      <h4>Biztonsági mentés</h4>
+      <p class="small">Minden a telefonodon tárolódik (semmi nem megy fel szerverre). Alkalmanként érdemes lementeni, hogy újratelepítéskor se vesszen el semmi. A mentés a képeket és videókat is tartalmazza, ezért nagy fájl lehet.</p>
+      <button class="btn full" id="expBtn" style="margin-bottom:8px">💾 Mentés fájlba</button>
+      <button class="btn full" id="impBtn">📥 Visszaállítás fájlból</button>
+      <input type="file" id="impIn" accept="application/json,.json" hidden>
+    </div>
+    <div class="sec">
+      <h4>Tárhely</h4>
+      <p class="small" id="usage">Számolás…</p>
+    </div>
+    <div class="sec">
+      <h4>Névjegy</h4>
+      <p class="small">Jegyzetek – privát jegyzet-, média- és linktár. Az adataid csak ezen az eszközön vannak, offline is működik.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Média nézegető -->
+<div class="viewer" id="viewer"><button class="close" id="vClose">✕</button><div id="vBox"></div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const COLORS = ['', '#2bd4a7', '#38bdf8', '#a78bfa', '#fb7185', '#fbbf24', '#f472b6', '#34d399'];
+
+/* ---------- IndexedDB réteg (privát tárhely) ---------- */
+let dbp;
+function openDB() {
+  if (dbp) return dbp;
+  dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('jegyzetek', 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('media')) db.createObjectStore('media', { keyPath: 'id' });
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return dbp;
+}
+function st(store, mode, fn) {
+  return openDB().then(db => new Promise((res, rej) => {
+    const t = db.transaction(store, mode), s = t.objectStore(store);
+    const rq = fn(s);
+    if (rq) { rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); }
+    else { t.oncomplete = () => res(); t.onerror = () => rej(t.error); }
+  }));
+}
+const dbNotes = () => st('notes', 'readonly', s => s.getAll());
+const dbPutNote = n => st('notes', 'readwrite', s => s.put(n));
+const dbDelNote = id => st('notes', 'readwrite', s => s.delete(id));
+const dbGetMedia = id => st('media', 'readonly', s => s.get(id));
+const dbPutMedia = m => st('media', 'readwrite', s => s.put(m));
+const dbDelMedia = id => st('media', 'readwrite', s => s.delete(id));
+const dbAllMedia = () => st('media', 'readonly', s => s.getAll());
+
+/* ---------- Állapot ---------- */
+let notes = [];
+let cur = null;            // épp szerkesztett jegyzet
+let curUrls = [];          // objectURL-ek, amiket fel kell szabadítani
+let sort = 'updated';
+let lastDeleted = null;    // visszavonáshoz
+
+function toast(msg, undo) {
+  const t = $('toast');
+  t.innerHTML = msg + (undo ? ' <span class="undo" id="undoBtn">Visszavonás</span>' : '');
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  if (undo) $('undoBtn').onclick = () => { t.classList.remove('show'); undo(); };
+  toast._t = setTimeout(() => t.classList.remove('show'), undo ? 5000 : 2200);
+}
+const esc = s => (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function normUrl(u) { u = (u || '').trim(); if (!u) return ''; if (!/^https?:\/\//i.test(u) && /\./.test(u)) u = 'https://' + u; return u; }
+function fmtDate(t) { return new Date(t).toLocaleDateString('hu-HU', { year: 'numeric', month: 'short', day: 'numeric' }); }
+
+/* ---------- Lista ---------- */
+async function loadNotes() { notes = await dbNotes(); render(); }
+function sorters() {
+  return { updated: (a, b) => b.updated - a.updated, created: (a, b) => b.created - a.created, title: (a, b) => (a.title || '').localeCompare(b.title || '', 'hu') }[sort];
+}
+function render() {
+  const qv = $('q').value.trim().toLowerCase();
+  let list = notes.slice();
+  if (qv) list = list.filter(n => (n.title + ' ' + n.body + ' ' + (n.links || []).map(l => l.url + ' ' + l.label).join(' ')).toLowerCase().includes(qv));
+  list.sort(sorters());
+  list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  $('empty').style.display = list.length ? 'none' : '';
+  $('list').innerHTML = list.map(n => {
+    const nm = (n.media || []).length, nl = (n.links || []).length;
+    const snippet = n.body ? esc(n.body.slice(0, 200)) : (nl ? '' : '<i>Nincs szöveg</i>');
+    return `<div class="note ${n.pinned ? 'pin' : ''}" data-id="${n.id}">
+      ${n.color ? `<span class="cstrip" style="background:${n.color}"></span>` : ''}
+      ${n.title ? `<h3>${esc(n.title)}</h3>` : ''}
+      ${snippet ? `<p>${snippet}</p>` : ''}
+      <div class="thumbs" id="th-${n.id}"></div>
+      <div class="meta">${nm ? `🖼️ ${nm}` : ''}${nl ? `<span>🔗 ${nl}</span>` : ''}<span style="margin-left:auto">${fmtDate(n.updated)}</span></div>
+    </div>`;
+  }).join('');
+  $('list').querySelectorAll('.note').forEach(el => el.onclick = () => openEditor(notes.find(x => x.id === el.dataset.id)));
+  // kis bélyegképek betöltése (max 3)
+  list.forEach(async n => {
+    const box = $('th-' + n.id); if (!box) return;
+    for (const mid of (n.media || []).slice(0, 3)) {
+      const m = await dbGetMedia(mid); if (!m || !$('th-' + n.id)) continue;
+      const url = URL.createObjectURL(m.blob);
+      if (m.type === 'video') { const d = document.createElement('div'); d.className = 'vid'; d.textContent = '🎬'; box.appendChild(d); URL.revokeObjectURL(url); }
+      else { const im = new Image(); im.src = url; im.onload = () => URL.revokeObjectURL(url); box.appendChild(im); }
+    }
+  });
+}
+function renderSortChips() {
+  const S = [['updated', 'Módosítva'], ['created', 'Létrehozva'], ['title', 'Cím']];
+  $('sortChips').innerHTML = S.map(([k, n]) => `<button class="chip ${sort === k ? 'on' : ''}" data-sort="${k}">${n}</button>`).join('');
+  $('sortChips').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sort = b.dataset.sort; renderSortChips(); render(); });
+}
+
+/* ---------- Szerkesztő ---------- */
+function freeUrls() { curUrls.forEach(u => URL.revokeObjectURL(u)); curUrls = []; }
+function openEditor(note) {
+  cur = note || { id: uid(), title: '', body: '', links: [], media: [], pinned: false, color: '', created: Date.now(), updated: Date.now(), _new: !note };
+  if (!note) cur.media = []; // friss tömb
+  cur.links = cur.links || []; cur.media = cur.media || [];
+  $('edTitle').value = cur.title || '';
+  $('edBody').value = cur.body || '';
+  $('edPin').checked = !!cur.pinned;
+  $('edInfo').textContent = note ? `Létrehozva: ${fmtDate(cur.created)} · Módosítva: ${fmtDate(cur.updated)}` : '';
+  $('edDel').style.display = note ? '' : 'none';
+  renderColors(); renderEdMedia(); renderEdLinks(); autoGrow();
+  $('editor').classList.add('show');
+  pushNav('editor');
+}
+function renderColors() {
+  $('edColors').innerHTML = COLORS.map(c => `<i data-c="${c}" class="${(cur.color || '') === c ? 'on' : ''}" style="background:${c || 'var(--card2)'}${c ? '' : ';border-color:var(--line)'}">${c ? '' : '∅'}</i>`).join('');
+  $('edColors').querySelectorAll('[data-c]').forEach(i => i.onclick = () => { cur.color = i.dataset.c; renderColors(); });
+}
+async function renderEdMedia() {
+  const box = $('edMedia');
+  freeUrls();
+  box.innerHTML = '';
+  for (const mid of cur.media) {
+    const m = await dbGetMedia(mid); if (!m) continue;
+    const url = URL.createObjectURL(m.blob); curUrls.push(url);
+    const el = document.createElement('div'); el.className = 'm';
+    el.innerHTML = m.type === 'video'
+      ? `<video src="${url}" muted playsinline preload="metadata"></video><div class="pv">▶</div><button class="rm" data-rm="${mid}">✕</button>`
+      : `<img src="${url}"><button class="rm" data-rm="${mid}">✕</button>`;
+    el.querySelector('img,video').onclick = () => openViewer(m.type, url);
+    el.querySelector('[data-rm]').onclick = async ev => { ev.stopPropagation(); cur.media = cur.media.filter(x => x !== mid); await dbDelMedia(mid); renderEdMedia(); };
+    box.appendChild(el);
+  }
+  const add = document.createElement('button'); add.className = 'add'; add.innerHTML = '<span>＋</span>Kép / videó';
+  add.onclick = () => $('fileIn').click();
+  box.appendChild(add);
+  $('edMediaNote').textContent = cur.media.length ? '· az app saját tárhelyén (nem a galériában)' : '';
+}
+$('fileIn').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  if (!files.length) return;
+  let added = 0;
+  for (const f of files) {
+    const type = f.type.startsWith('video') ? 'video' : 'image';
+    const m = { id: uid(), type, blob: f, name: f.name || '', size: f.size, created: Date.now() };
+    try { await dbPutMedia(m); cur.media.push(m.id); added++; }
+    catch (err) { toast('Nem fért el a tárhelyen 😕'); break; }
+  }
+  if (added) { toast(`${added} fájl hozzáadva`); renderEdMedia(); }
+};
+function renderEdLinks() {
+  $('edLinks').innerHTML = cur.links.map((l, i) => `<div class="linkrow">
+    <div class="lk"><b>${esc(l.label || l.url)}</b>${l.label ? `<span>${esc(l.url)}</span>` : ''}</div>
+    <a class="btn ghost" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">↗</a>
+    <button class="btn ghost danger" data-dl="${i}">✕</button></div>`).join('');
+  $('edLinks').querySelectorAll('[data-dl]').forEach(b => b.onclick = () => { cur.links.splice(+b.dataset.dl, 1); renderEdLinks(); });
+}
+$('addLink').onclick = () => {
+  const raw = prompt('Link címe (URL):', 'https://');
+  if (raw == null) return;
+  const url = normUrl(raw); if (!url) { toast('Üres link'); return; }
+  const label = prompt('Megnevezés (nem kötelező):', '') || '';
+  cur.links.push({ url, label: label.trim() }); renderEdLinks();
+};
+function collect() { cur.title = $('edTitle').value.trim(); cur.body = $('edBody').value; cur.pinned = $('edPin').checked; }
+function isEmpty() { return !cur.title && !cur.body.trim() && !cur.links.length && !cur.media.length; }
+async function saveEditor() {
+  collect();
+  if (isEmpty()) { if (!cur._new) { await dbDelNote(cur.id); } closeEditor(true); await loadNotes(); return; }
+  cur.updated = Date.now(); delete cur._new;
+  await dbPutNote(stripNote(cur));
+  closeEditor(true); await loadNotes();
+}
+function stripNote(n) { return { id: n.id, title: n.title, body: n.body, links: n.links, media: n.media, pinned: n.pinned, color: n.color, created: n.created, updated: n.updated }; }
+function closeEditor(skipBack) { freeUrls(); $('editor').classList.remove('show'); cur = null; if (!skipBack && history.state && history.state.sheet) history.back(); }
+$('edSave').onclick = () => history.back();
+$('edBack').onclick = () => history.back();
+$('edDel').onclick = async () => {
+  if (!cur || cur._new) return;
+  const backup = stripNote(cur), mediaIds = cur.media.slice();
+  await dbDelNote(cur.id);
+  closeEditor(); await loadNotes();
+  lastDeleted = { note: backup };
+  toast('Jegyzet törölve', async () => { await dbPutNote(backup); await loadNotes(); });
+};
+$('edTitle').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('edBody').focus(); } });
+function autoGrow() { const t = $('edBody'); t.style.height = 'auto'; t.style.height = Math.max(120, t.scrollHeight) + 'px'; }
+$('edBody').addEventListener('input', autoGrow);
+
+/* ---------- Nézegető ---------- */
+function openViewer(type, url) {
+  $('vBox').innerHTML = type === 'video'
+    ? `<video src="${url}" controls autoplay playsinline></video>`
+    : `<img src="${url}">`;
+  $('viewer').classList.add('show'); pushNav('viewer');
+}
+function closeViewer(skipBack) { $('vBox').innerHTML = ''; $('viewer').classList.remove('show'); if (!skipBack && history.state && history.state.sheet === 'viewer') history.back(); }
+$('vClose').onclick = () => history.back();
+
+/* ---------- Keresés / beállítások ---------- */
+$('searchBtn').onclick = () => { const b = $('searchbar'); b.classList.toggle('show'); if (b.classList.contains('show')) $('q').focus(); else { $('q').value = ''; render(); } };
+$('q').addEventListener('input', render);
+$('addBtn').onclick = () => openEditor(null);
+$('setBtn').onclick = () => { $('settings').classList.add('show'); pushNav('settings'); usage(); };
+$('setBack').onclick = () => history.back();
+
+async function usage() {
+  try { const e = await navigator.storage.estimate(); const mb = (e.usage || 0) / 1048576; $('usage').textContent = `Használt tárhely: ~${mb < 1 ? (mb * 1024).toFixed(0) + ' KB' : mb.toFixed(1) + ' MB'} · ${notes.length} jegyzet`; }
+  catch (e) { $('usage').textContent = `${notes.length} jegyzet`; }
+}
+
+/* ---------- Mentés / visszaállítás ---------- */
+const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
+const b64ToBlob = async d => (await fetch(d)).blob();
+$('expBtn').onclick = async () => {
+  $('expBtn').disabled = true; $('expBtn').textContent = '⏳ Mentés készül…';
+  try {
+    const media = await dbAllMedia();
+    const out = { app: 'jegyzetek', ver: 1, exported: Date.now(), notes, media: [] };
+    for (const m of media) out.media.push({ id: m.id, type: m.type, name: m.name, created: m.created, data: await blobToB64(m.blob) });
+    const blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `jegyzetek-mentes-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Mentés letöltve 💾');
+  } catch (e) { toast('Hiba a mentésnél'); }
+  $('expBtn').disabled = false; $('expBtn').textContent = '💾 Mentés fájlba';
+};
+$('impBtn').onclick = () => $('impIn').click();
+$('impIn').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!confirm('Visszaállítod a mentést? A benne lévő jegyzetek hozzáadódnak a mostaniakhoz.')) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'jegyzetek') throw new Error();
+    for (const m of (d.media || [])) { if (!await dbGetMedia(m.id)) await dbPutMedia({ id: m.id, type: m.type, name: m.name, created: m.created, blob: await b64ToBlob(m.data) }); }
+    const have = new Set(notes.map(n => n.id));
+    for (const n of (d.notes || [])) if (!have.has(n.id)) await dbPutNote(n);
+    await loadNotes(); usage(); toast('Visszaállítva ✅');
+  } catch (e) { toast('Nem sikerült beolvasni a mentést'); }
+};
+
+/* ---------- Navigáció (vissza gomb kezelése) ---------- */
+history.replaceState({ root: true }, '');
+function pushNav(sheet) { history.pushState({ sheet }, ''); }
+addEventListener('popstate', () => {
+  // Felülről lefelé zárjuk a rétegeket.
+  if ($('viewer').classList.contains('show')) { closeViewer(true); return; }
+  if ($('editor').classList.contains('show')) { saveEditor(); return; }
+  if ($('settings').classList.contains('show')) { $('settings').classList.remove('show'); return; }
+});
+
+/* ---------- Indítás ---------- */
+renderSortChips();
+loadNotes().then(usage);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
