@@ -200,8 +200,9 @@
       <h2>Adókulcsok</h2>
       <div class="grid2">
         <label class="fld"><span>SZJA (%)</span><input type="number" id="szjaRate" inputmode="decimal"></label>
-        <label class="fld" style="margin-bottom:0"><span>TB járulék (%)</span><input type="number" id="tbRate" inputmode="decimal"></label>
+        <label class="fld"><span>TB járulék (%)</span><input type="number" id="tbRate" inputmode="decimal"></label>
       </div>
+      <label class="fld" style="margin-bottom:0"><span>Járulékkedvezmény (Ft) – a TB-ből levonva (pl. családi)</span><input type="number" id="jarKedv" inputmode="numeric" placeholder="0"></label>
     </div>
     <div class="card" id="kedvCard">
       <h2>SZJA-kedvezmények</h2>
@@ -241,7 +242,7 @@ const DEF = {
   manual: false,
   manDays: { morning: 0, afternoon: 0, night: 0, wMorning: 0, wAfternoon: 0, wNight: 0 },
   quick: { shift: 'morning', weekend: false, days: 1 },
-  szja: { on: true, rate: 15, tb: 18.5 },
+  szja: { on: true, rate: 15, tb: 18.5, jarKedv: 0 },
   kedv: [
     { id: 'k25', name: '25 év alattiak kedvezménye', amount: 656785, on: false },
     { id: 'kcs1', name: 'Családi kedvezmény – 1 gyerek', amount: 66670, on: false },
@@ -382,7 +383,7 @@ function renderBer() {
   const kedv = szjaOn ? Math.min(kedvTotal(), r.gross) : 0;
   const base = Math.max(0, r.gross - kedv);
   const szja = szjaOn ? base * (+S.szja.rate || 0) / 100 : 0;
-  const tb = r.gross * (+S.szja.tb || 0) / 100;
+  const tb = Math.max(0, r.gross * (+S.szja.tb || 0) / 100 - (+S.szja.jarKedv || 0));
   const net = r.gross - szja - tb;
   $('sumGross').textContent = fmt(r.gross);
   $('sumKedv').textContent = kedv ? '− ' + fmt(kedv) : '–';
@@ -463,7 +464,7 @@ function renderSzja() {
   $('szjaOn').checked = !!S.szja.on;
   const dim = S.szja.on ? '1' : '.45';
   $('szjaCard').style.opacity = dim; $('kedvCard').style.opacity = dim;
-  $('szjaRate').value = S.szja.rate; $('tbRate').value = S.szja.tb;
+  $('szjaRate').value = S.szja.rate; $('tbRate').value = S.szja.tb; $('jarKedv').value = S.szja.jarKedv || '';
   $('kedvList').innerHTML = S.kedv.map((k, i) => `<div class="kedv">
       <label class="sw"><input type="checkbox" data-on="${i}" ${k.on ? 'checked' : ''}><span class="t"></span></label>
       <div class="nm"><b>${escapeHtml(k.name)}</b></div>
@@ -475,7 +476,8 @@ function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;'
 function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 $('szjaOn').addEventListener('change', () => { S.szja.on = $('szjaOn').checked; save(); renderSzja(); renderBer(); renderQuick(); });
 $('szjaRate').addEventListener('input', () => { S.szja.rate = +$('szjaRate').value || 0; save(); renderBer(); });
-$('tbRate').addEventListener('input', () => { S.szja.tb = +$('tbRate').value || 0; save(); renderBer(); });
+$('tbRate').addEventListener('input', () => { S.szja.tb = +$('tbRate').value || 0; save(); renderBer(); renderQuick(); });
+$('jarKedv').addEventListener('input', () => { S.szja.jarKedv = +$('jarKedv').value || 0; save(); renderBer(); renderQuick(); });
 $('addKedv').onclick = () => { const name = prompt('Kedvezmény neve:', 'Saját kedvezmény'); if (name == null) return; S.kedv.push({ id: 'k' + Date.now(), name: name.trim() || 'Kedvezmény', amount: 0, on: true }); save(); renderSzja(); renderBer(); };
 
 /* ---- Gyors számláló ---- */
@@ -495,7 +497,7 @@ function renderQuick() {
   const totalH = hours * days;
   const gross = wage * totalH * mp / 100;
   const szja = S.szja.on ? gross * (+S.szja.rate || 0) / 100 : 0;
-  const tb = gross * (+S.szja.tb || 0) / 100;
+  const tb = Math.max(0, gross * (+S.szja.tb || 0) / 100 - (+S.szja.jarKedv || 0));
   $('qMul').textContent = mp + '%';
   $('qTotalH').textContent = (Math.round(totalH * 100) / 100) + ' óra';
   $('qGross').textContent = fmt(gross);
