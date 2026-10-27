@@ -85,6 +85,9 @@
   .sw input:checked + .t::before { transform: translateX(18px); background: #2a1d00; }
   details summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .schips { display: flex; gap: 8px; margin: 6px 0 14px; }
+  .schips button { flex: 1; padding: 11px 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font: inherit; font-weight: 700; }
+  .schips button.on { background: var(--grad); color: var(--on-accent); border: 0; }
 </style>
 </head>
 <body>
@@ -133,6 +136,31 @@
     </div>
   </section>
 
+  <!-- ====== GYORS ====== -->
+  <section class="tab" id="t-quick">
+    <div class="card">
+      <h2>⚡ Gyors számláló</h2>
+      <p class="small" style="margin-top:0">Csak pár nap? Válassz műszakot, add meg a napok számát, és rögtön látod az összeget.</p>
+      <label class="fld"><span>Bruttó órabér (Ft)</span><input type="number" id="qWage" inputmode="numeric" placeholder="pl. 2000"></label>
+      <div class="small">Műszak</div>
+      <div class="schips" id="qShift"><button data-s="morning">Délelőtt</button><button data-s="afternoon">Délután</button><button data-s="night">Éjszaka</button></div>
+      <div class="row sb" style="margin-bottom:12px"><b style="font-size:14px">Hétvégi szorzóval</b><label class="sw"><input type="checkbox" id="qWeekend"><span class="t"></span></label></div>
+      <div class="grid2">
+        <label class="fld"><span>Napok száma</span><input type="number" id="qDays" inputmode="decimal"></label>
+        <label class="fld"><span>Óra / nap</span><input type="number" id="qHours" inputmode="decimal"></label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="line"><span>Szorzó</span><b id="qMul">–</b></div>
+      <div class="line"><span>Órák összesen</span><b id="qTotalH">–</b></div>
+      <div class="line"><span>Bruttó</span><b id="qGross">–</b></div>
+      <div class="line"><span>SZJA (<span id="qSzjaR">15</span>%)</span><b id="qSzja">–</b></div>
+      <div class="line"><span>TB (<span id="qTbR">18,5</span>%)</span><b id="qTb">–</b></div>
+      <div class="line"><span class="big" style="font-size:17px">Nettó</span><b class="big" style="font-size:22px;color:var(--good)" id="qNet">–</b></div>
+    </div>
+    <p class="small">A gyors számláló nem veszi figyelembe az SZJA-kedvezményeket (azok havi keretek). Bruttó órabér és óra/nap a Bér füllel közös.</p>
+  </section>
+
   <!-- ====== NAPTÁR ====== -->
   <section class="tab" id="t-cal">
     <div class="card">
@@ -170,6 +198,7 @@
 
 <nav>
   <button data-tab="t-ber" class="on"><span class="i">💰</span>Bér</button>
+  <button data-tab="t-quick"><span class="i">⚡</span>Gyors</button>
   <button data-tab="t-cal"><span class="i">📅</span>Naptár</button>
   <button data-tab="t-szja"><span class="i">🧾</span>SZJA</button>
 </nav>
@@ -192,6 +221,7 @@ const DEF = {
   overrides: {},
   manual: false,
   manDays: { morning: 0, afternoon: 0, night: 0, wMorning: 0, wAfternoon: 0, wNight: 0 },
+  quick: { shift: 'morning', weekend: false, days: 1 },
   szja: { rate: 15, tb: 18.5 },
   kedv: [
     { id: 'k25', name: '25 év alattiak kedvezménye', amount: 656785, on: false },
@@ -370,16 +400,45 @@ $('szjaRate').addEventListener('input', () => { S.szja.rate = +$('szjaRate').val
 $('tbRate').addEventListener('input', () => { S.szja.tb = +$('tbRate').value || 0; save(); renderBer(); });
 $('addKedv').onclick = () => { const name = prompt('Kedvezmény neve:', 'Saját kedvezmény'); if (name == null) return; S.kedv.push({ id: 'k' + Date.now(), name: name.trim() || 'Kedvezmény', amount: 0, on: true }); save(); renderSzja(); renderBer(); };
 
+/* ---- Gyors számláló ---- */
+function renderQuick() {
+  const q = S.quick;
+  $('qWage').value = S.wage || '';
+  if ($('qDays') !== document.activeElement) $('qDays').value = q.days;
+  if ($('qHours') !== document.activeElement) $('qHours').value = +S.hours || 8;
+  $('qWeekend').checked = !!q.weekend;
+  $('qShift').querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === q.shift));
+  const hours = +S.hours || 8, wage = +S.wage || 0, days = +q.days || 0;
+  const mp = mult(q.shift, q.weekend);
+  const totalH = hours * days;
+  const gross = wage * totalH * mp / 100;
+  const szja = gross * (+S.szja.rate || 0) / 100, tb = gross * (+S.szja.tb || 0) / 100;
+  $('qMul').textContent = mp + '%';
+  $('qTotalH').textContent = (Math.round(totalH * 100) / 100) + ' óra';
+  $('qGross').textContent = fmt(gross);
+  $('qSzjaR').textContent = (+S.szja.rate || 0).toString().replace('.', ',');
+  $('qTbR').textContent = (+S.szja.tb || 0).toString().replace('.', ',');
+  $('qSzja').textContent = '− ' + fmt(szja);
+  $('qTb').textContent = '− ' + fmt(tb);
+  $('qNet').textContent = fmt(gross - szja - tb);
+}
+$('qWage').addEventListener('input', () => { S.wage = +$('qWage').value || 0; save(); renderQuick(); });
+$('qDays').addEventListener('input', () => { S.quick.days = +$('qDays').value || 0; save(); renderQuick(); });
+$('qHours').addEventListener('input', () => { S.hours = +$('qHours').value || 0; save(); renderQuick(); });
+$('qWeekend').addEventListener('change', () => { S.quick.weekend = $('qWeekend').checked; save(); renderQuick(); });
+$('qShift').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.quick.shift = b.dataset.s; save(); renderQuick(); });
+
 /* ---- Tabok ---- */
 document.querySelectorAll('nav [data-tab]').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav [data-tab]').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('show', t.id === b.dataset.tab));
+  if (b.dataset.tab === 't-quick') renderQuick();
   if (b.dataset.tab === 't-cal') renderCal();
   if (b.dataset.tab === 't-szja') renderSzja();
 });
 
 /* ---- Indítás ---- */
-fillSettings(); renderBer(); renderCal(); renderSzja();
+fillSettings(); renderBer(); renderCal(); renderSzja(); renderQuick();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
