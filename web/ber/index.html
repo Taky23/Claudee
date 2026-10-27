@@ -197,6 +197,11 @@
       <div class="row sb"><b>SZJA levonása</b><label class="sw"><input type="checkbox" id="szjaOn"><span class="t"></span></label></div>
       <p class="small" style="margin:8px 0 0">Ha kikapcsolod, a számítás nem von le SZJA-t (a TB járulék marad). A Bér és a Gyors fülön is érvényes.</p>
     </div>
+    <div class="card">
+      <div class="row sb"><b>25 év alatti (SZJA-mentes)</b><label class="sw"><input type="checkbox" id="u25"><span class="t"></span></label></div>
+      <p class="small" style="margin:8px 0 0">Bekapcsolva nem von le SZJA-t a havi átlagbér plafonig (a Bér és a Gyors fülön is). A plafon fölötti rész adózik.</p>
+      <label class="fld" style="margin:10px 0 0"><span>Plafon (Ft/hó)</span><input type="number" id="u25Cap" inputmode="numeric"></label>
+    </div>
     <div class="card" id="szjaCard">
       <h2>Adókulcsok</h2>
       <div class="grid2">
@@ -243,7 +248,7 @@ const DEF = {
   manual: false,
   manDays: { morning: 0, afternoon: 0, night: 0, wMorning: 0, wAfternoon: 0, wNight: 0 },
   quick: { shift: 'morning', weekend: false, days: 1 },
-  szja: { on: true, rate: 15, tb: 18.5, jarKedv: 0 },
+  szja: { on: true, rate: 15, tb: 18.5, jarKedv: 0, under25: false, under25Cap: 656785 },
   kedv: [
     { id: 'k25', name: '25 év alattiak kedvezménye', amount: 656785, on: false },
     { id: 'kcs1', name: 'Családi kedvezmény – 1 gyerek', amount: 66670, on: false },
@@ -382,7 +387,8 @@ function renderBer() {
   }
   // adó
   const szjaOn = !!S.szja.on;
-  const kedv = szjaOn ? Math.min(kedvTotal(), r.gross) : 0;
+  const u25 = szjaOn && S.szja.under25 ? (+S.szja.under25Cap || 0) : 0;
+  const kedv = szjaOn ? Math.min(kedvTotal() + u25, r.gross) : 0;
   const base = Math.max(0, r.gross - kedv);
   const szja = szjaOn ? base * (+S.szja.rate || 0) / 100 : 0;
   const tb = Math.max(0, r.gross * (+S.szja.tb || 0) / 100 - (+S.szja.jarKedv || 0));
@@ -466,6 +472,8 @@ function renderSzja() {
   $('szjaOn').checked = !!S.szja.on;
   const dim = S.szja.on ? '1' : '.45';
   $('szjaCard').style.opacity = dim; $('kedvCard').style.opacity = dim;
+  $('u25').checked = !!S.szja.under25;
+  $('u25Cap').value = S.szja.under25Cap || '';
   $('szjaRate').value = S.szja.rate; $('tbRate').value = S.szja.tb; $('jarKedv').value = S.szja.jarKedv || '';
   $('kedvList').innerHTML = S.kedv.map((k, i) => `<div class="kedv">
       <label class="sw"><input type="checkbox" data-on="${i}" ${k.on ? 'checked' : ''}><span class="t"></span></label>
@@ -477,6 +485,8 @@ function renderSzja() {
 function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 $('szjaOn').addEventListener('change', () => { S.szja.on = $('szjaOn').checked; save(); renderSzja(); renderBer(); renderQuick(); });
+$('u25').addEventListener('change', () => { S.szja.under25 = $('u25').checked; if (S.szja.under25) S.szja.on = true; save(); renderSzja(); renderBer(); renderQuick(); });
+$('u25Cap').addEventListener('input', () => { S.szja.under25Cap = +$('u25Cap').value || 0; save(); renderBer(); renderQuick(); });
 $('szjaRate').addEventListener('input', () => { S.szja.rate = +$('szjaRate').value || 0; save(); renderBer(); });
 $('tbRate').addEventListener('input', () => { S.szja.tb = +$('tbRate').value || 0; save(); renderBer(); renderQuick(); });
 $('jarKedv').addEventListener('input', () => { S.szja.jarKedv = +$('jarKedv').value || 0; save(); renderBer(); renderQuick(); });
@@ -498,7 +508,8 @@ function renderQuick() {
   const mp = mult(q.shift, q.weekend);
   const totalH = hours * days;
   const gross = wage * totalH * mp / 100;
-  const szja = S.szja.on ? gross * (+S.szja.rate || 0) / 100 : 0;
+  const szjaBase = S.szja.under25 ? Math.max(0, gross - (+S.szja.under25Cap || 0)) : gross;
+  const szja = S.szja.on ? szjaBase * (+S.szja.rate || 0) / 100 : 0;
   const tb = Math.max(0, gross * (+S.szja.tb || 0) / 100 - (+S.szja.jarKedv || 0));
   $('qMul').textContent = mp + '%';
   $('qTotalH').textContent = (Math.round(totalH * 100) / 100) + ' óra';
@@ -519,6 +530,7 @@ $('qShift').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.quic
 document.querySelectorAll('nav [data-tab]').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav [data-tab]').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('show', t.id === b.dataset.tab));
+  if (b.dataset.tab === 't-ber') renderBer();
   if (b.dataset.tab === 't-quick') renderQuick();
   if (b.dataset.tab === 't-cal') renderCal();
   if (b.dataset.tab === 't-szja') renderSzja();
