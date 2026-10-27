@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0909">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none'">
+<title>From – Rejtélyfejtő</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0c0909; --bg2: #16100f; --card: #19110f; --card2: #211614; --line: #39231f;
+    --text: #f2e9e4; --muted: #ab9790; --red: #d64545; --amber: #e8b04b; --forest: #5a9e6a; --blue: #5fa8d3;
+    --grad: linear-gradient(135deg, #d64545, #e8b04b); --on-accent: #1a0a07; --good: #5a9e6a; --danger: #ff7a90;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { background: radial-gradient(900px 500px at 50% -10%, #241310 0%, var(--bg) 60%), var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: calc(76px + env(safe-area-inset-bottom)); min-height: 100vh; }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(12,9,9,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 16px 10px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  header h1 b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .sp { flex: 1; }
+  .iconbtn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); display: grid; place-items: center; font-size: 18px; }
+  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+  .tab { display: none; } .tab.show { display: block; animation: f .2s; }
+  @keyframes f { from { opacity: 0; transform: translateY(4px); } }
+  input, textarea, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; width: 100%; outline: none; }
+  input:focus, textarea:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(214,69,69,.15); }
+  textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+  label.fld { display: block; margin-bottom: 12px; }
+  label.fld > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row.sb { justify-content: space-between; }
+  .btn { border: 1px solid var(--line); background: var(--card2); color: var(--text); border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+  .btn.hot { background: var(--grad); color: var(--on-accent); border: 0; }
+  .btn.full { width: 100%; }
+  .btn.sm { padding: 7px 11px; font-size: 13px; }
+  .btn.ghost { background: transparent; }
+  .lead { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .card .desc { font-size: 13px; color: var(--muted); white-space: pre-wrap; word-break: break-word; }
+  .card .txt { font-size: 14px; white-space: pre-wrap; word-break: break-word; margin-top: 6px; }
+  .tag { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+  .t-open { background: rgba(214,69,69,.16); color: var(--red); border: 1px solid #5a2824; }
+  .t-clue { background: rgba(232,176,75,.16); color: var(--amber); border: 1px solid #5a4620; }
+  .t-solved { background: rgba(90,158,106,.16); color: var(--good); border: 1px solid #244a2c; }
+  .t-alive { background: rgba(90,158,106,.16); color: var(--good); border: 1px solid #244a2c; }
+  .t-dead { background: rgba(255,122,144,.14); color: var(--danger); border: 1px solid #5a2436; }
+  .t-unknown { background: rgba(171,151,144,.14); color: var(--muted); border: 1px solid #3a2e2a; }
+  .acts { display: flex; gap: 8px; margin-top: 10px; }
+  .mini { background: none; border: 0; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 700; padding: 2px 0; }
+  .conf { height: 7px; border-radius: 99px; background: var(--card2); overflow: hidden; border: 1px solid var(--line); margin-top: 8px; }
+  .conf i { display: block; height: 100%; background: var(--grad); }
+  .fab { position: fixed; right: 18px; bottom: calc(90px + env(safe-area-inset-bottom)); width: 56px; height: 56px; border-radius: 18px; border: 0; background: var(--grad); color: var(--on-accent); font-size: 28px; font-weight: 700; box-shadow: 0 8px 24px -6px var(--red); z-index: 11; }
+  .empty { text-align: center; color: var(--muted); padding: 44px 16px; }
+  /* epizódok */
+  .season { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+  .shead { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--card); cursor: pointer; }
+  .shead b { flex: 1; } .shead .arrow { color: var(--muted); transition: transform .2s; }
+  .season.open .shead .arrow { transform: rotate(90deg); }
+  .sbody { display: none; padding: 4px 10px 10px; } .season.open .sbody { display: block; }
+  .ep { display: flex; align-items: center; gap: 10px; padding: 9px 6px; border-top: 1px solid var(--line); }
+  .ep .box { width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--line); flex-shrink: 0; display: grid; place-items: center; font-size: 13px; color: var(--on-accent); }
+  .ep.seen .box { background: var(--grad); border: 0; }
+  .ep .en { flex: 1; font-size: 14px; } .ep.seen .en { color: var(--muted); }
+  .ep .st { font-size: 15px; letter-spacing: -2px; }
+  .spct { font-size: 12px; color: var(--amber); }
+  .sheet { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.7); display: none; align-items: flex-end; justify-content: center; }
+  .sheet.show { display: flex; }
+  .sheet .inner { background: var(--card); border: 1px solid var(--line); border-radius: 18px 18px 0 0; width: 100%; max-width: 540px; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow: auto; }
+  .sheet h2 { margin: 2px 0 14px; font-size: 17px; }
+  .seg { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .seg button { flex: 1; min-width: 72px; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font: inherit; font-weight: 700; font-size: 13px; }
+  .seg button.on { background: var(--grad); color: var(--on-accent); border: 0; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 12; background: rgba(12,9,9,.95); backdrop-filter: blur(10px); border-top: 1px solid var(--line); display: flex; padding: 6px 2px calc(6px + env(safe-area-inset-bottom)); }
+  nav button { flex: 1; background: none; border: 0; color: var(--muted); font: inherit; font-size: 10.5px; font-weight: 700; padding: 7px 1px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav button .i { font-size: 18px; }
+  nav button.on { color: var(--red); }
+  .toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #fff; color: #19110f; padding: 11px 18px; border-radius: 14px; font-weight: 800; font-size: 14px; z-index: 50; max-width: 88vw; text-align: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+  .prog-top { height: 6px; border-radius: 99px; background: var(--card2); overflow: hidden; border: 1px solid var(--line); margin-bottom: 14px; }
+  .prog-top i { display: block; height: 100%; background: var(--grad); }
+</style>
+</head>
+<body>
+<header><h1>🌲 FROM <b>Rejtélyfejtő</b></h1><div class="sp"></div><button class="iconbtn" id="setBtn">⚙️</button></header>
+<main>
+  <section class="tab show" id="t-myst"></section>
+  <section class="tab" id="t-theory"></section>
+  <section class="tab" id="t-char"></section>
+  <section class="tab" id="t-loc"></section>
+  <section class="tab" id="t-ep"></section>
+</main>
+<button class="fab" id="fab">＋</button>
+<nav id="nav"></nav>
+<div class="sheet" id="sheet"><div class="inner" id="sheetIn"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const KEY = 'from-v1';
+
+/* ---------- Kezdő váz (magas szintű, bővíthető) ---------- */
+function seed() {
+  return {
+    mysteries: [
+      ['Hol van ez a hely, és hogyan kerültek ide?', 'open'],
+      ['Kik vagy mik a lények, akik éjszaka támadnak?', 'open'],
+      ['Miért tartják távol a talizmánok a lényeket?', 'open'],
+      ['Mit jelentenek a szimbólumok és a kövek?', 'open'],
+      ['Kik a fehér ruhás gyerekek?', 'open'],
+      ['Mi a világítótorony és a földalatti alagutak/torony szerepe?', 'open'],
+      ['Van-e egyáltalán kiút, és hogyan lehet elmenni?', 'open'],
+      ['Mi köze a Matthews családnak a hely titkához?', 'open'],
+      ['Miért vannak látomások, hangok és furcsa jelenségek?', 'open'],
+    ].map(([name, status]) => ({ id: uid(), name, status, text: '' })),
+    theories: [],
+    chars: [
+      ['Boyd Stevens', 'A város seriffje'], ['Jim Matthews', 'A Matthews család apja'], ['Tabitha Matthews', 'A Matthews család anyja'],
+      ['Julie Matthews', 'A Matthews lánya'], ['Ethan Matthews', 'A Matthews kisfia'], ['Victor', 'Rejtélyes, régóta itt élő lakó'],
+      ['Donna', 'A Colony House vezetője'], ['Kenny', 'Rendőr, Boyd segítője'], ['Jade', 'Colony House-lakó'],
+      ['Kristi', 'A város orvosa'], ['Fatima', 'A város lakója'], ['Sara', 'A város lakója'],
+    ].map(([name, role]) => ({ id: uid(), name, role, status: 'unknown', text: '' })),
+    locs: [
+      ['A város', 'A hely, ahonnan nincs kiút'], ['Colony House', 'A másik közösség háza az erdőben'], ['A büfé (Diner)', 'A város központi találkozóhelye'],
+      ['Az erdő', 'A várost körülvevő, veszélyes erdő'], ['A világítótorony', 'Rejtélyes épület'], ['A földalatti alagutak', 'Titkos járatok a mélyben'],
+      ['A rendőrség / Boyd háza', 'A rend fenntartásának központja'], ['A palackfák', 'Fák, amikre talizmánokat kötnek'],
+    ].map(([name, text]) => ({ id: uid(), name, text })),
+    episodes: [1, 2, 3].map(s => ({ s, eps: Array.from({ length: 10 }, (_, i) => ({ e: i + 1, seen: false, rating: 0, note: '' })) })),
+    seeded: true
+  };
+}
+let S = load();
+function load() { try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.seeded) return d; } catch (e) {} return seed(); }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Nem sikerült menteni 😕'); } }
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2000); }
+
+/* ---------- Címkék ---------- */
+const MST = { open: ['Nyitott', 't-open'], clue: ['Van nyom', 't-clue'], solved: ['Megoldva', 't-solved'] };
+const CST = { alive: ['Él', 't-alive'], dead: ['Meghalt', 't-dead'], unknown: ['Ismeretlen', 't-unknown'] };
+
+/* ---------- Rejtélyek ---------- */
+function renderMyst() {
+  const list = S.mysteries;
+  $('t-myst').innerHTML = `<p class="lead">A sorozat nagy kérdései. Koppints a státuszra, vagy szerkeszd, és írd hozzá, amit már tudsz.</p>` +
+    list.map(m => `<div class="card"><h3><span class="tag ${MST[m.status][1]}" data-cyc="${m.id}">${MST[m.status][0]}</span><span style="flex:1">${esc(m.name)}</span></h3>
+      ${m.text ? `<div class="txt">${esc(m.text)}</div>` : ''}
+      <div class="acts"><button class="mini" data-ed="${m.id}">✎ szerkeszt</button><button class="mini" style="color:var(--danger)" data-del="${m.id}">🗑️</button></div></div>`).join('');
+  bindEntry('t-myst', 'mysteries', editMyst, m => { const o = ['open', 'clue', 'solved']; m.status = o[(o.indexOf(m.status) + 1) % 3]; });
+}
+function editMyst(id) {
+  const m = id ? S.mysteries.find(x => x.id === id) : null;
+  openSheet(`<h2>${m ? 'Rejtély szerkesztése' : 'Új rejtély'}</h2>
+    <div class="seg" id="mSt">${Object.entries(MST).map(([k, v]) => `<button data-s="${k}" class="${(m ? m.status : 'open') === k ? 'on' : ''}">${v[0]}</button>`).join('')}</div>
+    <label class="fld"><span>Kérdés / rejtély</span><input id="mName" value="${m ? esc(m.name) : ''}" placeholder="pl. Mi a szimbólumok jelentése?"></label>
+    <label class="fld"><span>Amit tudunk / jegyzet</span><textarea id="mText" placeholder="Nyomok, megfigyelések, részmegoldás…">${m ? esc(m.text) : ''}</textarea></label>
+    <button class="btn hot full" id="mSave">Mentés</button>`);
+  let st = m ? m.status : 'open';
+  $('mSt').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { st = b.dataset.s; $('mSt').querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('mSave').onclick = () => { const n = $('mName').value.trim(); if (!n) return; const text = $('mText').value.trim();
+    if (m) { m.name = n; m.text = text; m.status = st; } else S.mysteries.unshift({ id: uid(), name: n, text, status: st });
+    save(); closeSheet(); renderMyst(); };
+}
+
+/* ---------- Elméletek ---------- */
+function renderTheory() {
+  $('t-theory').innerHTML = `<p class="lead">A saját elméleteid, biztonsági szinttel. Bővítsd, ahogy új nyom jön elő.</p>` +
+    (S.theories.length ? S.theories.map(t => `<div class="card"><h3><span style="flex:1">💡 ${esc(t.name)}</span><span class="spct">${t.conf || 0}%</span></h3>
+      <div class="conf"><i style="width:${t.conf || 0}%"></i></div>
+      ${t.text ? `<div class="txt">${esc(t.text)}</div>` : ''}
+      <div class="acts"><button class="mini" data-ed="${t.id}">✎ szerkeszt</button><button class="mini" style="color:var(--danger)" data-del="${t.id}">🗑️</button></div></div>`).join('')
+      : '<div class="empty">Még nincs elméleted. Nyomd a + gombot, és írd le az első teóriát! 🕵️</div>');
+  bindEntry('t-theory', 'theories', editTheory);
+}
+function editTheory(id) {
+  const t = id ? S.theories.find(x => x.id === id) : null;
+  openSheet(`<h2>${t ? 'Elmélet szerkesztése' : 'Új elmélet'}</h2>
+    <label class="fld"><span>Elmélet címe</span><input id="tName" value="${t ? esc(t.name) : ''}" placeholder="pl. A város egy köztes hely az élet és halál közt"></label>
+    <label class="fld"><span>Biztonság: <b id="tcv">${t ? t.conf || 0 : 50}</b>%</span><input type="range" id="tConf" min="0" max="100" value="${t ? t.conf || 0 : 50}" style="padding:0"></label>
+    <label class="fld"><span>Indoklás / nyomok</span><textarea id="tText" placeholder="Mi támasztja alá? Mi mond ellent?">${t ? esc(t.text) : ''}</textarea></label>
+    <button class="btn hot full" id="tSave">Mentés</button>`);
+  $('tConf').oninput = () => $('tcv').textContent = $('tConf').value;
+  $('tSave').onclick = () => { const n = $('tName').value.trim(); if (!n) return; const conf = +$('tConf').value, text = $('tText').value.trim();
+    if (t) { t.name = n; t.conf = conf; t.text = text; } else S.theories.unshift({ id: uid(), name: n, conf, text });
+    save(); closeSheet(); renderTheory(); };
+}
+
+/* ---------- Szereplők ---------- */
+function renderChar() {
+  $('t-char').innerHTML = `<p class="lead">Kövesd a szereplőket és a sorsukat. (A státuszt magad állítod – kezdetben „ismeretlen".)</p>` +
+    S.chars.map(c => `<div class="card"><h3><span style="flex:1">${esc(c.name)}</span><span class="tag ${CST[c.status][1]}" data-cyc="${c.id}">${CST[c.status][0]}</span></h3>
+      <div class="desc">${esc(c.role || '')}</div>${c.text ? `<div class="txt">${esc(c.text)}</div>` : ''}
+      <div class="acts"><button class="mini" data-ed="${c.id}">✎ szerkeszt</button><button class="mini" style="color:var(--danger)" data-del="${c.id}">🗑️</button></div></div>`).join('');
+  bindEntry('t-char', 'chars', editChar, c => { const o = ['unknown', 'alive', 'dead']; c.status = o[(o.indexOf(c.status) + 1) % 3]; });
+}
+function editChar(id) {
+  const c = id ? S.chars.find(x => x.id === id) : null;
+  openSheet(`<h2>${c ? 'Szereplő szerkesztése' : 'Új szereplő'}</h2>
+    <label class="fld"><span>Név</span><input id="cName" value="${c ? esc(c.name) : ''}"></label>
+    <label class="fld"><span>Szerep</span><input id="cRole" value="${c ? esc(c.role || '') : ''}" placeholder="pl. a város seriffje"></label>
+    <div class="seg" id="cSt">${Object.entries(CST).map(([k, v]) => `<button data-s="${k}" class="${(c ? c.status : 'unknown') === k ? 'on' : ''}">${v[0]}</button>`).join('')}</div>
+    <label class="fld"><span>Jegyzet</span><textarea id="cText" placeholder="Titkok, kapcsolatok, fontos pillanatok…">${c ? esc(c.text) : ''}</textarea></label>
+    <button class="btn hot full" id="cSave">Mentés</button>`);
+  let st = c ? c.status : 'unknown';
+  $('cSt').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { st = b.dataset.s; $('cSt').querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('cSave').onclick = () => { const n = $('cName').value.trim(); if (!n) return;
+    if (c) { c.name = n; c.role = $('cRole').value.trim(); c.status = st; c.text = $('cText').value.trim(); } else S.chars.push({ id: uid(), name: n, role: $('cRole').value.trim(), status: st, text: $('cText').value.trim() });
+    save(); closeSheet(); renderChar(); };
+}
+
+/* ---------- Helyszínek ---------- */
+function renderLoc() {
+  $('t-loc').innerHTML = `<p class="lead">A sorozat fontos helyszínei és amit tudsz róluk.</p>` +
+    S.locs.map(l => `<div class="card"><h3><span style="flex:1">📍 ${esc(l.name)}</span></h3><div class="desc">${esc(l.text || '')}</div>
+      <div class="acts"><button class="mini" data-ed="${l.id}">✎ szerkeszt</button><button class="mini" style="color:var(--danger)" data-del="${l.id}">🗑️</button></div></div>`).join('');
+  bindEntry('t-loc', 'locs', editLoc);
+}
+function editLoc(id) {
+  const l = id ? S.locs.find(x => x.id === id) : null;
+  openSheet(`<h2>${l ? 'Helyszín szerkesztése' : 'Új helyszín'}</h2>
+    <label class="fld"><span>Név</span><input id="lName" value="${l ? esc(l.name) : ''}"></label>
+    <label class="fld"><span>Leírás / jegyzet</span><textarea id="lText" placeholder="Mi történt itt? Mi a jelentősége?">${l ? esc(l.text || '') : ''}</textarea></label>
+    <button class="btn hot full" id="lSave">Mentés</button>`);
+  $('lSave').onclick = () => { const n = $('lName').value.trim(); if (!n) return;
+    if (l) { l.name = n; l.text = $('lText').value.trim(); } else S.locs.push({ id: uid(), name: n, text: $('lText').value.trim() });
+    save(); closeSheet(); renderLoc(); };
+}
+
+/* ---------- Epizódok ---------- */
+let openS = {};
+function renderEp() {
+  const all = S.episodes.flatMap(s => s.eps), seen = all.filter(e => e.seen).length;
+  $('t-ep').innerHTML = `<div class="prog-top"><i style="width:${all.length ? seen / all.length * 100 : 0}%"></i></div>
+    <p class="lead" style="margin-top:-6px">Megnézve: ${seen}/${all.length} epizód. Koppints a pipára, és adj jegyzetet/értékelést.</p>` +
+    S.episodes.map(s => { const sv = s.eps.filter(e => e.seen).length;
+      return `<div class="season ${openS[s.s] ? 'open' : ''}" data-s="${s.s}"><div class="shead" data-sh="${s.s}"><span class="arrow">▶</span><b>${s.s}. évad</b><span class="spct">${sv}/${s.eps.length}</span></div>
+        <div class="sbody">${s.eps.map(e => `<div class="ep ${e.seen ? 'seen' : ''}"><div class="box" data-ep="${s.s}|${e.e}">${e.seen ? '✓' : ''}</div><span class="en" data-epn="${s.s}|${e.e}">${s.s}×${String(e.e).padStart(2, '0')}${e.note ? ' · ' + esc(e.note) : ''}</span><span class="st">${'★'.repeat(e.rating)}</span></div>`).join('')}
+        <button class="btn sm ghost full" data-adde="${s.s}" style="margin-top:8px">+ epizód</button></div></div>`; }).join('') +
+    `<button class="btn ghost full" id="addSeason" style="margin-top:4px">+ évad</button>`;
+  $('t-ep').querySelectorAll('[data-sh]').forEach(b => b.onclick = () => { openS[b.dataset.sh] = !openS[b.dataset.sh]; renderEp(); });
+  $('t-ep').querySelectorAll('[data-ep]').forEach(b => b.onclick = () => { const [s, e] = b.dataset.ep.split('|').map(Number); const ep = ep2(s, e); ep.seen = !ep.seen; save(); renderEp(); });
+  $('t-ep').querySelectorAll('[data-epn]').forEach(b => b.onclick = () => { const [s, e] = b.dataset.epn.split('|').map(Number); editEp(s, e); });
+  $('t-ep').querySelectorAll('[data-adde]').forEach(b => b.onclick = () => { const s = S.episodes.find(x => x.s == b.dataset.adde); s.eps.push({ e: s.eps.length + 1, seen: false, rating: 0, note: '' }); save(); renderEp(); });
+  $('addSeason').onclick = () => { S.episodes.push({ s: S.episodes.length + 1, eps: [] }); openS[S.episodes.length] = true; save(); renderEp(); };
+}
+const ep2 = (s, e) => S.episodes.find(x => x.s === s).eps.find(x => x.e === e);
+function editEp(s, e) {
+  const ep = ep2(s, e);
+  openSheet(`<h2>${s}. évad ${e}. rész</h2>
+    <label class="fld"><span>Cím / jegyzet</span><input id="eNote" value="${esc(ep.note || '')}" placeholder="pl. cím vagy mi történt"></label>
+    <label class="fld"><span>Értékelés</span><div class="seg" id="eRate">${[1, 2, 3, 4, 5].map(r => `<button data-r="${r}" class="${ep.rating >= r ? 'on' : ''}">★</button>`).join('')}</div></label>
+    <button class="btn hot full" id="eSave">Mentés</button>
+    <button class="btn ghost danger full" id="eDel" style="margin-top:8px">🗑️ Epizód törlése</button>`);
+  let r = ep.rating;
+  $('eRate').querySelectorAll('[data-r]').forEach(b => b.onclick = () => { r = +b.dataset.r; $('eRate').querySelectorAll('[data-r]').forEach(x => x.classList.toggle('on', +x.dataset.r <= r)); });
+  $('eSave').onclick = () => { ep.note = $('eNote').value.trim(); ep.rating = r; save(); closeSheet(); renderEp(); };
+  $('eDel').onclick = () => { const se = S.episodes.find(x => x.s === s); se.eps = se.eps.filter(x => x.e !== e); save(); closeSheet(); renderEp(); };
+}
+
+/* ---------- Közös: entry lista kötések ---------- */
+function bindEntry(tabId, arrKey, editFn, cycleFn) {
+  const root = $(tabId);
+  root.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => editFn(b.dataset.ed));
+  root.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (confirm('Törlöd?')) { S[arrKey] = S[arrKey].filter(x => x.id !== b.dataset.del); save(); RENDER[curTab](); } });
+  if (cycleFn) root.querySelectorAll('[data-cyc]').forEach(b => b.onclick = e => { e.stopPropagation(); const it = S[arrKey].find(x => x.id === b.dataset.cyc); cycleFn(it); save(); RENDER[curTab](); });
+}
+
+/* ---------- Beállítások ---------- */
+function openSettings() {
+  openSheet(`<h2>⚙️ Beállítások</h2>
+    <p class="lead">Minden a telefonodon, offline. A kezdő váz magas szintű – a részleteket (nyomok, elméletek) te töltöd. ⚠️ Spoilerveszély, ha még nézed!</p>
+    <button class="btn full" id="expBtn" style="margin-bottom:8px">💾 Mentés fájlba</button>
+    <button class="btn full" id="impBtn" style="margin-bottom:8px">📥 Visszaállítás fájlból</button>
+    <input type="file" id="impIn" accept="application/json,.json" hidden>
+    <button class="btn full ghost danger" id="resetBtn">♻️ Visszaállítás az alap vázra</button>
+    <p class="lead" style="text-align:center;margin-top:16px">From – Rejtélyfejtő 🌲</p>`);
+  $('expBtn').onclick = () => { const blob = new Blob([JSON.stringify({ app: 'from', ver: 1, S })], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `from-mentes-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Mentve 💾'); };
+  $('impBtn').onclick = () => $('impIn').click();
+  $('impIn').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; if (!confirm('Felülírod a mostani adatokat a mentéssel?')) return; try { const d = JSON.parse(await f.text()); if (d.app !== 'from' || !d.S) throw 0; S = d.S; save(); closeSheet(); RENDER[curTab](); toast('Visszaállítva ✅'); } catch (x) { toast('Nem sikerült beolvasni'); } };
+  $('resetBtn').onclick = () => { if (confirm('Minden saját bejegyzésed törlődik, és visszaáll az alap váz. Biztos?')) { S = seed(); save(); closeSheet(); RENDER[curTab](); toast('Alap váz visszaállítva'); } };
+}
+
+/* ---------- Sheet + navigáció ---------- */
+function openSheet(html) { $('sheetIn').innerHTML = html; $('sheet').classList.add('show'); history.pushState({ sheet: 1 }, ''); }
+function closeSheet(skip) { $('sheet').classList.remove('show'); if (!skip && history.state && history.state.sheet) history.back(); }
+$('sheet').onclick = e => { if (e.target === $('sheet')) history.back(); };
+history.replaceState({ root: 1 }, '');
+addEventListener('popstate', () => { if ($('sheet').classList.contains('show')) closeSheet(true); });
+
+/* ---------- Tabok ---------- */
+const TABS = [['t-myst', '🔍', 'Rejtélyek'], ['t-theory', '💡', 'Elmélet'], ['t-char', '👥', 'Szereplők'], ['t-loc', '📍', 'Helyszín'], ['t-ep', '📺', 'Epizódok']];
+const RENDER = { 't-myst': renderMyst, 't-theory': renderTheory, 't-char': renderChar, 't-loc': renderLoc, 't-ep': renderEp };
+const NEW = { 't-myst': () => editMyst(null), 't-theory': () => editTheory(null), 't-char': () => editChar(null), 't-loc': () => editLoc(null), 't-ep': () => { S.episodes[0] && (openS[1] = true); renderEp(); toast('Évadnál a „+ epizód", lent a „+ évad"'); } };
+let curTab = 't-myst';
+function setTab(id) { curTab = id; document.querySelectorAll('.tab').forEach(s => s.classList.toggle('show', s.id === id)); $('nav').querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === id)); $('fab').style.display = id === 't-ep' ? 'none' : ''; RENDER[id](); }
+$('nav').innerHTML = TABS.map(([id, i, n]) => `<button data-tab="${id}"><span class="i">${i}</span>${n}</button>`).join('');
+$('nav').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+$('fab').onclick = () => NEW[curTab]();
+$('setBtn').onclick = openSettings;
+
+/* ---------- Indítás ---------- */
+setTab('t-myst');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
