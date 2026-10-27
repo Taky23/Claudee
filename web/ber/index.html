@@ -135,6 +135,7 @@
         <div style="margin-top:12px">
           <div class="grid2">
             <label class="fld"><span>Műszak hossza (óra)</span><input type="number" id="setHours" inputmode="numeric"></label>
+            <label class="fld"><span>Délelőtti pótlék (%)</span><input type="number" id="setMorn" inputmode="decimal"></label>
             <label class="fld"><span>Délutáni pótlék (%)</span><input type="number" id="setAft" inputmode="numeric"></label>
             <label class="fld"><span>Éjszakai pótlék (%)</span><input type="number" id="setNight" inputmode="numeric"></label>
             <label class="fld"><span>Hétvégi délelőtt (%)</span><input type="number" id="setWM" inputmode="numeric"></label>
@@ -236,7 +237,7 @@ const DEF = {
   payType: 'hourly',
   monthly: { base: 0, divisor: 174 },
   wage: 0, hours: 8,
-  pot: { afternoon: 30, night: 50 },
+  pot: { morning: 0, afternoon: 30, night: 50 },
   weekend: { morning: 200, afternoon: 230, night: 280 },
   overrides: {},
   manual: false,
@@ -301,7 +302,7 @@ function dayInfo(y, m, d) {
 }
 function mult(shift, weekend) {
   if (weekend) return +S.weekend[shift] || 0;
-  if (shift === 'morning') return 100;
+  if (shift === 'morning') return 100 + (+S.pot.morning || 0);
   if (shift === 'afternoon') return 100 + (+S.pot.afternoon || 0);
   if (shift === 'night') return 100 + (+S.pot.night || 0);
   return 0;
@@ -324,11 +325,11 @@ function payFromCounts(c) {
     // számolt órabérrel (alapbér ÷ osztó) adódnak hozzá. Délelőtt: nincs külön pótlék.
     const base = +S.monthly.base || 0, hourly = base / (+S.monthly.divisor || 174);
     let gross = base;
-    groups.morning.n = +c.morning || 0;                       // informatív, az alapbérben van
-    const aN = +c.afternoon || 0, nN = +c.night || 0;
+    const mN = +c.morning || 0, aN = +c.afternoon || 0, nN = +c.night || 0;
+    groups.morning.n = mN; groups.morning.ft = mN * hours * hourly * (+S.pot.morning || 0) / 100;  // alap az alapbérben; csak a pótlék jön rá, ha van
     groups.afternoon.n = aN; groups.afternoon.ft = aN * hours * hourly * (+S.pot.afternoon || 0) / 100;
     groups.night.n = nN; groups.night.ft = nN * hours * hourly * (+S.pot.night || 0) / 100;
-    gross += groups.afternoon.ft + groups.night.ft;
+    gross += groups.morning.ft + groups.afternoon.ft + groups.night.ft;
     [['wMorning', 'morning'], ['wAfternoon', 'afternoon'], ['wNight', 'night']].forEach(([k, sh]) => { const n = +c[k] || 0; if (!n) return; const ft = n * hours * hourly * (+S.weekend[sh] || 0) / 100; groups.weekend.n += n; groups.weekend.ft += ft; gross += ft; });
     return { gross, groups, hours, wage: hourly, base };
   }
@@ -369,6 +370,7 @@ function renderBer() {
     const pot = (label, cls, g) => g.n ? `<div class="line"><span><span class="pill p-${cls}">${label}</span> ${g.n} nap × ${r.hours} ó</span><b>${fmt(g.ft)}</b></div>` : '';
     $('berOut').innerHTML = (r.base || r.groups.afternoon.n || r.groups.night.n || r.groups.weekend.n)
       ? `<div class="line"><span>Havi alapbér${r.groups.morning.n ? ` <span class="small">(${r.groups.morning.n} délelőttös nap benne)</span>` : ''}</span><b>${fmt(r.base)}</b></div>` +
+        (r.groups.morning.ft ? pot('Délelőtti pótlék', 'morning', r.groups.morning) : '') +
         pot('Délutáni pótlék', 'afternoon', r.groups.afternoon) + pot('Éjszakai pótlék', 'night', r.groups.night) + pot('Hétvégi', 'weekend', r.groups.weekend)
       : '<p class="small" style="margin:6px 0 0">Add meg a havi alapbért, és a műszakokat (naptár vagy kézi megadás).</p>';
   } else {
@@ -404,7 +406,7 @@ $('bNext').onclick = () => { stepMonth(1); };
 function stepMonth(dir) { view.m += dir; if (view.m < 0) { view.m = 11; view.y--; } if (view.m > 11) { view.m = 0; view.y++; } renderBer(); renderCal(); }
 
 /* ---- Beállítások mezők ---- */
-const setMap = [['setHours', () => S.hours, v => S.hours = v], ['setAft', () => S.pot.afternoon, v => S.pot.afternoon = v], ['setNight', () => S.pot.night, v => S.pot.night = v],
+const setMap = [['setHours', () => S.hours, v => S.hours = v], ['setMorn', () => S.pot.morning, v => S.pot.morning = v], ['setAft', () => S.pot.afternoon, v => S.pot.afternoon = v], ['setNight', () => S.pot.night, v => S.pot.night = v],
   ['setWM', () => S.weekend.morning, v => S.weekend.morning = v], ['setWA', () => S.weekend.afternoon, v => S.weekend.afternoon = v], ['setWN', () => S.weekend.night, v => S.weekend.night = v]];
 function fillSettings() { setMap.forEach(([id, get]) => $(id).value = get()); }
 setMap.forEach(([id, , set]) => $(id).addEventListener('input', () => { set(+$(id).value || 0); save(); renderBer(); renderCal(); }));
