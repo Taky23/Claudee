@@ -96,7 +96,16 @@
   <!-- ====== BÉR ====== -->
   <section class="tab show" id="t-ber">
     <div class="card">
-      <label class="fld"><span>Bruttó órabér (Ft)</span><input type="number" id="wage" inputmode="numeric" placeholder="pl. 2000"></label>
+      <div class="small">Bérezés típusa</div>
+      <div class="schips" id="payType"><button data-pt="hourly">Órabér</button><button data-pt="monthly">Havibér</button></div>
+      <label class="fld" id="wageFld"><span>Bruttó órabér (Ft)</span><input type="number" id="wage" inputmode="numeric" placeholder="pl. 2000"></label>
+      <div id="monthlyFld" style="display:none">
+        <div class="grid2">
+          <label class="fld"><span>Havi bruttó alapbér (Ft)</span><input type="number" id="mBase" inputmode="numeric" placeholder="pl. 531624"></label>
+          <label class="fld"><span>Osztószám (óra)</span><input type="number" id="mDiv" inputmode="numeric"></label>
+        </div>
+        <p class="small" style="margin-top:0">A pótlékokat a havi alapbérből számolt órabérrel (alapbér ÷ osztószám, alapesetben 174) adja hozzá. A délelőttös napok az alapbérben vannak.</p>
+      </div>
       <div class="row sb" style="margin-bottom:12px"><b style="font-size:14px">✍️ Kézi megadás (a naptár helyett)</b><label class="sw"><input type="checkbox" id="manToggle"><span class="t"></span></label></div>
       <div class="mnav" id="monthNav"><button class="btn sm" id="bPrev">‹</button><b id="bMonth"></b><button class="btn sm" id="bNext">›</button></div>
       <div id="manualBox" style="display:none">
@@ -141,7 +150,7 @@
     <div class="card">
       <h2>⚡ Gyors számláló</h2>
       <p class="small" style="margin-top:0">Csak pár nap? Válassz műszakot, add meg a napok számát, és rögtön látod az összeget.</p>
-      <label class="fld"><span>Bruttó órabér (Ft)</span><input type="number" id="qWage" inputmode="numeric" placeholder="pl. 2000"></label>
+      <label class="fld"><span id="qWageLbl">Bruttó órabér (Ft)</span><input type="number" id="qWage" inputmode="numeric" placeholder="pl. 2000"></label>
       <div class="small">Műszak</div>
       <div class="schips" id="qShift"><button data-s="morning">Délelőtt</button><button data-s="afternoon">Délután</button><button data-s="night">Éjszaka</button></div>
       <div class="row sb" style="margin-bottom:12px"><b style="font-size:14px">Hétvégi szorzóval</b><label class="sw"><input type="checkbox" id="qWeekend"><span class="t"></span></label></div>
@@ -219,6 +228,8 @@
 const $ = id => document.getElementById(id);
 const KEY = 'ber-app-v1';
 const DEF = {
+  payType: 'hourly',
+  monthly: { base: 0, divisor: 174 },
   wage: 0, hours: 8,
   pot: { afternoon: 30, night: 50 },
   weekend: { morning: 200, afternoon: 230, night: 280 },
@@ -279,14 +290,29 @@ const DOWS = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
 
 /* ---- Bér számítás ---- */
 const CAP = { morning: 'Morning', afternoon: 'Afternoon', night: 'Night' };
+function effHourly() { return S.payType === 'monthly' ? (+S.monthly.base || 0) / (+S.monthly.divisor || 174) : (+S.wage || 0); }
 function payFromCounts(c) {
-  const hours = +S.hours || 8, wage = +S.wage || 0;
+  const hours = +S.hours || 8;
   const groups = { morning: { n: 0, ft: 0 }, afternoon: { n: 0, ft: 0 }, night: { n: 0, ft: 0 }, weekend: { n: 0, ft: 0 } };
+  if (S.payType === 'monthly') {
+    // A fix havi alapbér fedezi a hétköznapi (főleg délelőttös) órákat; a pótlékok az alapbérből
+    // számolt órabérrel (alapbér ÷ osztó) adódnak hozzá. Délelőtt: nincs külön pótlék.
+    const base = +S.monthly.base || 0, hourly = base / (+S.monthly.divisor || 174);
+    let gross = base;
+    groups.morning.n = +c.morning || 0;                       // informatív, az alapbérben van
+    const aN = +c.afternoon || 0, nN = +c.night || 0;
+    groups.afternoon.n = aN; groups.afternoon.ft = aN * hours * hourly * (+S.pot.afternoon || 0) / 100;
+    groups.night.n = nN; groups.night.ft = nN * hours * hourly * (+S.pot.night || 0) / 100;
+    gross += groups.afternoon.ft + groups.night.ft;
+    [['wMorning', 'morning'], ['wAfternoon', 'afternoon'], ['wNight', 'night']].forEach(([k, sh]) => { const n = +c[k] || 0; if (!n) return; const ft = n * hours * hourly * (+S.weekend[sh] || 0) / 100; groups.weekend.n += n; groups.weekend.ft += ft; gross += ft; });
+    return { gross, groups, hours, wage: hourly, base };
+  }
+  const wage = +S.wage || 0;
   let gross = 0;
   const add = (shift, weekend, n) => { n = +n || 0; if (!n) return; const ft = wage * hours * mult(shift, weekend) / 100 * n; gross += ft; const g = weekend ? groups.weekend : groups[shift]; g.n += n; g.ft += ft; };
   add('morning', false, c.morning); add('afternoon', false, c.afternoon); add('night', false, c.night);
   add('morning', true, c.wMorning); add('afternoon', true, c.wAfternoon); add('night', true, c.wNight);
-  return { gross, groups, hours, wage };
+  return { gross, groups, hours, wage, base: 0 };
 }
 function calendarCounts(y, m) {
   const days = new Date(y, m + 1, 0).getDate();
@@ -302,19 +328,31 @@ function computeMonth(y, m) { return payFromCounts(S.manual ? S.manDays : calend
 function kedvTotal() { return S.kedv.filter(k => k.on).reduce((a, k) => a + (+k.amount || 0), 0); }
 function renderBer() {
   $('bMonth').textContent = `${view.y}. ${MONTHS[view.m]}`;
+  const monthly = S.payType === 'monthly';
+  $('payType').querySelectorAll('[data-pt]').forEach(b => b.classList.toggle('on', b.dataset.pt === S.payType));
+  $('wageFld').style.display = monthly ? 'none' : '';
+  $('monthlyFld').style.display = monthly ? '' : 'none';
   $('wage').value = S.wage || '';
+  if ($('mBase') !== document.activeElement) $('mBase').value = S.monthly.base || '';
+  if ($('mDiv') !== document.activeElement) $('mDiv').value = S.monthly.divisor || 174;
   $('manToggle').checked = !!S.manual;
   $('monthNav').style.display = S.manual ? 'none' : '';
   $('manualBox').style.display = S.manual ? '' : 'none';
   [['mM', 'morning'], ['mA', 'afternoon'], ['mN', 'night'], ['mWM', 'wMorning'], ['mWA', 'wAfternoon'], ['mWN', 'wNight']].forEach(([id, k]) => { if ($(id) !== document.activeElement) $(id).value = S.manDays[k] || ''; });
   const r = computeMonth(view.y, view.m);
-  const row = (label, cls, g, perDayNote) => g.n ? `<div class="line"><span><span class="pill p-${cls}">${label}</span> ${g.n} nap × ${r.hours} ó</span><b>${fmt(g.ft)}</b></div>` : '';
-  $('berOut').innerHTML =
-    row('Délelőtt', 'morning', r.groups.morning) +
-    row('Délután', 'afternoon', r.groups.afternoon) +
-    row('Éjszaka', 'night', r.groups.night) +
-    row('Hétvégi', 'weekend', r.groups.weekend) +
-    (r.gross ? '' : `<p class="small" style="margin:6px 0 0">${S.manual ? 'Add meg az órabért és a napok számát a műszakoknál.' : 'Ebben a hónapban nincs beszámított műszak. Add meg az órabért, és nézd meg a Naptár fülön a műszakokat.'}</p>`);
+  if (monthly) {
+    const pot = (label, cls, g) => g.n ? `<div class="line"><span><span class="pill p-${cls}">${label}</span> ${g.n} nap × ${r.hours} ó</span><b>${fmt(g.ft)}</b></div>` : '';
+    $('berOut').innerHTML = (r.base || r.groups.afternoon.n || r.groups.night.n || r.groups.weekend.n)
+      ? `<div class="line"><span>Havi alapbér${r.groups.morning.n ? ` <span class="small">(${r.groups.morning.n} délelőttös nap benne)</span>` : ''}</span><b>${fmt(r.base)}</b></div>` +
+        pot('Délutáni pótlék', 'afternoon', r.groups.afternoon) + pot('Éjszakai pótlék', 'night', r.groups.night) + pot('Hétvégi', 'weekend', r.groups.weekend)
+      : '<p class="small" style="margin:6px 0 0">Add meg a havi alapbért, és a műszakokat (naptár vagy kézi megadás).</p>';
+  } else {
+    const row = (label, cls, g) => g.n ? `<div class="line"><span><span class="pill p-${cls}">${label}</span> ${g.n} nap × ${r.hours} ó</span><b>${fmt(g.ft)}</b></div>` : '';
+    $('berOut').innerHTML =
+      row('Délelőtt', 'morning', r.groups.morning) + row('Délután', 'afternoon', r.groups.afternoon) +
+      row('Éjszaka', 'night', r.groups.night) + row('Hétvégi', 'weekend', r.groups.weekend) +
+      (r.gross ? '' : `<p class="small" style="margin:6px 0 0">${S.manual ? 'Add meg az órabért és a napok számát a műszakoknál.' : 'Ebben a hónapban nincs beszámított műszak. Add meg az órabért, és nézd meg a Naptár fülön a műszakokat.'}</p>`);
+  }
   // adó
   const szjaOn = !!S.szja.on;
   const kedv = szjaOn ? Math.min(kedvTotal(), r.gross) : 0;
@@ -331,6 +369,9 @@ function renderBer() {
   $('sumNet').textContent = fmt(net);
 }
 $('wage').addEventListener('input', () => { S.wage = +$('wage').value || 0; save(); renderBer(); });
+$('payType').querySelectorAll('[data-pt]').forEach(b => b.onclick = () => { S.payType = b.dataset.pt; save(); renderBer(); renderQuick(); });
+$('mBase').addEventListener('input', () => { S.monthly.base = +$('mBase').value || 0; save(); renderBer(); renderQuick(); });
+$('mDiv').addEventListener('input', () => { S.monthly.divisor = +$('mDiv').value || 174; save(); renderBer(); renderQuick(); });
 $('manToggle').addEventListener('change', () => { S.manual = $('manToggle').checked; save(); renderBer(); });
 [['mM', 'morning'], ['mA', 'afternoon'], ['mN', 'night'], ['mWM', 'wMorning'], ['mWA', 'wAfternoon'], ['mWN', 'wNight']].forEach(([id, k]) => $(id).addEventListener('input', () => { S.manDays[k] = +$(id).value || 0; save(); renderBer(); }));
 $('bPrev').onclick = () => { stepMonth(-1); };
@@ -412,12 +453,16 @@ $('addKedv').onclick = () => { const name = prompt('Kedvezmény neve:', 'Saját 
 /* ---- Gyors számláló ---- */
 function renderQuick() {
   const q = S.quick;
-  $('qWage').value = S.wage || '';
+  const wage = effHourly();
+  const monthly = S.payType === 'monthly';
+  $('qWage').readOnly = monthly;
+  $('qWage').value = monthly ? Math.round(wage) : (S.wage || '');
+  $('qWageLbl').textContent = monthly ? 'Órabér a havi alapbérből (alapbér ÷ osztó)' : 'Bruttó órabér (Ft)';
   if ($('qDays') !== document.activeElement) $('qDays').value = q.days;
   if ($('qHours') !== document.activeElement) $('qHours').value = +S.hours || 8;
   $('qWeekend').checked = !!q.weekend;
   $('qShift').querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === q.shift));
-  const hours = +S.hours || 8, wage = +S.wage || 0, days = +q.days || 0;
+  const hours = +S.hours || 8, days = +q.days || 0;
   const mp = mult(q.shift, q.weekend);
   const totalH = hours * days;
   const gross = wage * totalH * mp / 100;
