@@ -1,0 +1,17 @@
+{
+  "name": "Időkapszula",
+  "short_name": "Időkapszula",
+  "description": "Üzenet és képek a jövőbeli énednek – lezárva egy dátumig, és csak akkor nyílik meg. Offline, a telefonodon marad.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a18",
+  "theme_color": "#0a0a18",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}
