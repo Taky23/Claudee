@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1416">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none'">
+<title>Nyugi</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0b1416; --bg2: #0f1d20; --card: #122528; --card2: #16303333; --line: #24474b;
+    --text: #eafbf9; --muted: #8fb3b1; --teal: #4fd1c5; --lav: #9f7aea; --aqua: #63b3ed;
+    --grad: linear-gradient(135deg, #4fd1c5, #9f7aea); --on-accent: #042320; --good: #5ad1a8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { background: radial-gradient(900px 600px at 50% -10%, #12333a 0%, var(--bg) 60%), var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: calc(76px + env(safe-area-inset-bottom)); min-height: 100vh; overflow-x: hidden; }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(11,20,22,.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 16px 10px; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: 2px; text-transform: lowercase; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  main { padding: 16px; max-width: 620px; margin: 0 auto; }
+  .tab { display: none; } .tab.show { display: block; animation: f .3s; }
+  @keyframes f { from { opacity: 0; } }
+  .lead { color: var(--muted); font-size: 14px; text-align: center; margin: 0 0 16px; }
+  .chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 18px; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 8px 15px; font-size: 13px; font-weight: 700; }
+  .chip.on { background: var(--grad); color: var(--on-accent); border: 0; }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 14px; padding: 13px 18px; font: inherit; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn.hot { background: var(--grad); color: var(--on-accent); border: 0; box-shadow: 0 8px 22px -8px var(--teal); }
+  .btn.full { width: 100%; }
+  /* Légzés */
+  .breathe { text-align: center; padding: 10px 0 20px; }
+  .circwrap { position: relative; width: 260px; height: 260px; margin: 10px auto 18px; display: grid; place-items: center; }
+  .circ { position: absolute; width: 230px; height: 230px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(79,209,197,.5), rgba(159,122,234,.35)); border: 2px solid rgba(79,209,197,.6); box-shadow: 0 0 60px -10px var(--teal); transform: scale(.55); transition: transform .2s linear; }
+  .circ.glow { box-shadow: 0 0 90px -6px var(--lav); }
+  .ctext { position: relative; z-index: 2; }
+  .ctext .ph { font-size: 22px; font-weight: 800; }
+  .ctext .cd { font-size: 46px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .cyc { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  /* Földelés */
+  .ground { text-align: center; }
+  .gstep { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px 18px; margin-bottom: 16px; }
+  .gstep .num { font-size: 54px; font-weight: 900; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1; }
+  .gstep .sense { font-size: 20px; font-weight: 800; margin: 8px 0 4px; }
+  .gstep .hint { color: var(--muted); font-size: 14px; }
+  .dots { display: flex; justify-content: center; gap: 8px; margin: 14px 0; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .dots i.on { background: var(--teal); }
+  /* Hangok */
+  .sounds { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .snd { border: 1px solid var(--line); background: var(--card); border-radius: 18px; padding: 20px 12px; text-align: center; font-weight: 800; }
+  .snd .e { font-size: 34px; display: block; margin-bottom: 6px; }
+  .snd.on { background: var(--grad); color: var(--on-accent); border: 0; box-shadow: 0 8px 22px -8px var(--teal); }
+  .volrow { display: flex; align-items: center; gap: 10px; }
+  input[type=range] { width: 100%; accent-color: var(--teal); }
+  /* Üzenet */
+  .affbox { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 30px 22px; text-align: center; min-height: 160px; display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1.5; font-weight: 600; }
+  .big-emo { font-size: 46px; text-align: center; margin: 6px 0 14px; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 12; background: rgba(11,20,22,.95); backdrop-filter: blur(10px); border-top: 1px solid var(--line); display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+  nav button { flex: 1; background: none; border: 0; color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; padding: 8px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav button .i { font-size: 20px; }
+  nav button.on { color: var(--teal); }
+  .toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #fff; color: #122528; padding: 11px 18px; border-radius: 14px; font-weight: 800; font-size: 14px; z-index: 40; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header><h1>nyugi 🧘</h1></header>
+<main>
+  <section class="tab show" id="t-breathe"></section>
+  <section class="tab" id="t-ground"></section>
+  <section class="tab" id="t-sound"></section>
+  <section class="tab" id="t-msg"></section>
+</main>
+<nav id="nav"></nav>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1800); }
+
+/* ---------- 🫁 LÉGZÉS ---------- */
+const TECH = {
+  box: { name: 'Doboz 4-4-4-4', ph: [['Lélegezz be', 4, 'in'], ['Tartsd', 4, 'hold1'], ['Lélegezz ki', 4, 'out'], ['Tartsd', 4, 'hold0']] },
+  r478: { name: '4-7-8 (elalváshoz)', ph: [['Lélegezz be', 4, 'in'], ['Tartsd', 7, 'hold1'], ['Lélegezz ki', 8, 'out']] },
+  simple: { name: 'Egyszerű 4-6', ph: [['Lélegezz be', 4, 'in'], ['Lélegezz ki', 6, 'out']] }
+};
+let tech = 'box', breathing = false, raf = 0, phIdx = 0, phStart = 0, cycles = 0;
+function renderBreathe() {
+  $('t-breathe').innerHTML = `<p class="lead">Kövesd a kört a szemeddel, és lélegezz vele. Pár kör, és érezni fogod. 💙</p>
+    <div class="chips" id="techChips">${Object.entries(TECH).map(([k, v]) => `<button class="chip ${tech === k ? 'on' : ''}" data-t="${k}">${v.name}</button>`).join('')}</div>
+    <div class="breathe"><div class="cyc" id="cyc">Készen állsz?</div>
+      <div class="circwrap"><div class="circ" id="circ"></div><div class="ctext"><div class="ph" id="ph">Kezdjük</div><div class="cd" id="cd"></div></div></div>
+      <button class="btn hot full" id="bToggle">▶️ Indítás</button></div>`;
+  $('techChips').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { if (breathing) stopBreath(); tech = b.dataset.t; renderBreathe(); });
+  $('bToggle').onclick = () => breathing ? stopBreath() : startBreath();
+  if (breathing) { $('bToggle').textContent = '⏹️ Állj'; }
+}
+function startBreath() { breathing = true; phIdx = 0; cycles = 0; phStart = performance.now(); $('bToggle').textContent = '⏹️ Állj'; loopBreath(); }
+function stopBreath() { breathing = false; cancelAnimationFrame(raf); const c = $('circ'); if (c) { c.style.transform = 'scale(.55)'; c.classList.remove('glow'); } if ($('ph')) { $('ph').textContent = 'Szünet'; $('cd').textContent = ''; $('bToggle').textContent = '▶️ Indítás'; $('cyc').textContent = cycles ? `Szép volt! ${cycles} kört vettél.` : 'Készen állsz?'; } }
+function loopBreath() {
+  if (!breathing) return;
+  const phases = TECH[tech].ph, [label, sec, type] = phases[phIdx];
+  const el = (performance.now() - phStart) / 1000, prog = Math.min(1, el / sec);
+  const circ = $('circ'); if (!circ) return;
+  let scale = .55;
+  if (type === 'in') scale = .55 + .45 * ease(prog);
+  else if (type === 'out') scale = 1 - .45 * ease(prog);
+  else if (type === 'hold1') scale = 1;
+  else scale = .55;
+  circ.style.transform = `scale(${scale.toFixed(3)})`;
+  circ.classList.toggle('glow', type === 'hold1' || type === 'in');
+  $('ph').textContent = label; $('cd').textContent = Math.ceil(sec - el);
+  $('cyc').textContent = `${cycles + 1}. kör`;
+  if (el >= sec) { phIdx++; if (phIdx >= phases.length) { phIdx = 0; cycles++; } phStart = performance.now(); }
+  raf = requestAnimationFrame(loopBreath);
+}
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+/* ---------- 🖐️ FÖLDELÉS 5-4-3-2-1 ---------- */
+const GROUND = [
+  [5, '👀 dolog, amit LÁTSZ', 'Nézz körül, és nevezz meg magadban 5 dolgot, amit látsz.'],
+  [4, '👂 dolog, amit HALLASZ', 'Figyelj a hangokra – 4 különböző hangot keress.'],
+  [3, '✋ dolog, amit ÉREZEL', 'A tapintásod: 3 dolog, amit érzel (ruha, szék, levegő…).'],
+  [2, '👃 dolog, amit SZAGOLSZ', 'Vegyél egy mély levegőt – 2 illatot próbálj felfedezni.'],
+  [1, '👅 dolog, amit ÍZLELSZ', '1 ízt a szádban, vagy kortyolj egyet valamiből.']
+];
+let gStep = 0;
+function renderGround() {
+  if (gStep >= GROUND.length) {
+    $('t-ground').innerHTML = `<p class="lead">Kész. 🌿</p><div class="gstep"><div class="big-emo">🌿</div><div class="sense">Itt vagy, a jelenben.</div><div class="hint">Ügyes voltál. Vegyél még egy mély levegőt, és figyeld meg, mennyivel nyugodtabb vagy.</div></div><button class="btn hot full" id="gRestart">↺ Újra</button>`;
+    $('gRestart').onclick = () => { gStep = 0; renderGround(); };
+    return;
+  }
+  const [n, sense, hint] = GROUND[gStep];
+  $('t-ground').innerHTML = `<p class="lead">Földelő gyakorlat – hozd vissza magad a jelenbe.</p>
+    <div class="gstep"><div class="num">${n}</div><div class="sense">${sense}</div><div class="hint">${hint}</div></div>
+    <div class="dots">${GROUND.map((_, i) => `<i class="${i <= gStep ? 'on' : ''}"></i>`).join('')}</div>
+    <button class="btn hot full" id="gNext">${gStep === GROUND.length - 1 ? 'Befejezés' : 'Tovább →'}</button>
+    ${gStep > 0 ? '<button class="btn full" id="gBack" style="margin-top:8px">← Vissza</button>' : ''}`;
+  $('gNext').onclick = () => { gStep++; renderGround(); };
+  if ($('gBack')) $('gBack').onclick = () => { gStep--; renderGround(); };
+}
+
+/* ---------- 🔊 HANGOK (szintetizált, nem kell letölteni) ---------- */
+let actx = null, node = null, playing = '';
+const SOUNDS = [['brown', '🟤', 'Barna zaj'], ['rain', '🌧️', 'Eső'], ['waves', '🌊', 'Hullámok'], ['wind', '🍃', 'Szél']];
+let vol = 0.5;
+function renderSound() {
+  $('t-sound').innerHTML = `<p class="lead">Megnyugtató háttérhang. A telefonod állítja elő – internet és letöltés nélkül.</p>
+    <div class="sounds" id="sndGrid">${SOUNDS.map(([k, e, n]) => `<div class="snd ${playing === k ? 'on' : ''}" data-s="${k}"><span class="e">${e}</span>${n}</div>`).join('')}</div>
+    <div class="volrow"><span>🔈</span><input type="range" id="vol" min="0" max="100" value="${vol * 100}"><span>🔊</span></div>
+    <p class="lead" style="margin-top:14px">${playing ? 'Lejátszás… koppints újra a leállításhoz.' : ''}</p>`;
+  $('sndGrid').querySelectorAll('[data-s]').forEach(el => el.onclick = () => { if (playing === el.dataset.s) stopSound(); else playSound(el.dataset.s); renderSound(); });
+  $('vol').oninput = () => { vol = +$('vol').value / 100; if (node) node.gain.value = vol; };
+}
+function noiseBuffer(ctx) { const n = 2 * ctx.sampleRate, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0); let last = 0; for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; } return buf; }
+function playSound(type) {
+  try {
+    stopSound();
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const src = actx.createBufferSource(); src.buffer = noiseBuffer(actx); src.loop = true;
+    const gain = actx.createGain(); gain.gain.value = vol;
+    let chain = src;
+    const filt = actx.createBiquadFilter();
+    if (type === 'rain') { filt.type = 'highpass'; filt.frequency.value = 700; chain.connect(filt); chain = filt; }
+    else if (type === 'wind') { filt.type = 'bandpass'; filt.frequency.value = 500; filt.Q.value = 0.6; chain.connect(filt); chain = filt; }
+    else { filt.type = 'lowpass'; filt.frequency.value = type === 'waves' ? 500 : 900; chain.connect(filt); chain = filt; }
+    chain.connect(gain); gain.connect(actx.destination); src.start();
+    if (type === 'waves') { const lfo = actx.createOscillator(); lfo.frequency.value = 0.12; const lg = actx.createGain(); lg.gain.value = vol * 0.6; gain.gain.value = vol * 0.5; lfo.connect(lg); lg.connect(gain.gain); lfo.start(); node = gain; node._lfo = lfo; node._src = src; }
+    else { node = gain; node._src = src; }
+    playing = type;
+  } catch (e) { toast('A hang nem indult 😕'); }
+}
+function stopSound() { try { if (node && node._src) node._src.stop(); if (node && node._lfo) node._lfo.stop(); } catch (e) {} node = null; playing = ''; }
+
+/* ---------- 💬 ÜZENET ---------- */
+const AFF = [
+  'Vegyél egy mély levegőt. Ez a pillanat el fog múlni.', 'Most épp dühös vagy – és ez rendben van. Nem kell azonnal reagálnod.',
+  'Lassíts. Semmit sem kell most azonnal megoldani.', 'A düh energia. Engedd, hogy átáramoljon rajtad, és menjen tovább.',
+  'Nem a gondolataid vagy. Csak megfigyeled őket.', 'Lazítsd el a vállad. Engedd le a nyelved a szájpadlásról.',
+  'Kérdezd meg magadtól: számítani fog ez 5 év múlva?', 'Megérdemled a nyugalmat. Most adj magadnak egy percet.',
+  'Ép vagy. Biztonságban vagy. Lélegzel.', 'Nem kell tökéletesnek lenned. Elég vagy így is.',
+  'Számolj tízig. Lassan. Nincs hova sietni.', 'A nehéz percek is csak percek. Ez is elmúlik.',
+  'Engedd el, amit nem tudsz irányítani. Csak a lélegzeted a tiéd most.', 'Légy magadhoz olyan kedves, mint egy jó baráthoz lennél.'
+];
+let affI = -1;
+function renderMsg() {
+  if (affI < 0) affI = Math.floor(Math.random() * AFF.length);
+  $('t-msg').innerHTML = `<div class="big-emo">🫶</div>
+    <div class="affbox" id="aff">${AFF[affI]}</div>
+    <button class="btn hot full" id="affNext" style="margin-top:16px">🔄 Másik üzenet</button>
+    <button class="btn full" id="toBreath" style="margin-top:8px">🫁 Inkább lélegezzünk együtt</button>`;
+  $('affNext').onclick = () => { let n; do { n = Math.floor(Math.random() * AFF.length); } while (n === affI && AFF.length > 1); affI = n; $('aff').style.opacity = 0; setTimeout(() => { $('aff').textContent = AFF[affI]; $('aff').style.opacity = 1; }, 150); };
+  $('toBreath').onclick = () => setTab('t-breathe');
+}
+
+/* ---------- Tabok ---------- */
+const TABS = [['t-breathe', '🫁', 'Légzés'], ['t-ground', '🖐️', 'Földelés'], ['t-sound', '🔊', 'Hangok'], ['t-msg', '💬', 'Üzenet']];
+const RENDER = { 't-breathe': renderBreathe, 't-ground': renderGround, 't-sound': renderSound, 't-msg': renderMsg };
+let curTab = 't-breathe';
+function setTab(id) {
+  if (curTab === 't-breathe' && id !== 't-breathe' && breathing) stopBreath();
+  curTab = id; document.querySelectorAll('.tab').forEach(s => s.classList.toggle('show', s.id === id));
+  $('nav').querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === id));
+  RENDER[id]();
+}
+$('nav').innerHTML = TABS.map(([id, i, n]) => `<button data-tab="${id}"><span class="i">${i}</span>${n}</button>`).join('');
+$('nav').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+document.addEventListener('visibilitychange', () => { if (document.hidden && playing) stopSound(); });
+
+/* ---------- Indítás ---------- */
+setTab('t-breathe');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
