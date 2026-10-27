@@ -58,6 +58,8 @@
   .cal .cell .sh { margin-top: auto; font-size: 9.5px; font-weight: 800; text-align: center; border-radius: 5px; padding: 2px 0; line-height: 1.15; }
   .sh.morning { background: var(--morning); color: #04202e; } .sh.afternoon { background: var(--afternoon); color: #2e1400; }
   .sh.night { background: var(--night); color: #1b0f3a; } .sh.weekend { background: var(--weekend); color: #3a0a24; } .sh.off { background: var(--off); color: #fff; }
+  .sh.holiday { background: #ef4444; color: #fff; } .sh.vac { background: #22c55e; color: #052e16; }
+  .cal .cell.hol .d { color: #f87171; }
   .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .legend span { font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
   .legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
@@ -181,8 +183,10 @@
         <span><i style="background:var(--afternoon)"></i>Délután</span>
         <span><i style="background:var(--weekend)"></i>Hétvégi</span>
         <span><i style="background:var(--off)"></i>Pihenő</span>
+        <span><i style="background:#ef4444"></i>Ünnep</span>
+        <span><i style="background:#22c55e"></i>Szabadság</span>
       </div>
-      <p class="small" style="margin-bottom:0">A hétköznapok automatikusan a rotáció szerint töltődnek (Délelőtt → Éjszaka → Délután, hetente). Koppints egy napra, ha felülírnád, vagy hétvégi műszakot adnál hozzá.</p>
+      <p class="small" style="margin-bottom:0">A hétköznapok automatikusan a rotáció szerint töltődnek (Délelőtt → Éjszaka → Délután, hetente). A magyar ünnepnapok (piros) alapból nem beszámítottak. Koppints egy napra: felülírhatod, szabadságra/pihenőre állíthatod, vagy hétvégi/ünnepi műszakot adhatsz hozzá.</p>
     </div>
   </section>
 
@@ -266,13 +270,33 @@ function weekShift(y, m, d) {
   return ROT[(((1 + w) % 3) + 3) % 3];
 }
 const key = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+// Magyar munkaszüneti napok (fix + mozgó, húsvét/pünkösd alapján), évente gyorsítótárazva.
+function easterSunday(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3),
+    h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+    mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, mo - 1, da);
+}
+const holCache = {};
+function holidays(y) {
+  if (holCache[y]) return holCache[y];
+  const set = new Set([[0, 1], [2, 15], [4, 1], [7, 20], [9, 23], [10, 1], [11, 25], [11, 26]].map(([mo, d]) => key(y, mo, d)));
+  const e = easterSunday(y);
+  [-2, 1, 49, 50].forEach(off => { const d = new Date(e); d.setDate(d.getDate() + off); set.add(key(d.getFullYear(), d.getMonth(), d.getDate())); });
+  return holCache[y] = set;
+}
+const isHoliday = (y, m, d) => holidays(y).has(key(y, m, d));
 function dayInfo(y, m, d) {
   const dow = new Date(y, m, d).getDay();
   const weekend = dow === 0 || dow === 6;
   const ov = S.overrides[key(y, m, d)];
-  if (ov === 'off') return { shift: 'off', paid: false, weekend };
-  if (weekend) { if (ov) return { shift: ov, paid: true, weekend: true }; return { shift: null, paid: false, weekend: true }; }
-  return { shift: ov || weekShift(y, m, d), paid: true, weekend: false };
+  const hol = isHoliday(y, m, d);
+  if (ov === 'off') return { shift: 'off', paid: false, weekend, hol };
+  if (ov === 'vac') return { shift: 'vac', paid: false, weekend, hol };
+  if (weekend) { if (ov) return { shift: ov, paid: true, weekend: true, hol }; return { shift: null, paid: false, weekend: true, hol }; }
+  if (ov) return { shift: ov, paid: true, weekend: false, hol };     // kézi felülírás ünnepen is dolgozik
+  if (hol) return { shift: 'holiday', paid: false, weekend: false, hol: true };
+  return { shift: weekShift(y, m, d), paid: true, weekend: false, hol: false };
 }
 function mult(shift, weekend) {
   if (weekend) return +S.weekend[shift] || 0;
@@ -398,8 +422,10 @@ function renderCal() {
     const isToday = key(view.y, view.m, d) === tk;
     let shHtml = '';
     if (info.shift === 'off') shHtml = `<div class="sh off">PIH</div>`;
+    else if (info.shift === 'vac') shHtml = `<div class="sh vac">SZAB</div>`;
+    else if (info.shift === 'holiday') shHtml = `<div class="sh holiday">ÜNN</div>`;
     else if (info.shift) shHtml = `<div class="sh ${info.weekend ? 'weekend' : info.shift}">${SHIFT_SHORT[info.shift]}</div>`;
-    html += `<div class="cell ${info.weekend ? 'we wend' : ''} ${isToday ? 'today' : ''}" data-d="${d}"><div class="d">${d}</div>${shHtml}</div>`;
+    html += `<div class="cell ${info.weekend ? 'we wend' : ''} ${info.hol ? 'hol' : ''} ${isToday ? 'today' : ''}" data-d="${d}"><div class="d">${d}</div>${shHtml}</div>`;
   }
   $('calGrid').innerHTML = html;
   $('calGrid').querySelectorAll('[data-d]').forEach(c => c.onclick = () => openDay(+c.dataset.d));
@@ -413,11 +439,13 @@ function openDay(d) {
   dsDay = d;
   const info = dayInfo(view.y, view.m, d);
   const dow = new Date(view.y, view.m, d).getDay();
-  $('dsTitle').textContent = `${view.y}. ${MONTHS[view.m]} ${d}. (${['V','H','K','Sze','Cs','P','Szo'][dow]})`;
-  $('dsHint').textContent = info.weekend ? 'Hétvége – válassz műszakot, ha dolgozol (hétvégi szorzóval), vagy hagyd pihenőn.' : 'Hétköznap – alapból a rotáció. Felülírhatod, vagy pihenőnapra állíthatod.';
+  $('dsTitle').textContent = `${view.y}. ${MONTHS[view.m]} ${d}. (${['V','H','K','Sze','Cs','P','Szo'][dow]})${info.hol ? ' · 🎌 ünnep' : ''}`;
+  $('dsHint').textContent = info.hol ? 'Munkaszüneti nap – alapból nem beszámított. Ha dolgoztál, válassz műszakot.'
+    : info.weekend ? 'Hétvége – válassz műszakot, ha dolgozol (hétvégi szorzóval), vagy hagyd pihenőn.'
+    : 'Hétköznap – alapból a rotáció. Felülírhatod, pihenőre vagy szabadságra állíthatod.';
   const opts = info.weekend
-    ? [['morning', 'Délelőtt'], ['afternoon', 'Délután'], ['night', 'Éjszaka'], ['clear', 'Nincs munka']]
-    : [['morning', 'Délelőtt'], ['afternoon', 'Délután'], ['night', 'Éjszaka'], ['off', 'Pihenő'], ['clear', 'Auto (rotáció)']];
+    ? [['morning', 'Délelőtt'], ['afternoon', 'Délután'], ['night', 'Éjszaka'], ['vac', 'Szabadság'], ['clear', info.hol ? 'Auto (ünnep)' : 'Nincs munka']]
+    : [['morning', 'Délelőtt'], ['afternoon', 'Délután'], ['night', 'Éjszaka'], ['off', 'Pihenő'], ['vac', 'Szabadság'], ['clear', info.hol ? 'Auto (ünnep)' : 'Auto (rotáció)']];
   $('dsOpts').innerHTML = opts.map(([v, l]) => `<button data-v="${v}">${l}</button>`).join('');
   $('dsOpts').querySelectorAll('[data-v]').forEach(b => b.onclick = () => setDay(b.dataset.v));
   $('daySheet').classList.add('show');
