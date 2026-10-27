@@ -1,0 +1,74 @@
+name: inZOI Napló APK (Android)
+
+on:
+  push:
+    paths: ['inzoi-apk/**', '.github/workflows/inzoi-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Függőségek telepítése
+        working-directory: inzoi-apk
+        run: npm install --no-audit --no-fund
+
+      - name: Android projekt létrehozása
+        working-directory: inzoi-apk
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Ikon és indítókép generálása
+        working-directory: inzoi-apk
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#0a0612' --iconBackgroundColorDark '#0a0612' --splashBackgroundColor '#0a0612' --splashBackgroundColorDark '#0a0612'
+
+      - name: Vissza gomb natív kezelő bemásolása
+        working-directory: inzoi-apk
+        run: |
+          base=android/app/src/main
+          mkdir -p "$base/java/hu/taky/inzoinaplo"
+          cp native/java/MainActivity.java "$base/java/hu/taky/inzoinaplo/MainActivity.java"
+
+      - name: Állandó aláíró kulcs (hogy a frissítések törlés nélkül települjenek)
+        run: mkdir -p ~/.android && cp inzoi-apk/debug.keystore ~/.android/debug.keystore
+
+      - name: SDK útvonal
+        working-directory: inzoi-apk/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: APK építése
+        working-directory: inzoi-apk/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: APK átnevezése
+        run: cp inzoi-apk/android/app/build/outputs/apk/debug/app-debug.apk inZOI-Naplo.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inZOI-Naplo-apk
+          path: inZOI-Naplo.apk
+
+      - name: Kiadás (csak a main ágon)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete inzoi-apk --yes --cleanup-tag || true
+          gh release create inzoi-apk inZOI-Naplo.apk --target "${{ github.sha }}" \
+            --title "inZOI Napló – Android (APK)" \
+            --notes "Töltsd le az inZOI-Naplo.apk fájlt a telefonodra, és telepítsd (az ismeretlen forrásból telepítést engedélyezni kell). Cyberpunk karriernapló és küldetéskövető – minden az eszközödön marad."

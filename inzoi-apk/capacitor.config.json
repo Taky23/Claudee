@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.inzoinaplo",
+  "appName": "inZOI Napló",
+  "webDir": "www",
+  "backgroundColor": "#0a0612ff",
+  "android": {
+    "backgroundColor": "#0a0612ff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/inzoi/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}

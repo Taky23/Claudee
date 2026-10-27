@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0612">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; base-uri 'self'; object-src 'none'">
+<title>inZOI Napló</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0a0612; --bg2: #120a22; --card: #160c2b; --card2: #1d1138; --line: #2f1d55;
+    --text: #efe8ff; --muted: #9a86c8; --accent: #b14bff; --accent2: #22d3ee; --pink: #ff3ea5;
+    --grad: linear-gradient(135deg, #b14bff, #ff3ea5); --on-accent: #0a0612; --good: #3ddc97; --gold: #ffd84d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { background: radial-gradient(1200px 600px at 100% -10%, #1a0b33 0%, var(--bg) 55%), var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: calc(76px + env(safe-area-inset-bottom)); min-height: 100vh; }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(10,6,18,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 16px 10px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .sp { flex: 1; }
+  .pill-save { font-size: 11px; color: var(--accent2); border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+  .tab { display: none; } .tab.show { display: block; animation: fade .2s; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } }
+  input, textarea, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; width: 100%; outline: none; }
+  input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(177,75,255,.18); }
+  textarea { resize: none; line-height: 1.5; }
+  label.fld { display: block; margin-bottom: 12px; }
+  label.fld > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 15px; margin-bottom: 14px; }
+  .card.glow { box-shadow: 0 0 0 1px rgba(177,75,255,.15), 0 10px 30px -12px rgba(177,75,255,.4); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row.sb { justify-content: space-between; }
+  .btn { border: 1px solid var(--line); background: var(--card2); color: var(--text); border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+  .btn.hot { background: var(--grad); color: #fff; border: 0; box-shadow: 0 6px 18px -6px var(--pink); }
+  .btn.full { width: 100%; }
+  .btn.sm { padding: 7px 11px; font-size: 13px; }
+  .btn.ghost { background: transparent; }
+  .btn.danger { color: var(--pink); border-color: #5a1e45; }
+  .muted { color: var(--muted); } .small { font-size: 13px; color: var(--muted); }
+  .neon { color: var(--accent2); }
+  /* Karakterlap */
+  .hero { display: flex; gap: 14px; align-items: center; }
+  .av { width: 78px; height: 78px; border-radius: 18px; flex-shrink: 0; background: var(--card2) center/cover; border: 2px solid var(--accent); box-shadow: 0 0 18px -4px var(--accent); display: grid; place-items: center; font-size: 34px; }
+  .hero .nm { font-size: 20px; font-weight: 800; }
+  .stat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .stat .b { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .stat .b span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .stat .b b { display: block; font-size: 18px; margin-top: 2px; }
+  .prog { height: 10px; border-radius: 99px; background: var(--card2); overflow: hidden; border: 1px solid var(--line); }
+  .prog i { display: block; height: 100%; background: var(--grad); border-radius: 99px; transition: width .3s; }
+  .tagline { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent2); }
+  /* Küldetések */
+  .chapter { border: 1px solid var(--line); border-radius: 16px; margin-bottom: 14px; overflow: hidden; background: var(--card); }
+  .chapter.closed { opacity: .72; }
+  .chhead { display: flex; align-items: center; gap: 10px; padding: 13px 14px; cursor: pointer; }
+  .chhead .ct { flex: 1; min-width: 0; }
+  .chhead .ct b { font-size: 15px; display: block; }
+  .chhead .arrow { transition: transform .2s; color: var(--muted); }
+  .chapter.open .chhead .arrow { transform: rotate(90deg); }
+  .chpct { font-size: 12px; color: var(--accent2); font-variant-numeric: tabular-nums; }
+  .chbody { display: none; padding: 0 14px 12px; }
+  .chapter.open .chbody { display: block; }
+  .quest { border-top: 1px solid var(--line); padding: 12px 0; }
+  .quest .qh { display: flex; align-items: center; gap: 8px; }
+  .quest .qh b { flex: 1; font-size: 14px; }
+  .qtag { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 99px; text-transform: uppercase; letter-spacing: .5px; }
+  .qtag.main { background: rgba(255,62,165,.18); color: var(--pink); border: 1px solid #5a1e45; }
+  .qtag.side { background: rgba(34,211,238,.14); color: var(--accent2); border: 1px solid #16505c; }
+  .qdesc { font-size: 12px; color: var(--muted); margin: 4px 0 2px; }
+  .task { display: flex; align-items: flex-start; gap: 9px; padding: 7px 0; }
+  .task .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--line); flex-shrink: 0; display: grid; place-items: center; font-size: 13px; margin-top: 1px; color: var(--on-accent); }
+  .task.done .box { background: var(--grad); border: 0; }
+  .task .tx { flex: 1; font-size: 14px; }
+  .task.done .tx { text-decoration: line-through; color: var(--muted); }
+  .task .del { color: var(--muted); font-size: 13px; background: none; border: 0; padding: 2px 4px; }
+  .mini { font-size: 12px; color: var(--accent2); background: none; border: 0; padding: 4px 0; font-weight: 700; }
+  /* Napló */
+  .logitem { border-left: 2px solid var(--accent); padding: 4px 0 14px 14px; position: relative; margin-left: 6px; }
+  .logitem::before { content: ""; position: absolute; left: -6px; top: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .logitem .lt { font-size: 11px; color: var(--muted); }
+  .logitem .lx { font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  /* FAB + sheet */
+  .fab { position: fixed; right: 18px; bottom: calc(90px + env(safe-area-inset-bottom)); width: 58px; height: 58px; border-radius: 18px; border: 0; background: var(--grad); color: #fff; font-size: 28px; box-shadow: 0 8px 26px -6px var(--pink); z-index: 11; }
+  .sheet { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.65); display: none; align-items: flex-end; justify-content: center; }
+  .sheet.show { display: flex; }
+  .sheet .inner { background: var(--card); border: 1px solid var(--line); border-radius: 18px 18px 0 0; width: 100%; max-width: 520px; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 90vh; overflow: auto; }
+  .sheet h3 { margin: 2px 0 12px; font-size: 16px; }
+  .seg { display: flex; gap: 8px; margin-bottom: 12px; }
+  .seg button { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font: inherit; font-weight: 700; }
+  .seg button.on { background: var(--grad); color: #fff; border: 0; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 12; background: rgba(10,6,18,.95); backdrop-filter: blur(10px); border-top: 1px solid var(--line); display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+  nav button { flex: 1; background: none; border: 0; color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; padding: 7px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav button .i { font-size: 19px; }
+  nav button.on { color: var(--accent); text-shadow: 0 0 10px var(--accent); }
+  .empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+  .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #fff; color: #140a22; padding: 11px 18px; border-radius: 14px; font-weight: 800; font-size: 14px; z-index: 40; max-width: 88vw; text-align: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+  .sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--card2); }
+  .sugg b { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>inZOI Napló</h1>
+  <div class="sp"></div>
+  <button class="pill-save" id="saveBtn">💾 …</button>
+</header>
+<main>
+  <!-- KEZDŐ -->
+  <section class="tab show" id="t-home"></section>
+  <!-- KÜLDETÉSEK -->
+  <section class="tab" id="t-quests"></section>
+  <!-- NAPLÓ -->
+  <section class="tab" id="t-log"></section>
+  <!-- BEÁLLÍTÁSOK -->
+  <section class="tab" id="t-set"></section>
+</main>
+<button class="fab" id="fab">+</button>
+
+<div class="sheet" id="sheet"><div class="inner" id="sheetIn"></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="avFile" accept="image/*" hidden>
+
+<nav>
+  <button data-tab="t-home" class="on"><span class="i">🏠</span>Kezdő</button>
+  <button data-tab="t-quests"><span class="i">🎯</span>Küldetések</button>
+  <button data-tab="t-log"><span class="i">📜</span>Napló</button>
+  <button data-tab="t-set"><span class="i">⚙️</span>Beállítások</button>
+</nav>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const KEY = 'inzoi-v1';
+
+/* ---------- Alap kampány (előre elkészített küldetések) ---------- */
+function starterChapters() {
+  const q = (title, type, desc, tasks) => ({ id: uid(), title, type, desc, tasks: tasks.map(t => ({ id: uid(), text: t, done: false })) });
+  return [
+    { id: uid(), title: '1. fejezet – Beköltözés és fedősztori', closed: false, quests: [
+      q('Rendezd be a búvóhelyed', 'main', 'Egy hacker első dolga egy biztonságos bázis.', ['Válassz lakást a városban', 'Vegyél alapbútorokat', 'Állíts fel egy munkasarkot a géppel', 'Takard el az ablakot']),
+      q('Építs fel egy fedőidentitást', 'main', 'Senki ne tudja, ki vagy valójában.', ['Találj ki egy álnevet', 'Szerezz egy hétköznapi munkát', 'Hozz létre egy ártalmatlan közösségi profilt']),
+      q('Ismerd meg a környéket', 'side', '', ['Beszélj 3 szomszéddal', 'Keress egy törzshelyet']),
+    ]},
+    { id: uid(), title: '2. fejezet – Az első hack', closed: false, quests: [
+      q('Szerezd meg a felszerelést', 'main', '', ['Építs/vegyél egy erős gépet', 'Állíts be egy VPN-t', 'Gyakorolj egy teszt-környezetben']),
+      q('Teljesítsd az első megbízást', 'main', 'Kis célpont, semmi feltűnés.', ['Keress egy kistételes célpontot', 'Hajtsd végre észrevétlenül', 'Tüntesd el a nyomokat']),
+      q('Első komolyabb vagyon', 'side', '', ['Gyűjts össze 10 000 vagyont']),
+    ]},
+    { id: uid(), title: '3. fejezet – Hírnév az alvilágban', closed: false, quests: [
+      q('Építs kapcsolatokat', 'main', '', ['Találj egy megbízható kontaktot', 'Szerezz meghívást egy zárt fórumra']),
+      q('Nagyobb meló', 'main', '', ['Vállalj el egy kockázatosabb megbízást', 'Oszd meg a zsákmányt a csapatoddal']),
+    ]},
+  ];
+}
+function newSaveObj(name) {
+  return { id: uid(), name: name || 'Új végigjátszás', created: Date.now(),
+    char: { name: 'Névtelen', img: '', wealth: 0, title: 'Kezdő hacker' },
+    chapters: starterChapters(), log: [{ id: uid(), t: Date.now(), text: '🖤 Új karrier kezdődik. A város nem is sejti, mi vár rá.' }] };
+}
+
+/* ---------- Állapot ---------- */
+let DB = load();
+function load() {
+  try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.saves && Object.keys(d.saves).length) return d; } catch (e) {}
+  const s = newSaveObj('1. végigjátszás');
+  return { active: s.id, saves: { [s.id]: s } };
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { toast('Nem sikerült menteni 😕'); } }
+function S() { return DB.saves[DB.active] || Object.values(DB.saves)[0]; }
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200); }
+const fmtNum = n => (+n || 0).toLocaleString('hu-HU');
+const fmtDate = t => new Date(t).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+/* ---------- Haladás ---------- */
+function allTasks(s) { let d = 0, tot = 0; s.chapters.forEach(c => c.quests.forEach(q => q.tasks.forEach(t => { tot++; if (t.done) d++; }))); return { d, tot }; }
+function chapterPct(c) { let d = 0, tot = 0; c.quests.forEach(q => q.tasks.forEach(t => { tot++; if (t.done) d++; })); return tot ? Math.round(d / tot * 100) : 0; }
+function questPct(q) { const tot = q.tasks.length; const d = q.tasks.filter(t => t.done).length; return tot ? Math.round(d / tot * 100) : 0; }
+function nextQuest(s) {
+  for (const c of s.chapters) { if (c.closed) continue; for (const q of c.quests) { if (q.tasks.some(t => !t.done)) return { c, q }; } }
+  return null;
+}
+
+/* ---------- KEZDŐ ---------- */
+function renderHome() {
+  const s = S(), ch = s.char, tp = allTasks(s), pct = tp.tot ? Math.round(tp.d / tp.tot * 100) : 0;
+  const nq = nextQuest(s), last = s.log[s.log.length - 1];
+  $('t-home').innerHTML = `
+    <div class="card glow">
+      <div class="tagline">// karakter</div>
+      <div class="hero" style="margin-top:8px">
+        <div class="av" id="homeAv" style="${ch.img ? `background-image:url(${esc(ch.img)})` : ''}">${ch.img ? '' : '🙂'}</div>
+        <div style="min-width:0">
+          <div class="nm">${esc(ch.name || 'Névtelen')}</div>
+          <div class="small neon">${esc(ch.title || '')}</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="b"><span>💰 Vagyon</span><b>${fmtNum(ch.wealth)}</b></div>
+        <div class="b"><span>📈 Fejlődés</span><b>${pct}%</b></div>
+      </div>
+      <div style="margin-top:12px"><div class="prog"><i style="width:${pct}%"></i></div>
+        <div class="small" style="margin-top:5px">${tp.d}/${tp.tot} feladat kész</div></div>
+    </div>
+    <div class="card">
+      <div class="tagline">// következő küldetés</div>
+      ${nq ? `<div class="row" style="margin-top:8px"><span class="qtag ${nq.q.type}">${nq.q.type === 'main' ? 'fő' : 'mellék'}</span><b style="flex:1">${esc(nq.q.title)}</b></div>
+        <div class="small" style="margin-top:4px">${esc(nq.c.title)} · ${questPct(nq.q)}%</div>
+        <button class="btn hot full" id="goQuest" style="margin-top:10px">Tovább a küldetéshez →</button>`
+      : '<p class="small" style="margin:8px 0 0">Minden küldetés kész! 🎉 Nézd meg a „Következő fejezet" ajánlót a beállításokban.</p>'}
+    </div>
+    <div class="card">
+      <div class="tagline">// legutóbbi esemény</div>
+      ${last ? `<div class="small" style="margin:8px 0 2px">${fmtDate(last.t)}</div><div class="lx" style="white-space:pre-wrap">${esc(last.text)}</div>` : '<p class="small">Még nincs naplóbejegyzés.</p>'}
+    </div>`;
+  $('homeAv').onclick = () => $('avFile').click();
+  if ($('goQuest')) $('goQuest').onclick = () => { setTab('t-quests'); setTimeout(() => { const el = $('ch-' + nextQuest(s).c.id); if (el) { el.classList.add('open'); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, 60); };
+}
+
+/* ---------- KÜLDETÉSEK ---------- */
+let openCh = {};
+function renderQuests() {
+  const s = S();
+  $('t-quests').innerHTML = `<div class="row sb" style="margin-bottom:12px"><div class="tagline">// küldetésnapló</div><button class="btn sm" id="addChapter">+ Fejezet</button></div>` +
+    (s.chapters.length ? s.chapters.map(c => chapterHtml(c)).join('') : '<div class="empty">Még nincs fejezet. Adj hozzá egyet, vagy töltsd be az alapkampányt a beállításokban.</div>');
+  $('addChapter').onclick = () => editChapter(null);
+  s.chapters.forEach(c => bindChapter(c));
+}
+function chapterHtml(c) {
+  const pct = chapterPct(c), open = openCh[c.id];
+  return `<div class="chapter ${c.closed ? 'closed' : ''} ${open ? 'open' : ''}" id="ch-${c.id}">
+    <div class="chhead" data-ch="${c.id}">
+      <span class="arrow">▶</span>
+      <div class="ct"><b>${esc(c.title)}</b><span class="chpct">${pct}% ${c.closed ? '· 🔒 lezárva' : ''}</span></div>
+    </div>
+    <div class="chbody">
+      ${c.quests.map(q => questHtml(c, q)).join('') || '<p class="small">Nincs küldetés ebben a fejezetben.</p>'}
+      <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn sm" data-aq="${c.id}">+ Küldetés</button>
+        <button class="btn sm ghost" data-ec="${c.id}">✎ Fejezet</button>
+        <button class="btn sm ghost" data-cl="${c.id}">${c.closed ? '🔓 Újranyit' : '🔒 Lezár'}</button>
+        <button class="btn sm ghost danger" data-dc="${c.id}">🗑️</button>
+      </div>
+    </div></div>`;
+}
+function questHtml(c, q) {
+  return `<div class="quest" id="q-${q.id}">
+    <div class="qh"><span class="qtag ${q.type}">${q.type === 'main' ? 'fő' : 'mellék'}</span><b>${esc(q.title)}</b><span class="chpct">${questPct(q)}%</span></div>
+    ${q.desc ? `<div class="qdesc">${esc(q.desc)}</div>` : ''}
+    ${q.tasks.map(t => `<div class="task ${t.done ? 'done' : ''}"><div class="box" data-tg="${c.id}|${q.id}|${t.id}">${t.done ? '✓' : ''}</div><div class="tx">${esc(t.text)}</div><button class="del" data-dt="${c.id}|${q.id}|${t.id}">✕</button></div>`).join('')}
+    <div class="row" style="gap:10px;flex-wrap:wrap"><button class="mini" data-at="${c.id}|${q.id}">+ feladat</button><button class="mini" style="color:var(--muted)" data-eq="${c.id}|${q.id}">✎ szerkeszt</button><button class="mini" style="color:var(--pink)" data-dq="${c.id}|${q.id}">🗑️ törlés</button></div>
+  </div>`;
+}
+function bindChapter(c) {
+  const root = $('ch-' + c.id); if (!root) return;
+  root.querySelector('[data-ch]').onclick = () => { openCh[c.id] = !openCh[c.id]; root.classList.toggle('open', openCh[c.id]); };
+  root.querySelectorAll('[data-tg]').forEach(b => b.onclick = () => toggleTask(...b.dataset.tg.split('|')));
+  root.querySelectorAll('[data-dt]').forEach(b => b.onclick = () => delTask(...b.dataset.dt.split('|')));
+  root.querySelectorAll('[data-at]').forEach(b => b.onclick = () => addTask(...b.dataset.at.split('|')));
+  root.querySelectorAll('[data-aq]').forEach(b => b.onclick = () => editQuest(b.dataset.aq, null));
+  root.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const [ci, qi] = b.dataset.eq.split('|'); editQuest(ci, qi); });
+  root.querySelectorAll('[data-dq]').forEach(b => b.onclick = () => { const [ci, qi] = b.dataset.dq.split('|'); if (confirm('Törlöd a küldetést?')) { const c2 = chap(ci); c2.quests = c2.quests.filter(q => q.id !== qi); save(); renderQuests(); } });
+  root.querySelectorAll('[data-ec]').forEach(b => b.onclick = () => editChapter(b.dataset.ec));
+  root.querySelectorAll('[data-cl]').forEach(b => b.onclick = () => { const c2 = chap(b.dataset.cl); c2.closed = !c2.closed; if (c2.closed) logEvent(`📕 Lezárva: ${c2.title}`); save(); renderQuests(); });
+  root.querySelectorAll('[data-dc]').forEach(b => b.onclick = () => { if (confirm('Törlöd a teljes fejezetet?')) { S().chapters = S().chapters.filter(x => x.id !== b.dataset.dc); save(); renderQuests(); } });
+}
+const chap = id => S().chapters.find(c => c.id === id);
+const quest = (ci, qi) => chap(ci).quests.find(q => q.id === qi);
+function toggleTask(ci, qi, ti) {
+  const t = quest(ci, qi).tasks.find(x => x.id === ti); t.done = !t.done;
+  if (t.done && questPct(quest(ci, qi)) === 100) logEvent(`✅ Küldetés teljesítve: ${quest(ci, qi).title}`);
+  save(); renderQuests();
+}
+function delTask(ci, qi, ti) { const q = quest(ci, qi); q.tasks = q.tasks.filter(x => x.id !== ti); save(); renderQuests(); }
+function addTask(ci, qi) { const v = prompt('Új feladat:'); if (v && v.trim()) { quest(ci, qi).tasks.push({ id: uid(), text: v.trim(), done: false }); save(); renderQuests(); } }
+
+/* ---------- NAPLÓ ---------- */
+function renderLog() {
+  const s = S();
+  $('t-log').innerHTML = `<div class="row sb" style="margin-bottom:14px"><div class="tagline">// történet</div><button class="btn sm" id="addLog">+ Esemény</button></div>` +
+    (s.log.length ? [...s.log].reverse().map(e => `<div class="logitem"><div class="lt">${fmtDate(e.t)}</div><div class="lx">${esc(e.text)}</div><button class="del" data-dl="${e.id}" style="float:right;margin-top:-18px">✕</button></div>`).join('') : '<div class="empty">Még nincs esemény. Írd meg a karriered első pillanatát!</div>');
+  $('addLog').onclick = () => { const v = prompt('Mi történt?'); if (v && v.trim()) { logEvent(v.trim()); renderLog(); } };
+  $('t-log').querySelectorAll('[data-dl]').forEach(b => b.onclick = () => { S().log = S().log.filter(e => e.id !== b.dataset.dl); save(); renderLog(); });
+}
+function logEvent(text) { S().log.push({ id: uid(), t: Date.now(), text }); save(); }
+
+/* ---------- BEÁLLÍTÁSOK ---------- */
+function renderSet() {
+  const s = S();
+  $('t-set').innerHTML = `
+    <div class="card"><div class="tagline">// karakter</div>
+      <label class="fld" style="margin-top:10px"><span>Név</span><input id="cName" value="${esc(s.char.name)}"></label>
+      <label class="fld"><span>Cím / rang</span><input id="cTitle" value="${esc(s.char.title || '')}"></label>
+      <label class="fld" style="margin-bottom:0"><span>Vagyon</span><input id="cWealth" type="number" inputmode="numeric" value="${s.char.wealth || 0}"></label>
+      <button class="btn full ghost" id="cPic" style="margin-top:12px">🖼️ Karakterkép módosítása</button>
+    </div>
+    <div class="card"><div class="tagline">// következő fejezet (ajánló)</div>
+      <p class="small" style="margin:8px 0">Az eddig teljesített céljaid alapján opcionális szerepjátékos kihívások. Koppints egy ajánlatra, és új mellékküldetésként hozzáadja.</p>
+      <div id="suggBox"></div>
+      <button class="btn full" id="reSugg">🎲 Új ajánlatok</button>
+    </div>
+    <div class="card"><div class="tagline">// végigjátszások</div>
+      <div id="saveList" style="margin:10px 0"></div>
+      <button class="btn full hot" id="newSave">+ Új végigjátszás</button>
+    </div>
+    <div class="card"><div class="tagline">// mentés</div>
+      <p class="small" style="margin:8px 0">Minden az eszközödön tárolódik, offline is. Alkalmanként ments fájlba, hogy semmi ne vesszen el.</p>
+      <button class="btn full" id="expBtn" style="margin-bottom:8px">💾 Mentés fájlba</button>
+      <button class="btn full" id="impBtn">📥 Visszaállítás fájlból</button>
+      <input type="file" id="impIn" accept="application/json,.json" hidden>
+    </div>
+    <div class="card"><div class="tagline">// alapkampány</div>
+      <p class="small" style="margin:8px 0">Visszatöltheted az előre elkészített fejezeteket (a mostaniak mellé kerülnek).</p>
+      <button class="btn full ghost" id="loadCampaign">📦 Alapküldetések betöltése</button>
+    </div>
+    <p class="small" style="text-align:center">inZOI Napló – a hackercsajod karriernaplója 🖤</p>`;
+  const set = (id, k) => $(id).addEventListener('input', () => { s.char[k] = id === 'cWealth' ? (+$(id).value || 0) : $(id).value; save(); });
+  set('cName', 'name'); set('cTitle', 'title'); set('cWealth', 'wealth');
+  $('cPic').onclick = () => $('avFile').click();
+  renderSuggestions(); $('reSugg').onclick = renderSuggestions;
+  renderSaveList();
+  $('newSave').onclick = () => { const n = prompt('Végigjátszás neve:', (Object.keys(DB.saves).length + 1) + '. végigjátszás'); if (n == null) return; const o = newSaveObj(n.trim() || 'Új végigjátszás'); DB.saves[o.id] = o; DB.active = o.id; save(); renderAll(); toast('Új végigjátszás kész 🖤'); };
+  $('expBtn').onclick = exportData; $('impBtn').onclick = () => $('impIn').click(); $('impIn').onchange = importData;
+  $('loadCampaign').onclick = () => { S().chapters.push(...starterChapters()); save(); toast('Alapküldetések hozzáadva'); renderQuests(); renderSet(); };
+}
+const CHALLENGES = [
+  'Élj egy héten át csak kriptovalutából, készpénz nélkül.',
+  'Hajts végre egy megbízást anélkül, hogy bármit letöltenél a célpontról.',
+  'Építs ki egy második identitást a város másik felében.',
+  'Szerezz egy bennfentes kapcsolatot a hatóságoknál.',
+  'Toborozz egy kistagú hacker-csapatot.',
+  'Adományozd egy meló teljes zsákmányát névtelenül.',
+  'Törj fel egy célpontot kizárólag social engineeringgel.',
+  'Tölts egy teljes napot teljesen offline, lebukás nélkül.',
+  'Szerezz be egy ritka, egyedi hardvert a feketepiacon.',
+  'Buktass le egy rivális hackert anélkül, hogy felfednéd magad.',
+  'Duplázd meg a vagyonod egyetlen melóból.',
+  'Hozz létre egy álcacéget a pénzmosáshoz.',
+];
+let suggShown = [];
+function renderSuggestions() {
+  const done = allTasks(S()).d;
+  const pool = CHALLENGES.slice();
+  suggShown = [];
+  const n = Math.min(3, pool.length);
+  for (let i = 0; i < n; i++) { const idx = Math.floor(Math.random() * pool.length); suggShown.push(pool.splice(idx, 1)[0]); }
+  $('suggBox').innerHTML = suggShown.map((c, i) => `<div class="sugg"><b>🎯 Opcionális kihívás</b><div class="small" style="color:var(--text)">${esc(c)}</div><button class="btn sm" data-add="${i}" style="margin-top:8px">+ Hozzáadás küldetésként</button></div>`).join('') +
+    `<p class="small" style="margin:2px 0 10px">Eddig ${done} feladatot teljesítettél. Minél többet, annál keményebb kihívások jöhetnek. 😈</p>`;
+  $('suggBox').querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+    const text = suggShown[+b.dataset.add];
+    let c = S().chapters.find(x => x.title.includes('Opcionális kihívások') && !x.closed);
+    if (!c) { c = { id: uid(), title: '⚡ Opcionális kihívások', closed: false, quests: [] }; S().chapters.push(c); }
+    c.quests.push({ id: uid(), title: text, type: 'side', desc: 'Opcionális szerepjátékos kihívás.', tasks: [{ id: uid(), text: 'Teljesítsd a kihívást', done: false }] });
+    save(); toast('Hozzáadva a küldetésekhez ⚡'); renderQuests();
+  });
+}
+function renderSaveList() {
+  $('saveList').innerHTML = Object.values(DB.saves).map(sv => {
+    const tp = allTasks(sv), pct = tp.tot ? Math.round(tp.d / tp.tot * 100) : 0;
+    return `<div class="row sb" style="padding:10px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:${sv.id === DB.active ? 'var(--card2)' : 'transparent'}">
+      <div style="min-width:0"><b style="font-size:14px">${esc(sv.name)}</b><div class="small">${esc(sv.char.name)} · ${pct}% ${sv.id === DB.active ? '· <span class="neon">aktív</span>' : ''}</div></div>
+      <div class="row" style="gap:6px">${sv.id === DB.active ? '' : `<button class="btn sm" data-sw="${sv.id}">Betölt</button>`}<button class="btn sm ghost" data-rn="${sv.id}">✎</button>${Object.keys(DB.saves).length > 1 ? `<button class="btn sm ghost danger" data-ds="${sv.id}">🗑️</button>` : ''}</div></div>`;
+  }).join('');
+  $('saveList').querySelectorAll('[data-sw]').forEach(b => b.onclick = () => { DB.active = b.dataset.sw; save(); renderAll(); toast('Végigjátszás betöltve'); });
+  $('saveList').querySelectorAll('[data-rn]').forEach(b => b.onclick = () => { const sv = DB.saves[b.dataset.rn]; const n = prompt('Új név:', sv.name); if (n != null) { sv.name = n.trim() || sv.name; save(); renderSet(); } });
+  $('saveList').querySelectorAll('[data-ds]').forEach(b => b.onclick = () => { if (confirm('Törlöd ezt a végigjátszást? Nem vonható vissza.')) { delete DB.saves[b.dataset.ds]; if (DB.active === b.dataset.ds) DB.active = Object.keys(DB.saves)[0]; save(); renderAll(); } });
+}
+
+/* ---------- Karakterkép ---------- */
+$('avFile').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f || !f.type.startsWith('image/')) return;
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => { URL.revokeObjectURL(url); try { const S2 = 256, c = document.createElement('canvas'); c.width = c.height = S2; const side = Math.min(img.width, img.height); c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, S2, S2); S().char.img = c.toDataURL('image/jpeg', 0.85); save(); renderHome(); if (curTab === 't-set') renderSet(); toast('Kép beállítva'); } catch (err) { toast('Nem sikerült a kép'); } };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('Hibás kép'); };
+  img.src = url;
+};
+
+/* ---------- Mentés / visszaállítás ---------- */
+function exportData() {
+  const blob = new Blob([JSON.stringify({ app: 'inzoi', ver: 1, exported: Date.now(), DB })], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `inzoi-naplo-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Mentés letöltve 💾');
+}
+async function importData(e) {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!confirm('Visszaállítod a mentést? A mostani végigjátszásaid mellé kerülnek.')) return;
+  try { const d = JSON.parse(await f.text()); if (d.app !== 'inzoi' || !d.DB) throw new Error();
+    Object.assign(DB.saves, d.DB.saves); if (d.DB.active) DB.active = d.DB.active; save(); renderAll(); toast('Visszaállítva ✅');
+  } catch (e) { toast('Nem sikerült beolvasni'); }
+}
+
+/* ---------- Szerkesztő lapok (sheet) ---------- */
+function openSheet(html) { $('sheetIn').innerHTML = html; $('sheet').classList.add('show'); pushNav('sheet'); }
+function closeSheet(skip) { $('sheet').classList.remove('show'); if (!skip && history.state && history.state.sheet) history.back(); }
+$('sheet').onclick = e => { if (e.target === $('sheet')) history.back(); };
+function editChapter(id) {
+  const c = id ? chap(id) : null;
+  openSheet(`<h3>${c ? 'Fejezet szerkesztése' : 'Új fejezet'}</h3>
+    <label class="fld"><span>Cím</span><input id="chTitle" value="${c ? esc(c.title) : ''}" placeholder="pl. 4. fejezet – A nagy meló"></label>
+    <button class="btn hot full" id="chSave">Mentés</button>`);
+  setTimeout(() => $('chTitle').focus(), 60);
+  $('chSave').onclick = () => { const v = $('chTitle').value.trim(); if (!v) return; if (c) c.title = v; else S().chapters.push({ id: uid(), title: v, closed: false, quests: [] }); save(); closeSheet(); renderQuests(); };
+}
+function editQuest(ci, qi) {
+  const q = qi ? quest(ci, qi) : null;
+  openSheet(`<h3>${q ? 'Küldetés szerkesztése' : 'Új küldetés'}</h3>
+    <div class="seg" id="qType"><button data-t="main" class="${!q || q.type === 'main' ? 'on' : ''}">⚔️ Fő</button><button data-t="side" class="${q && q.type === 'side' ? 'on' : ''}">✨ Mellék</button></div>
+    <label class="fld"><span>Cím</span><input id="qTitle" value="${q ? esc(q.title) : ''}"></label>
+    <label class="fld"><span>Leírás (nem kötelező)</span><textarea id="qDesc" rows="2">${q ? esc(q.desc || '') : ''}</textarea></label>
+    <button class="btn hot full" id="qSave">Mentés</button>`);
+  let type = q ? q.type : 'main';
+  $('qType').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { type = b.dataset.t; $('qType').querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); });
+  setTimeout(() => $('qTitle').focus(), 60);
+  $('qSave').onclick = () => { const v = $('qTitle').value.trim(); if (!v) return; const desc = $('qDesc').value.trim();
+    if (q) { q.title = v; q.desc = desc; q.type = type; } else chap(ci).quests.push({ id: uid(), title: v, type, desc, tasks: [] });
+    save(); closeSheet(); renderQuests(); };
+}
+
+/* ---------- Tabok + FAB ---------- */
+let curTab = 't-home';
+const RENDER = { 't-home': renderHome, 't-quests': renderQuests, 't-log': renderLog, 't-set': renderSet };
+function setTab(id) { curTab = id; document.querySelectorAll('.tab').forEach(t => t.classList.toggle('show', t.id === id)); document.querySelectorAll('nav [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === id)); RENDER[id](); updateFab(); }
+function updateFab() { $('fab').style.display = (curTab === 't-quests' || curTab === 't-log') ? '' : 'none'; }
+$('fab').onclick = () => { if (curTab === 't-quests') editChapter(null); else if (curTab === 't-log') { const v = prompt('Mi történt?'); if (v && v.trim()) { logEvent(v.trim()); renderLog(); } } };
+function renderAll() { RENDER[curTab](); $('saveBtn').textContent = '💾 ' + (S().name || '').slice(0, 14); updateFab(); }
+
+/* ---------- Navigáció ---------- */
+history.replaceState({ root: true }, '');
+function pushNav(x) { history.pushState({ sheet: x }, ''); }
+addEventListener('popstate', () => { if ($('sheet').classList.contains('show')) closeSheet(true); });
+$('saveBtn').onclick = () => setTab('t-set');
+
+/* ---------- Indítás ---------- */
+document.querySelectorAll('nav [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+renderAll();
+$('saveBtn').textContent = '💾 ' + (S().name || '').slice(0, 14);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
