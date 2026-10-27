@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4fd1c5"/>
+      <stop offset="1" stop-color="#9f7aea"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="42%" r="55%">
+      <stop offset="0" stop-color="#4fd1c5" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#9f7aea" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0b1416"/>
+  <!-- koncentrikus légző körök -->
+  <circle cx="256" cy="236" r="150" fill="none" stroke="#24474b" stroke-width="3"/>
+  <circle cx="256" cy="236" r="112" fill="none" stroke="#2f5d60" stroke-width="3"/>
+  <circle cx="256" cy="236" r="118" fill="url(#glow)"/>
+  <circle cx="256" cy="236" r="74" fill="url(#g)"/>
+  <!-- nyugalom hullám a körön belül -->
+  <path d="M212 238 q22 -26 44 0 q22 26 44 0" fill="none" stroke="#042320" stroke-width="10" stroke-linecap="round" opacity="0.85"/>
+</svg>

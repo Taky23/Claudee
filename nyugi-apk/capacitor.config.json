@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.nyugi",
+  "appName": "Nyugi",
+  "webDir": "www",
+  "backgroundColor": "#0b1416ff",
+  "android": {
+    "backgroundColor": "#0b1416ff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/nyugi/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}
