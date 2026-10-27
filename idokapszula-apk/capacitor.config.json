@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.idokapszula",
+  "appName": "Időkapszula",
+  "webDir": "www",
+  "backgroundColor": "#0a0a18ff",
+  "android": {
+    "backgroundColor": "#0a0a18ff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/idokapszula/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}
