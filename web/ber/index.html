@@ -180,13 +180,17 @@
   <!-- ====== SZJA ====== -->
   <section class="tab" id="t-szja">
     <div class="card">
+      <div class="row sb"><b>SZJA levonása</b><label class="sw"><input type="checkbox" id="szjaOn"><span class="t"></span></label></div>
+      <p class="small" style="margin:8px 0 0">Ha kikapcsolod, a számítás nem von le SZJA-t (a TB járulék marad). A Bér és a Gyors fülön is érvényes.</p>
+    </div>
+    <div class="card" id="szjaCard">
       <h2>Adókulcsok</h2>
       <div class="grid2">
         <label class="fld"><span>SZJA (%)</span><input type="number" id="szjaRate" inputmode="decimal"></label>
         <label class="fld" style="margin-bottom:0"><span>TB járulék (%)</span><input type="number" id="tbRate" inputmode="decimal"></label>
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="kedvCard">
       <h2>SZJA-kedvezmények</h2>
       <p class="small" style="margin-top:0">Havi adóalap-kedvezmény (Ft) – ennyivel csökken az adóalap az SZJA előtt. Kapcsold be, amelyik jár, és állítsd az összeget tetszés szerint.</p>
       <div id="kedvList"></div>
@@ -222,7 +226,7 @@ const DEF = {
   manual: false,
   manDays: { morning: 0, afternoon: 0, night: 0, wMorning: 0, wAfternoon: 0, wNight: 0 },
   quick: { shift: 'morning', weekend: false, days: 1 },
-  szja: { rate: 15, tb: 18.5 },
+  szja: { on: true, rate: 15, tb: 18.5 },
   kedv: [
     { id: 'k25', name: '25 év alattiak kedvezménye', amount: 656785, on: false },
     { id: 'kcs1', name: 'Családi kedvezmény – 1 gyerek', amount: 66670, on: false },
@@ -312,16 +316,17 @@ function renderBer() {
     row('Hétvégi', 'weekend', r.groups.weekend) +
     (r.gross ? '' : `<p class="small" style="margin:6px 0 0">${S.manual ? 'Add meg az órabért és a napok számát a műszakoknál.' : 'Ebben a hónapban nincs beszámított műszak. Add meg az órabért, és nézd meg a Naptár fülön a műszakokat.'}</p>`);
   // adó
-  const kedv = Math.min(kedvTotal(), r.gross);
+  const szjaOn = !!S.szja.on;
+  const kedv = szjaOn ? Math.min(kedvTotal(), r.gross) : 0;
   const base = Math.max(0, r.gross - kedv);
-  const szja = base * (+S.szja.rate || 0) / 100;
+  const szja = szjaOn ? base * (+S.szja.rate || 0) / 100 : 0;
   const tb = r.gross * (+S.szja.tb || 0) / 100;
   const net = r.gross - szja - tb;
   $('sumGross').textContent = fmt(r.gross);
   $('sumKedv').textContent = kedv ? '− ' + fmt(kedv) : '–';
   $('szjaR').textContent = (+S.szja.rate || 0).toString().replace('.', ',');
   $('tbR').textContent = (+S.szja.tb || 0).toString().replace('.', ',');
-  $('sumSzja').textContent = '− ' + fmt(szja);
+  $('sumSzja').textContent = szjaOn ? '− ' + fmt(szja) : 'ki';
   $('sumTb').textContent = '− ' + fmt(tb);
   $('sumNet').textContent = fmt(net);
 }
@@ -386,6 +391,9 @@ $('daySheet').onclick = e => { if (e.target === $('daySheet')) $('daySheet').cla
 
 /* ---- SZJA ---- */
 function renderSzja() {
+  $('szjaOn').checked = !!S.szja.on;
+  const dim = S.szja.on ? '1' : '.45';
+  $('szjaCard').style.opacity = dim; $('kedvCard').style.opacity = dim;
   $('szjaRate').value = S.szja.rate; $('tbRate').value = S.szja.tb;
   $('kedvList').innerHTML = S.kedv.map((k, i) => `<div class="kedv">
       <label class="sw"><input type="checkbox" data-on="${i}" ${k.on ? 'checked' : ''}><span class="t"></span></label>
@@ -396,6 +404,7 @@ function renderSzja() {
 }
 function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+$('szjaOn').addEventListener('change', () => { S.szja.on = $('szjaOn').checked; save(); renderSzja(); renderBer(); renderQuick(); });
 $('szjaRate').addEventListener('input', () => { S.szja.rate = +$('szjaRate').value || 0; save(); renderBer(); });
 $('tbRate').addEventListener('input', () => { S.szja.tb = +$('tbRate').value || 0; save(); renderBer(); });
 $('addKedv').onclick = () => { const name = prompt('Kedvezmény neve:', 'Saját kedvezmény'); if (name == null) return; S.kedv.push({ id: 'k' + Date.now(), name: name.trim() || 'Kedvezmény', amount: 0, on: true }); save(); renderSzja(); renderBer(); };
@@ -412,13 +421,14 @@ function renderQuick() {
   const mp = mult(q.shift, q.weekend);
   const totalH = hours * days;
   const gross = wage * totalH * mp / 100;
-  const szja = gross * (+S.szja.rate || 0) / 100, tb = gross * (+S.szja.tb || 0) / 100;
+  const szja = S.szja.on ? gross * (+S.szja.rate || 0) / 100 : 0;
+  const tb = gross * (+S.szja.tb || 0) / 100;
   $('qMul').textContent = mp + '%';
   $('qTotalH').textContent = (Math.round(totalH * 100) / 100) + ' óra';
   $('qGross').textContent = fmt(gross);
   $('qSzjaR').textContent = (+S.szja.rate || 0).toString().replace('.', ',');
   $('qTbR').textContent = (+S.szja.tb || 0).toString().replace('.', ',');
-  $('qSzja').textContent = '− ' + fmt(szja);
+  $('qSzja').textContent = S.szja.on ? '− ' + fmt(szja) : 'ki';
   $('qTb').textContent = '− ' + fmt(tb);
   $('qNet').textContent = fmt(gross - szja - tb);
 }
