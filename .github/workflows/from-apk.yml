@@ -1,0 +1,74 @@
+name: From Rejtélyfejtő APK (Android)
+
+on:
+  push:
+    paths: ['from-apk/**', '.github/workflows/from-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Függőségek telepítése
+        working-directory: from-apk
+        run: npm install --no-audit --no-fund
+
+      - name: Android projekt létrehozása
+        working-directory: from-apk
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Ikon és indítókép generálása
+        working-directory: from-apk
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#0c0909' --iconBackgroundColorDark '#0c0909' --splashBackgroundColor '#0c0909' --splashBackgroundColorDark '#0c0909'
+
+      - name: Vissza gomb natív kezelő bemásolása
+        working-directory: from-apk
+        run: |
+          base=android/app/src/main
+          mkdir -p "$base/java/hu/taky/fromrejtelyfejto"
+          cp native/java/MainActivity.java "$base/java/hu/taky/fromrejtelyfejto/MainActivity.java"
+
+      - name: Állandó aláíró kulcs (hogy a frissítések törlés nélkül települjenek)
+        run: mkdir -p ~/.android && cp from-apk/debug.keystore ~/.android/debug.keystore
+
+      - name: SDK útvonal
+        working-directory: from-apk/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: APK építése
+        working-directory: from-apk/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: APK átnevezése
+        run: cp from-apk/android/app/build/outputs/apk/debug/app-debug.apk From-Rejtelyfejto.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: From-Rejtelyfejto-apk
+          path: From-Rejtelyfejto.apk
+
+      - name: Kiadás (csak a main ágon)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete from-apk --yes --cleanup-tag || true
+          gh release create from-apk From-Rejtelyfejto.apk --target "${{ github.sha }}" \
+            --title "From – Rejtélyfejtő – Android (APK)" \
+            --notes "Töltsd le a From-Rejtelyfejto.apk fájlt a telefonodra, és telepítsd (az ismeretlen forrásból telepítést engedélyezni kell). Rejtély-követő a From (Kiút) sorozathoz – minden az eszközödön marad."

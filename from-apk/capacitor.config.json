@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.fromrejtelyfejto",
+  "appName": "From Rejtélyfejtő",
+  "webDir": "www",
+  "backgroundColor": "#0c0909ff",
+  "android": {
+    "backgroundColor": "#0c0909ff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/from/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}
