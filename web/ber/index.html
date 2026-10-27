@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12100a">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none'">
+<title>Műszakbér</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #12100a; --card: #1c190f; --card2: #26220f; --line: #3a3418;
+    --text: #f3efe2; --muted: #a79f82; --accent: #f5b301; --accent2: #ffd560;
+    --grad: linear-gradient(135deg, #f5b301, #ff8a3c); --on-accent: #2a1d00;
+    --morning: #38bdf8; --afternoon: #fb923c; --night: #a78bfa; --weekend: #f472b6; --off: #5b6472;
+    --danger: #ff7a90; --good: #34d399;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(18,16,10,.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 16px 10px; }
+  header h1 { font-size: 19px; margin: 0; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+  .tab { display: none; } .tab.show { display: block; }
+  input, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; width: 100%; outline: none; }
+  input:focus { border-color: var(--accent); }
+  label.fld { display: block; margin-bottom: 12px; }
+  label.fld span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 15px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 12px; font-size: 16px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row.sb { justify-content: space-between; }
+  .btn { border: 1px solid var(--line); background: var(--card2); color: var(--text); border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+  .btn.hot { background: var(--grad); color: var(--on-accent); border: 0; font-weight: 800; }
+  .btn.full { width: 100%; }
+  .btn.sm { padding: 6px 10px; font-size: 13px; }
+  .btn.ghost { background: transparent; }
+  .big { font-size: 30px; font-weight: 900; }
+  .muted { color: var(--muted); } .small { font-size: 13px; color: var(--muted); }
+  .line { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .line:last-child { border-bottom: 0; }
+  .line b { font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; color: #fff; }
+  .p-morning { background: var(--morning); color: #04202e; } .p-afternoon { background: var(--afternoon); color: #2e1400; }
+  .p-night { background: var(--night); color: #1b0f3a; } .p-weekend { background: var(--weekend); color: #3a0a24; } .p-off { background: var(--off); }
+  /* Naptár */
+  .mnav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .mnav b { font-size: 17px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal .dow { text-align: center; font-size: 11px; color: var(--muted); font-weight: 700; padding-bottom: 2px; }
+  .cal .cell { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px; padding: 3px; display: flex; flex-direction: column; background: var(--card); position: relative; overflow: hidden; }
+  .cal .cell.blank { border: 0; background: transparent; }
+  .cal .cell.we { background: #1a1410; }
+  .cal .cell.today { outline: 2px solid var(--accent); }
+  .cal .cell .d { font-size: 12px; font-weight: 700; }
+  .cal .cell.wend .d { color: var(--weekend); }
+  .cal .cell .sh { margin-top: auto; font-size: 9.5px; font-weight: 800; text-align: center; border-radius: 5px; padding: 2px 0; line-height: 1.15; }
+  .sh.morning { background: var(--morning); color: #04202e; } .sh.afternoon { background: var(--afternoon); color: #2e1400; }
+  .sh.night { background: var(--night); color: #1b0f3a; } .sh.weekend { background: var(--weekend); color: #3a0a24; } .sh.off { background: var(--off); color: #fff; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .legend span { font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+  /* lap sheet */
+  .sheet { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.6); display: none; align-items: flex-end; justify-content: center; }
+  .sheet.show { display: flex; }
+  .sheet .inner { background: var(--card); border: 1px solid var(--line); border-radius: 18px 18px 0 0; width: 100%; max-width: 480px; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .opts button { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font: inherit; font-weight: 700; }
+  /* alsó tabok */
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 12; background: rgba(18,16,10,.95); backdrop-filter: blur(10px); border-top: 1px solid var(--line); display: flex; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
+  nav button { flex: 1; background: none; border: 0; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; padding: 8px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px; border-radius: 12px; }
+  nav button .i { font-size: 20px; }
+  nav button.on { color: var(--accent); }
+  .kedv { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .kedv:last-child { border-bottom: 0; }
+  .kedv .nm { flex: 1; min-width: 0; }
+  .kedv .nm b { font-size: 14px; } .kedv .nm input { margin-top: 4px; padding: 7px 10px; }
+  .kedv input.amt { width: 120px; text-align: right; }
+  .sw { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+  .sw input { opacity: 0; width: 0; height: 0; }
+  .sw .t { position: absolute; inset: 0; background: var(--card2); border: 1px solid var(--line); border-radius: 99px; transition: .15s; }
+  .sw .t::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: .15s; }
+  .sw input:checked + .t { background: var(--accent); border-color: var(--accent); }
+  .sw input:checked + .t::before { transform: translateX(18px); background: #2a1d00; }
+  details summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+</style>
+</head>
+<body>
+<header><h1>💰 Műszakbér</h1></header>
+<main>
+  <!-- ====== BÉR ====== -->
+  <section class="tab show" id="t-ber">
+    <div class="card">
+      <label class="fld"><span>Bruttó órabér (Ft)</span><input type="number" id="wage" inputmode="numeric" placeholder="pl. 2000"></label>
+      <div class="mnav"><button class="btn sm" id="bPrev">‹</button><b id="bMonth"></b><button class="btn sm" id="bNext">›</button></div>
+      <div id="berOut"></div>
+    </div>
+    <div class="card">
+      <div class="line"><span>Bruttó bér</span><b id="sumGross">–</b></div>
+      <div class="line"><span class="small">Adóalap-kedvezmény</span><b class="small" id="sumKedv">–</b></div>
+      <div class="line"><span>SZJA (<span id="szjaR">15</span>%)</span><b id="sumSzja">–</b></div>
+      <div class="line"><span>TB járulék (<span id="tbR">18,5</span>%)</span><b id="sumTb">–</b></div>
+      <div class="line"><span class="big" style="font-size:17px">Nettó</span><b class="big" style="font-size:22px;color:var(--good)" id="sumNet">–</b></div>
+    </div>
+    <div class="card">
+      <details id="setDet"><summary>⚙️ Pótlékok és műszak beállítása</summary>
+        <div style="margin-top:12px">
+          <div class="grid2">
+            <label class="fld"><span>Műszak hossza (óra)</span><input type="number" id="setHours" inputmode="numeric"></label>
+            <label class="fld"><span>Délutáni pótlék (%)</span><input type="number" id="setAft" inputmode="numeric"></label>
+            <label class="fld"><span>Éjszakai pótlék (%)</span><input type="number" id="setNight" inputmode="numeric"></label>
+            <label class="fld"><span>Hétvégi délelőtt (%)</span><input type="number" id="setWM" inputmode="numeric"></label>
+            <label class="fld"><span>Hétvégi délután (%)</span><input type="number" id="setWA" inputmode="numeric"></label>
+            <label class="fld"><span>Hétvégi éjszaka (%)</span><input type="number" id="setWN" inputmode="numeric"></label>
+          </div>
+          <p class="small" style="margin:0">Hétköznap: délelőtt 100%, délután 100%+pótlék, éjszaka 100%+pótlék. A hétvégi értékek a teljes szorzók.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ====== NAPTÁR ====== -->
+  <section class="tab" id="t-cal">
+    <div class="card">
+      <div class="mnav"><button class="btn sm" id="cPrev">‹</button><b id="cMonth"></b><button class="btn sm" id="cNext">›</button></div>
+      <div class="cal" id="calGrid"></div>
+      <div class="legend">
+        <span><i style="background:var(--morning)"></i>Délelőtt</span>
+        <span><i style="background:var(--night)"></i>Éjszaka</span>
+        <span><i style="background:var(--afternoon)"></i>Délután</span>
+        <span><i style="background:var(--weekend)"></i>Hétvégi</span>
+        <span><i style="background:var(--off)"></i>Pihenő</span>
+      </div>
+      <p class="small" style="margin-bottom:0">A hétköznapok automatikusan a rotáció szerint töltődnek (Délelőtt → Éjszaka → Délután, hetente). Koppints egy napra, ha felülírnád, vagy hétvégi műszakot adnál hozzá.</p>
+    </div>
+  </section>
+
+  <!-- ====== SZJA ====== -->
+  <section class="tab" id="t-szja">
+    <div class="card">
+      <h2>Adókulcsok</h2>
+      <div class="grid2">
+        <label class="fld"><span>SZJA (%)</span><input type="number" id="szjaRate" inputmode="decimal"></label>
+        <label class="fld" style="margin-bottom:0"><span>TB járulék (%)</span><input type="number" id="tbRate" inputmode="decimal"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>SZJA-kedvezmények</h2>
+      <p class="small" style="margin-top:0">Havi adóalap-kedvezmény (Ft) – ennyivel csökken az adóalap az SZJA előtt. Kapcsold be, amelyik jár, és állítsd az összeget tetszés szerint.</p>
+      <div id="kedvList"></div>
+      <button class="btn full ghost" id="addKedv" style="margin-top:10px">＋ Saját kedvezmény</button>
+    </div>
+    <p class="small">Tájékoztató számítás, nem hivatalos bérkalkuláció. Az adóalap-kedvezmény összegét magad állítod be.</p>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="t-ber" class="on"><span class="i">💰</span>Bér</button>
+  <button data-tab="t-cal"><span class="i">📅</span>Naptár</button>
+  <button data-tab="t-szja"><span class="i">🧾</span>SZJA</button>
+</nav>
+
+<!-- nap szerkesztő -->
+<div class="sheet" id="daySheet"><div class="inner">
+  <div class="row sb"><b id="dsTitle">Nap</b><button class="btn sm ghost" id="dsClose">✕</button></div>
+  <p class="small" id="dsHint" style="margin:6px 0 0"></p>
+  <div class="opts" id="dsOpts"></div>
+</div></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const KEY = 'ber-app-v1';
+const DEF = {
+  wage: 0, hours: 8,
+  pot: { afternoon: 30, night: 50 },
+  weekend: { morning: 200, afternoon: 230, night: 280 },
+  overrides: {},
+  szja: { rate: 15, tb: 18.5 },
+  kedv: [
+    { id: 'k25', name: '25 év alattiak kedvezménye', amount: 656785, on: false },
+    { id: 'kcs1', name: 'Családi kedvezmény – 1 gyerek', amount: 66670, on: false },
+    { id: 'kcs2', name: 'Családi kedvezmény – 2 gyerek', amount: 266660, on: false },
+    { id: 'kcs3', name: 'Családi kedvezmény – 3+ gyerek', amount: 660000, on: false },
+    { id: 'kszem', name: 'Személyi kedvezmény', amount: 96750, on: false },
+    { id: 'kanya', name: '30 év alatti anyák kedvezménye', amount: 656785, on: false }
+  ]
+};
+let S = load();
+function load() { try { return Object.assign(JSON.parse(JSON.stringify(DEF)), JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return JSON.parse(JSON.stringify(DEF)); } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* ---- Rotáció ---- */
+// 2026-10-25 (vasárnap) = Éjszakás hét. Rotáció: Délelőtt → Éjszaka → Délután.
+const ANCHOR = Date.UTC(2026, 9, 25);
+const ROT = ['morning', 'night', 'afternoon'];
+const DAY = 86400000;
+const SHIFT_HU = { morning: 'Délelőtt', afternoon: 'Délután', night: 'Éjszaka', off: 'Pihenő' };
+const SHIFT_SHORT = { morning: 'DE', afternoon: 'DU', night: 'ÉJJ', off: 'PIH' };
+function weekShift(y, m, d) {
+  const utc = Date.UTC(y, m, d);
+  const dow = new Date(utc).getUTCDay();           // 0 = vasárnap
+  const weekStart = utc - dow * DAY;               // az adott hét vasárnapja
+  const w = Math.round((weekStart - ANCHOR) / (7 * DAY));
+  return ROT[(((1 + w) % 3) + 3) % 3];
+}
+const key = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+function dayInfo(y, m, d) {
+  const dow = new Date(y, m, d).getDay();
+  const weekend = dow === 0 || dow === 6;
+  const ov = S.overrides[key(y, m, d)];
+  if (ov === 'off') return { shift: 'off', paid: false, weekend };
+  if (weekend) { if (ov) return { shift: ov, paid: true, weekend: true }; return { shift: null, paid: false, weekend: true }; }
+  return { shift: ov || weekShift(y, m, d), paid: true, weekend: false };
+}
+function mult(shift, weekend) {
+  if (weekend) return +S.weekend[shift] || 0;
+  if (shift === 'morning') return 100;
+  if (shift === 'afternoon') return 100 + (+S.pot.afternoon || 0);
+  if (shift === 'night') return 100 + (+S.pot.night || 0);
+  return 0;
+}
+const fmt = n => Math.round(n).toLocaleString('hu-HU') + ' Ft';
+
+/* ---- Hónap állapot ---- */
+let view = new Date(); view = { y: view.getFullYear(), m: view.getMonth() };
+const MONTHS = ['január', 'február', 'március', 'április', 'május', 'június', 'július', 'augusztus', 'szeptember', 'október', 'november', 'december'];
+const DOWS = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
+
+/* ---- Bér számítás ---- */
+function computeMonth(y, m) {
+  const days = new Date(y, m + 1, 0).getDate();
+  const groups = { morning: { n: 0, ft: 0 }, afternoon: { n: 0, ft: 0 }, night: { n: 0, ft: 0 }, weekend: { n: 0, ft: 0 } };
+  let gross = 0, hours = +S.hours || 8, wage = +S.wage || 0;
+  for (let d = 1; d <= days; d++) {
+    const info = dayInfo(y, m, d);
+    if (!info.paid || !info.shift || info.shift === 'off') continue;
+    const mp = mult(info.shift, info.weekend);
+    const ft = wage * hours * mp / 100;
+    gross += ft;
+    const g = info.weekend ? groups.weekend : groups[info.shift];
+    g.n++; g.ft += ft;
+  }
+  return { gross, groups, hours, wage };
+}
+function kedvTotal() { return S.kedv.filter(k => k.on).reduce((a, k) => a + (+k.amount || 0), 0); }
+function renderBer() {
+  $('bMonth').textContent = `${view.y}. ${MONTHS[view.m]}`;
+  $('wage').value = S.wage || '';
+  const r = computeMonth(view.y, view.m);
+  const row = (label, cls, g, perDayNote) => g.n ? `<div class="line"><span><span class="pill p-${cls}">${label}</span> ${g.n} nap × ${r.hours} ó</span><b>${fmt(g.ft)}</b></div>` : '';
+  $('berOut').innerHTML =
+    row('Délelőtt', 'morning', r.groups.morning) +
+    row('Délután', 'afternoon', r.groups.afternoon) +
+    row('Éjszaka', 'night', r.groups.night) +
+    row('Hétvégi', 'weekend', r.groups.weekend) +
+    (r.gross ? '' : '<p class="small" style="margin:6px 0 0">Ebben a hónapban nincs beszámított műszak. Add meg az órabért, és nézd meg a Naptár fülön a műszakokat.</p>');
+  // adó
+  const kedv = Math.min(kedvTotal(), r.gross);
+  const base = Math.max(0, r.gross - kedv);
+  const szja = base * (+S.szja.rate || 0) / 100;
+  const tb = r.gross * (+S.szja.tb || 0) / 100;
+  const net = r.gross - szja - tb;
+  $('sumGross').textContent = fmt(r.gross);
+  $('sumKedv').textContent = kedv ? '− ' + fmt(kedv) : '–';
+  $('szjaR').textContent = (+S.szja.rate || 0).toString().replace('.', ',');
+  $('tbR').textContent = (+S.szja.tb || 0).toString().replace('.', ',');
+  $('sumSzja').textContent = '− ' + fmt(szja);
+  $('sumTb').textContent = '− ' + fmt(tb);
+  $('sumNet').textContent = fmt(net);
+}
+$('wage').addEventListener('input', () => { S.wage = +$('wage').value || 0; save(); renderBer(); });
+$('bPrev').onclick = () => { stepMonth(-1); };
+$('bNext').onclick = () => { stepMonth(1); };
+function stepMonth(dir) { view.m += dir; if (view.m < 0) { view.m = 11; view.y--; } if (view.m > 11) { view.m = 0; view.y++; } renderBer(); renderCal(); }
+
+/* ---- Beállítások mezők ---- */
+const setMap = [['setHours', () => S.hours, v => S.hours = v], ['setAft', () => S.pot.afternoon, v => S.pot.afternoon = v], ['setNight', () => S.pot.night, v => S.pot.night = v],
+  ['setWM', () => S.weekend.morning, v => S.weekend.morning = v], ['setWA', () => S.weekend.afternoon, v => S.weekend.afternoon = v], ['setWN', () => S.weekend.night, v => S.weekend.night = v]];
+function fillSettings() { setMap.forEach(([id, get]) => $(id).value = get()); }
+setMap.forEach(([id, , set]) => $(id).addEventListener('input', () => { set(+$(id).value || 0); save(); renderBer(); renderCal(); }));
+
+/* ---- Naptár ---- */
+function renderCal() {
+  $('cMonth').textContent = `${view.y}. ${MONTHS[view.m]}`;
+  const first = new Date(view.y, view.m, 1);
+  const lead = (first.getDay() + 6) % 7;           // hétfő-kezdéshez
+  const days = new Date(view.y, view.m + 1, 0).getDate();
+  const today = new Date(); const tk = key(today.getFullYear(), today.getMonth(), today.getDate());
+  let html = DOWS.map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < lead; i++) html += '<div class="cell blank"></div>';
+  for (let d = 1; d <= days; d++) {
+    const info = dayInfo(view.y, view.m, d);
+    const isToday = key(view.y, view.m, d) === tk;
+    let shHtml = '';
+    if (info.shift === 'off') shHtml = `<div class="sh off">PIH</div>`;
+    else if (info.shift) shHtml = `<div class="sh ${info.weekend ? 'weekend' : info.shift}">${SHIFT_SHORT[info.shift]}</div>`;
+    html += `<div class="cell ${info.weekend ? 'we wend' : ''} ${isToday ? 'today' : ''}" data-d="${d}"><div class="d">${d}</div>${shHtml}</div>`;
+  }
+  $('calGrid').innerHTML = html;
+  $('calGrid').querySelectorAll('[data-d]').forEach(c => c.onclick = () => openDay(+c.dataset.d));
+}
+$('cPrev').onclick = () => stepMonth(-1);
+$('cNext').onclick = () => stepMonth(1);
+
+/* ---- Nap szerkesztő ---- */
+let dsDay = null;
+function openDay(d) {
+  dsDay = d;
+  const info = dayInfo(view.y, view.m, d);
+  const dow = new Date(view.y, view.m, d).getDay();
+  $('dsTitle').textContent = `${view.y}. ${MONTHS[view.m]} ${d}. (${['V','H','K','Sze','Cs','P','Szo'][dow]})`;
+  $('dsHint').textContent = info.weekend ? 'Hétvége – válassz műszakot, ha dolgozol (hétvégi szorzóval), vagy hagyd pihenőn.' : 'Hétköznap – alapból a rotáció. Felülírhatod, vagy pihenőnapra állíthatod.';
+  const opts = info.weekend
+    ? [['morning', 'Délelőtt'], ['afternoon', 'Délután'], ['night', 'Éjszaka'], ['clear', 'Nincs munka']]
+    : [['morning', 'Délelőtt'], ['afternoon', 'Délután'], ['night', 'Éjszaka'], ['off', 'Pihenő'], ['clear', 'Auto (rotáció)']];
+  $('dsOpts').innerHTML = opts.map(([v, l]) => `<button data-v="${v}">${l}</button>`).join('');
+  $('dsOpts').querySelectorAll('[data-v]').forEach(b => b.onclick = () => setDay(b.dataset.v));
+  $('daySheet').classList.add('show');
+}
+function setDay(v) {
+  const k = key(view.y, view.m, dsDay);
+  if (v === 'clear') delete S.overrides[k]; else S.overrides[k] = v;
+  save(); $('daySheet').classList.remove('show'); renderCal(); renderBer();
+}
+$('dsClose').onclick = () => $('daySheet').classList.remove('show');
+$('daySheet').onclick = e => { if (e.target === $('daySheet')) $('daySheet').classList.remove('show'); };
+
+/* ---- SZJA ---- */
+function renderSzja() {
+  $('szjaRate').value = S.szja.rate; $('tbRate').value = S.szja.tb;
+  $('kedvList').innerHTML = S.kedv.map((k, i) => `<div class="kedv">
+      <label class="sw"><input type="checkbox" data-on="${i}" ${k.on ? 'checked' : ''}><span class="t"></span></label>
+      <div class="nm"><b>${escapeHtml(k.name)}</b></div>
+      <input type="number" class="amt" inputmode="numeric" data-amt="${i}" value="${k.amount}"></div>`).join('');
+  $('kedvList').querySelectorAll('[data-on]').forEach(c => c.onchange = () => { S.kedv[+c.dataset.on].on = c.checked; save(); renderBer(); });
+  $('kedvList').querySelectorAll('[data-amt]').forEach(inp => inp.addEventListener('input', () => { S.kedv[+inp.dataset.amt].amount = +inp.value || 0; save(); renderBer(); }));
+}
+function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+$('szjaRate').addEventListener('input', () => { S.szja.rate = +$('szjaRate').value || 0; save(); renderBer(); });
+$('tbRate').addEventListener('input', () => { S.szja.tb = +$('tbRate').value || 0; save(); renderBer(); });
+$('addKedv').onclick = () => { const name = prompt('Kedvezmény neve:', 'Saját kedvezmény'); if (name == null) return; S.kedv.push({ id: 'k' + Date.now(), name: name.trim() || 'Kedvezmény', amount: 0, on: true }); save(); renderSzja(); renderBer(); };
+
+/* ---- Tabok ---- */
+document.querySelectorAll('nav [data-tab]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav [data-tab]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('show', t.id === b.dataset.tab));
+  if (b.dataset.tab === 't-cal') renderCal();
+  if (b.dataset.tab === 't-szja') renderSzja();
+});
+
+/* ---- Indítás ---- */
+fillSettings(); renderBer(); renderCal(); renderSzja();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
