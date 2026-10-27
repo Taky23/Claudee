@@ -187,7 +187,7 @@
         <span><i style="background:#ef4444"></i>Ünnep</span>
         <span><i style="background:#22c55e"></i>Szabadság</span>
       </div>
-      <p class="small" style="margin-bottom:0">A hétköznapok automatikusan a rotáció szerint töltődnek (Délelőtt → Éjszaka → Délután, hetente). A magyar ünnepnapok (piros) alapból nem beszámítottak. Koppints egy napra: felülírhatod, szabadságra/pihenőre állíthatod, vagy hétvégi/ünnepi műszakot adhatsz hozzá.</p>
+      <p class="small" style="margin-bottom:0">Rotáció hetente: Délelőtt → Éjszaka → Délután. Az <b>éjszakás hét vasárnap–csütörtök</b> (péntek-szombat pihenő), a <b>délelőttös/délutános hét hétfő–péntek</b> (szombat-vasárnap pihenő) – mindig 5 nap. A magyar ünnepnapok (piros) alapból nem beszámítottak. Koppints egy napra: felülírhatod, szabadságra/pihenőre állíthatod, vagy pihenőnapi/ünnepi műszakot adhatsz hozzá.</p>
     </div>
   </section>
 
@@ -295,7 +295,10 @@ function holidays(y) {
 const isHoliday = (y, m, d) => holidays(y).has(key(y, m, d));
 function dayInfo(y, m, d) {
   const dow = new Date(y, m, d).getDay();
-  const weekend = dow === 0 || dow === 6;
+  const wshift = weekShift(y, m, d);
+  // Éjszakás hét: munka VASÁRNAP–CSÜTÖRTÖK (vasárnap éjszaka indul), pihenő péntek (5) + szombat (6).
+  // Délelőttös/délutános hét: munka HÉTFŐ–PÉNTEK, pihenő szombat (6) + vasárnap (0).
+  const weekend = wshift === 'night' ? (dow === 5 || dow === 6) : (dow === 0 || dow === 6);
   const ov = S.overrides[key(y, m, d)];
   const hol = isHoliday(y, m, d);
   if (ov === 'off') return { shift: 'off', paid: false, weekend, hol };
@@ -303,7 +306,7 @@ function dayInfo(y, m, d) {
   if (weekend) { if (ov) return { shift: ov, paid: true, weekend: true, hol }; return { shift: null, paid: false, weekend: true, hol }; }
   if (ov) return { shift: ov, paid: true, weekend: false, hol };     // kézi felülírás ünnepen is dolgozik
   if (hol) return { shift: 'holiday', paid: false, weekend: false, hol: true };
-  return { shift: weekShift(y, m, d), paid: true, weekend: false, hol: false };
+  return { shift: wshift, paid: true, weekend: false, hol: false };
 }
 function mult(shift, weekend) {
   if (weekend) return +S.weekend[shift] || 0;
