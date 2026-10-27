@@ -1,0 +1,17 @@
+{
+  "name": "Műszakbér",
+  "short_name": "Műszakbér",
+  "description": "Műszak-rotációs naptár és bérszámítás órabérből, pótlékokkal és SZJA-kedvezménnyel.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#12100a",
+  "theme_color": "#12100a",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}
