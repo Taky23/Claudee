@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15110c">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none'">
+<title>Vastrón – chibi hódítás</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --bg:#15110c; --bg2:#1d1710; --card:#241c12; --card2:#2d2316; --line:#473722;
+    --text:#f3e9d6; --muted:#b2a284; --gold:#e3c244; --gold2:#b8912f; --red:#b11226;
+    --good:#5ab078; --bad:#d6624a; --on-gold:#1a1205;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:radial-gradient(800px 500px at 50% -8%,#2a2112 0%,var(--bg) 60%),var(--bg);color:var(--text);
+    font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;overflow-x:hidden}
+  h1,h2,h3{margin:0}
+  .wrap{max-width:640px;margin:0 auto;padding:14px 14px calc(20px + env(safe-area-inset-bottom))}
+  .title{text-align:center;font-weight:900;letter-spacing:1px;font-size:22px;
+    background:linear-gradient(135deg,var(--gold),#f5e6a8);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{text-align:center;color:var(--muted);font-size:12px;margin:2px 0 14px}
+  .fan{text-align:center;color:#6f6148;font-size:10px;margin-top:2px}
+  /* Házválasztó */
+  .hgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 10px;text-align:center;cursor:pointer;transition:transform .1s,border-color .1s}
+  .hcard:active{transform:scale(.97)}
+  .hcard .nm{font-weight:800;font-size:16px;margin-top:4px}
+  .hcard .mt{color:var(--muted);font-size:11px;font-style:italic;margin:2px 0}
+  .hcard .bn{color:var(--gold);font-size:11px;font-weight:700;margin-top:4px}
+  .chibi{width:64px;height:82px;display:block;margin:0 auto}
+  .chibi.sm{width:46px;height:58px}
+  .chibi.lg{width:92px;height:118px}
+  /* Fejléc */
+  header{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:10px}
+  header .hs{font-size:26px}
+  header .meta{flex:1;min-width:0}
+  header .hn{font-weight:800;font-size:15px;line-height:1.1}
+  header .st{color:var(--muted);font-size:11px}
+  header .gold{font-weight:900;color:var(--gold);font-size:17px;white-space:nowrap}
+  .goal{text-align:center;font-size:12px;color:var(--muted);margin:-4px 0 8px}
+  /* Térkép */
+  .mapbox{background:linear-gradient(180deg,#1b2a30,#17221d);border:1px solid var(--line);border-radius:16px;padding:6px;margin-bottom:10px;position:relative;overflow:hidden}
+  .mapbox svg{display:block;width:100%;height:auto;touch-action:manipulation}
+  .node{cursor:pointer}
+  .node circle{transition:stroke .1s}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center;font-size:10px;color:var(--muted);margin-top:4px}
+  .legend b{color:var(--text)}
+  /* Panel */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+  .panel .ph{display:flex;align-items:center;gap:10px}
+  .panel .pn{font-weight:800;font-size:16px}
+  .panel .po{font-size:12px;color:var(--muted)}
+  .stats{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+  .stat{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12px;flex:1;min-width:72px;text-align:center}
+  .stat b{display:block;font-size:16px;color:var(--gold)}
+  .acts{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{flex:1;min-width:120px;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn:disabled{opacity:.4}
+  .btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--on-gold);border:0}
+  .btn.red{background:linear-gradient(135deg,var(--red),#7d0d1a);color:#fff;border:0}
+  .btn.ghost{background:none}
+  .endturn{width:100%;margin-bottom:10px;font-size:17px;padding:15px}
+  .hint{color:var(--muted);font-size:12px;text-align:center;margin:6px 0}
+  /* Napló */
+  .log{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:12.5px}
+  .log h3{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:800}
+  .log div{padding:3px 0;border-top:1px solid #2a2114;color:var(--muted)}
+  .log div:first-of-type{border:0}
+  .log .w{color:var(--good)} .log .l{color:var(--bad)} .log .n{color:var(--text)}
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(8,6,3,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+  .overlay.show{display:flex;animation:fade .2s}
+  @keyframes fade{from{opacity:0}}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;max-width:380px;width:100%;text-align:center}
+  .modal h2{font-size:18px;margin-bottom:4px}
+  .vs{display:flex;align-items:center;justify-content:center;gap:4px;margin:8px 0}
+  .vs .side{flex:1}
+  .vs .side .nm{font-weight:800;font-size:13px}
+  .vs .side .ar{font-size:12px;color:var(--muted)}
+  .clash{font-size:30px;padding:0 4px}
+  .atk-in .side.a .chibi{animation:lungeR .6s ease-in-out infinite alternate}
+  .atk-in .side.d .chibi{animation:lungeL .6s ease-in-out infinite alternate}
+  @keyframes lungeR{to{transform:translateX(8px) rotate(4deg)}}
+  @keyframes lungeL{to{transform:translateX(-8px) rotate(-4deg)}}
+  .slabel{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:12px 0 2px}
+  input[type=range]{width:100%;accent-color:var(--gold)}
+  .res{font-size:15px;font-weight:800;margin:10px 0 4px}
+  .res.win{color:var(--good)} .res.lose{color:var(--bad)}
+  .big{font-size:48px;margin:6px 0}
+  .mrow{display:flex;gap:8px;margin-top:12px}
+  .credit{text-align:center;color:#5c5038;font-size:10px;margin-top:14px;line-height:1.5}
+  .topbar{display:flex;justify-content:flex-end;margin-bottom:6px}
+  .link{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- HÁZVÁLASZTÓ -->
+  <section id="select">
+    <h1 class="title">⚔️ Vastrón ⚔️</h1>
+    <p class="sub">Chibi hódítós stratégia · Westeros a tiéd lehet</p>
+    <p class="hint">Válaszd a házad. A célod: megszerezni <b>Királyvárt 👑</b>, és a legnagyobb házzá válni Westerosban – akkor tiéd a Vastrón.</p>
+    <div class="hgrid" id="hgrid"></div>
+    <p class="fan">Nem hivatalos rajongói játék · saját rajzolt figurák · a nevek a sorozatra utalnak</p>
+  </section>
+
+  <!-- JÁTÉK -->
+  <section id="game" style="display:none">
+    <div class="topbar"><button class="link" id="menuBtn">⚙️ Új játék</button></div>
+    <header>
+      <span class="hs" id="hHouseSig"></span>
+      <div class="meta"><div class="hn" id="hHouseName"></div><div class="st" id="hStat"></div></div>
+      <div class="gold" id="hGold"></div>
+    </header>
+    <p class="goal" id="goalLine">🎯 Cél: <b>Királyvár 👑</b> + a legnagyobb ház</p>
+    <div class="mapbox">
+      <svg id="map" viewBox="0 0 320 440"></svg>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="panel" id="panel"></div>
+    <button class="btn gold endturn" id="endTurn">⏭️ Kör vége</button>
+    <div class="log"><h3>Krónika</h3><div id="logBox"></div></div>
+    <p class="credit">Nem hivatalos rajongói játék, személyes használatra.<br>A chibi figurákat a játék rajzolja; a ház- és szereplőnevek a sorozatra utalnak.</p>
+  </section>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- HÁZAK ---------- */
+const HOUSES={
+  stark:    {name:'Stark',    sigil:'🐺', color:'#8b96a3', color2:'#eef2f6', hair:'#4a3b2e', skin:'#e8c9a8', motto:'Jön a tél',        atk:1.0,  def:1.2, inc:1.0, rec:1.0, bonus:'+20% védelem', playable:true},
+  lannister:{name:'Lannister',sigil:'🦁', color:'#b11226', color2:'#e3c244', hair:'#e0cf90', skin:'#e8c9a8', motto:'Halld, ahogy ordítok', atk:1.0, def:1.0, inc:1.25,rec:1.0, bonus:'+25% arany', playable:true},
+  targaryen:{name:'Targaryen',sigil:'🐉', color:'#2b2b2b', color2:'#b11226', hair:'#efe7c8', skin:'#edd3b3', motto:'Tűz és vér',       atk:1.3,  def:1.0, inc:1.0, rec:1.0, bonus:'+30% támadás (sárkányok)', playable:true},
+  baratheon:{name:'Baratheon',sigil:'🦌', color:'#1a1a1a', color2:'#e3c244', hair:'#2a2a2a', skin:'#e3b892', motto:'Miénk a harag',    atk:1.15, def:1.0, inc:1.0, rec:1.0, bonus:'+15% támadás', playable:true},
+  tyrell:   {name:'Tyrell',   sigil:'🌹', color:'#2f7d3a', color2:'#e3c244', hair:'#6b4a2a', skin:'#e8c9a8', motto:'Erősödve növünk',   atk:1.0,  def:1.0, inc:1.0, rec:0.75,bonus:'−25% toborzás', playable:true},
+  greyjoy:  {name:'Greyjoy',  sigil:'🐙', color:'#2a3b44', color2:'#d4b24a', hair:'#3b2f2a', skin:'#d9bfa0', motto:'Mi nem vetünk',     atk:1.1,  def:1.0, inc:1.15,rec:1.0, bonus:'+10% tám., +15% arany', playable:true},
+  martell:  {name:'Martell',  sigil:'☀️', color:'#d87a1e', color2:'#b11226', hair:'#2a1f1a', skin:'#c89a6a', motto:'Meghajlatlan, megtöretlen', atk:1.0, def:1.25,inc:1.0, rec:1.0, bonus:'+25% védelem', playable:true},
+  arryn:    {name:'Arryn',    sigil:'🦅', color:'#3a6ea5', color2:'#eef2f6', hair:'#d8c69a', skin:'#e8c9a8', motto:'Magas, mint a becsület', atk:1.0, def:1.1, inc:1.0, rec:1.0, playable:false},
+  tully:    {name:'Tully',    sigil:'🐟', color:'#9a2d33', color2:'#2f5d8a', hair:'#b05a2a', skin:'#e8c9a8', motto:'Család, kötelesség, becsület', atk:1.0, def:1.0, inc:1.0, rec:1.0, playable:false},
+  crown:    {name:'Korona',   sigil:'👑', color:'#6b1f1f', color2:'#e3c244', hair:'#2a2a2a', skin:'#e3b892', motto:'A Vastrón ura', atk:1.0, def:1.1, inc:1.0, rec:1.0, playable:false},
+  wild:     {name:'Szabad nép',sigil:'🪓',color:'#5b6b70', color2:'#cdd6d8', hair:'#7a4a2a', skin:'#d9bfa0', motto:'Nem térdelünk', atk:1.0, def:1.0, inc:1.0, rec:1.0, playable:false}
+};
+
+/* ---------- RÉGIÓK ---------- */
+const REG={
+  beyond:     {name:'A Falon túl', short:'A Fal',      cap:'A Fal',          x:158,y:34,  adj:['north'], owner:'wild', army:9, base:2, upg:0},
+  north:      {name:'Észak',       short:'Észak',      cap:'Deres',          x:150,y:98,  adj:['beyond','vale','riverlands','ironislands'], owner:'stark', army:12, base:6, upg:0},
+  vale:       {name:'A Völgy',     short:'Völgy',      cap:'Sasfészek',      x:236,y:150, adj:['north','riverlands','crownlands'], owner:'arryn', army:10, base:6, upg:0},
+  ironislands:{name:'Vas-szigetek',short:'Vas-szig.', cap:'Pyke',           x:64, y:178, adj:['north','riverlands','westerlands'], owner:'greyjoy', army:9, base:5, upg:0, coastal:true},
+  riverlands: {name:'Folyóvidék',  short:'Folyóvid.',  cap:'Zúgó',           x:152,y:184, adj:['north','vale','ironislands','westerlands','crownlands'], owner:'tully', army:10, base:6, upg:0},
+  westerlands:{name:'Nyugati-föld',short:'Nyugat',     cap:'Casterly-hegy',  x:92, y:248, adj:['ironislands','riverlands','reach','crownlands'], owner:'lannister', army:13, base:8, upg:0, coastal:true},
+  crownlands: {name:'Koronabirtok',short:'Királyvár',  cap:'Királyvár 👑',   x:196,y:250, adj:['vale','riverlands','westerlands','reach','stormlands','dragonstone'], owner:'crown', army:13, base:8, upg:1, throne:true},
+  dragonstone:{name:'Sárkánykő',   short:'Sárkánykő',  cap:'Sárkánykő',      x:262,y:250, adj:['crownlands','stormlands'], owner:'targaryen', army:6, base:4, upg:0, coastal:true},
+  reach:      {name:'Mezőföld',    short:'Mezőföld',   cap:'Égikert',        x:118,y:322, adj:['westerlands','crownlands','stormlands','dorne'], owner:'tyrell', army:12, base:9, upg:0},
+  stormlands: {name:'Viharföld',   short:'Viharföld',  cap:'Viharvég',       x:216,y:330, adj:['crownlands','dragonstone','reach','dorne'], owner:'baratheon', army:11, base:7, upg:0, coastal:true},
+  dorne:      {name:'Dorne',       short:'Dorne',      cap:'Naplándzsa',     x:166,y:402, adj:['reach','stormlands'], owner:'martell', army:10, base:7, upg:0}
+};
+// szomszédság szimmetrizálása
+Object.keys(REG).forEach(id=>REG[id].adj.forEach(a=>{ if(!REG[a].adj.includes(id)) REG[a].adj.push(id); }));
+
+/* ---------- CHIBI RAJZ ---------- */
+function chibi(id,cls){
+  const h=HOUSES[id]||HOUSES.wild;
+  return `<svg class="chibi ${cls||''}" viewBox="0 0 64 84" aria-hidden="true">
+    <path d="M17 56 Q32 49 47 56 L51 84 L13 84 Z" fill="${h.color}"/>
+    <path d="M26 54 L32 65 L38 54 Z" fill="${h.color2}"/>
+    <circle cx="13" cy="64" r="6" fill="${h.color}"/><circle cx="51" cy="64" r="6" fill="${h.color}"/>
+    <circle cx="32" cy="30" r="21" fill="${h.skin}"/>
+    <path d="M11 31 Q10 7 32 7 Q54 7 53 31 Q46 18 32 20 Q18 18 11 31 Z" fill="${h.hair}"/>
+    <circle cx="25" cy="31" r="3.3" fill="#2a2320"/><circle cx="39" cy="31" r="3.3" fill="#2a2320"/>
+    <circle cx="26.2" cy="29.8" r="1" fill="#fff"/><circle cx="40.2" cy="29.8" r="1" fill="#fff"/>
+    <circle cx="20" cy="37" r="3" fill="#f0a0a0" opacity=".5"/><circle cx="44" cy="37" r="3" fill="#f0a0a0" opacity=".5"/>
+    <path d="M27 39 Q32 44 37 39" fill="none" stroke="#7a3b2e" stroke-width="2" stroke-linecap="round"/>
+    <text x="32" y="75" font-size="13" text-anchor="middle">${h.sigil}</text>
+  </svg>`;
+}
+
+/* ---------- ÁLLAPOT ---------- */
+let S=null;
+const SAVE='tronok-v1';
+function save(){ try{ localStorage.setItem(SAVE,JSON.stringify(S)); }catch(e){} }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(SAVE)); if(d&&d.house&&d.reg) return d; }catch(e){} return null; }
+
+function newGame(houseId){
+  S={house:houseId, turn:1, gold:25, reg:JSON.parse(JSON.stringify(REG)), sel:null, view:houseHome(houseId), atk:null, log:[], done:null, ai:{}};
+  for(const id in HOUSES){ if(id!==houseId) S.ai[id]= id==='crown'?22 : (id==='wild'?0:12); }
+  // Targaryen egyetlen kis szigetről indul – a sárkányok adnak esélyt
+  if(houseId==='targaryen'){ S.reg.dragonstone.army=13; S.gold+=10; pushLog('A sárkányok a hátad mögött állnak. 🐉','n'); }
+  pushLog(`A(z) ${HOUSES[houseId].name}-ház hadba vonul! ${HOUSES[houseId].sigil}`,'n');
+  income();
+  save(); showGame();
+}
+function houseHome(id){ for(const k in S?S.reg:REG) if((S?S.reg:REG)[k].owner===id) return k; return 'crownlands'; }
+function regionsOf(id){ return Object.keys(S.reg).filter(k=>S.reg[k].owner===id); }
+function goldOf(id){ return id===S.house?S.gold:(S.ai[id]||0); }
+function addGold(id,n){ if(id===S.house) S.gold+=n; else S.ai[id]=(S.ai[id]||0)+n; }
+function pushLog(txt,cls){ S.log.unshift({t:txt,c:cls||''}); if(S.log.length>7) S.log.pop(); }
+
+/* ---------- GAZDASÁG ---------- */
+function regIncome(r){ return Math.round(r.base*(1+r.upg*0.5)*(HOUSES[r.owner]?HOUSES[r.owner].inc:1)); }
+function income(){ for(const k in S.reg){ const r=S.reg[k]; if(HOUSES[r.owner]) addGold(r.owner, regIncome(r)); } }
+
+/* ---------- CSATA ---------- */
+function power(r,isAtk,troops){
+  const h=HOUSES[r.owner]||HOUSES.wild;
+  if(isAtk) return troops*(h.atk||1)*rnd(0.85,1.15);
+  let p=r.army*(h.def||1)*(1+r.upg*0.12)*rnd(0.9,1.1);
+  if(r.throne) p*=1.15;
+  return p;
+}
+function doBattle(fromId,toId,troops){
+  const from=S.reg[fromId], to=S.reg[toId];
+  const atkName=HOUSES[from.owner].name, defName=HOUSES[to.owner].name;
+  troops=clamp(Math.round(troops),1,from.army);
+  from.army-=troops;
+  const aP=troops*(HOUSES[from.owner].atk||1)*rnd(0.85,1.15);
+  const dP=power(to,false);
+  const won=aP>dP;
+  let captured=false;
+  if(won){
+    const ratio=dP/aP;
+    const survivors=Math.max(1,Math.round(troops*(1-ratio*0.75)));
+    to.owner=from.owner; to.army=survivors; captured=true;
+  }else{
+    const ratio=aP/dP;
+    to.army=Math.max(1,Math.round(to.army*(1-ratio*0.55)));
+  }
+  return {won,captured,aP:Math.round(aP),dP:Math.round(dP),atkName,defName,troops,toId,fromId};
+}
+
+/* ---------- JÁTÉKOS AKCIÓK ---------- */
+function recruit(id){
+  const r=S.reg[id]; if(r.owner!==S.house) return;
+  const cost=Math.max(1,Math.round(3*HOUSES[S.house].rec));
+  const max=Math.floor(S.gold/cost);
+  if(max<1){ toastModal('Nincs elég aranyad toborzásra.'); return; }
+  openRecruit(id,cost,max);
+}
+function upgrade(id){
+  const r=S.reg[id]; if(r.owner!==S.house||r.upg>=3) return;
+  const cost=(r.upg+1)*18;
+  if(S.gold<cost){ toastModal('Nincs elég aranyad a fejlesztéshez.'); return; }
+  S.gold-=cost; r.upg++;
+  pushLog(`${r.short} fejlesztve (szint ${r.upg}). Nagyobb bevétel és védelem.`,'n');
+  save(); render();
+}
+
+/* ---------- AI KÖR ---------- */
+function aiTurn(){
+  for(const id in HOUSES){
+    if(id===S.house) continue;
+    const owned=regionsOf(id);
+    if(!owned.length||id==='wild') continue;
+    let gold=S.ai[id]||0;
+    const cost=Math.max(1,Math.round(3*(HOUSES[id].rec||1)));
+    // toborzás a legveszélyeztetettebb régióba
+    let front=owned[0], bestThreat=-1;
+    owned.forEach(k=>{ const t=S.reg[k].adj.reduce((s,a)=>s+(S.reg[a].owner!==id?S.reg[a].army:0),0); if(t>bestThreat){bestThreat=t;front=k;} });
+    const spend=Math.floor(gold*(id==='crown'?0.45:0.55));
+    let n=Math.floor(spend/cost);
+    const CAP=40; // egy régió serege ne nőjön verhetetlenné
+    if(S.reg[front].army+n>CAP) n=Math.max(0,CAP-S.reg[front].army);
+    if(n>0){ S.reg[front].army+=n; gold-=n*cost; S.ai[id]=gold; }
+    if(id==='crown') continue; // a Korona csak védekezik
+    // támadás: legjobb esély
+    let best=null;
+    owned.forEach(k=>{ const r=S.reg[k]; if(r.army<5) return;
+      r.adj.forEach(a=>{ const t=S.reg[a]; if(t.owner===id) return;
+        const defPow=t.army*(HOUSES[t.owner].def||1)*(1+t.upg*0.12)*(t.throne?1.25:1);
+        const score=r.army*(HOUSES[id].atk||1) - defPow;
+        // csak egyértelmű fölénynél támad (nem rohan fejvesztve)
+        if(score > t.army*0.5 && (!best||score>best.score)) best={from:k,to:a,score};
+      });
+    });
+    if(best && S.reg[best.from].army>=5){
+      const send=Math.max(3,Math.round(S.reg[best.from].army*0.7));
+      const res=doBattle(best.from,best.to,send);
+      if(res.captured){
+        const lost = best.to===S.house || false;
+        pushLog(`${res.atkName} ${res.defName===HOUSES[S.house].name?'<b>a te</b> ':''}${S.reg[best.to].short} tartományát elfoglalta.`, res.defName===HOUSES[S.house].name?'l':'');
+      }
+    }
+  }
+}
+
+function endTurn(){
+  if(S.done) return;
+  S.sel=null;
+  aiTurn();
+  income();
+  S.turn++;
+  checkEnd();
+  save(); render();
+}
+// a legnagyobb rivális ház tartományainak száma (a szabad népet nem számítva)
+function rivalMax(){ const c={}; for(const k in S.reg){ const o=S.reg[k].owner; if(o===S.house||o==='wild') continue; c[o]=(c[o]||0)+1; } let m=0; for(const id in c) m=Math.max(m,c[id]); return m; }
+function checkEnd(){
+  const n=regionsOf(S.house).length;
+  // Győzelem: tiéd a Vastrón ÉS te vagy a legnagyobb ház
+  if(S.reg.crownlands.owner===S.house && n>rivalMax()){ S.done='win'; showEnd(true); return; }
+  if(n===0){ S.done='lose'; showEnd(false); return; }
+}
+
+/* ---------- RENDER ---------- */
+function showSelect(){ $('select').style.display='block'; $('game').style.display='none'; renderSelect(); }
+function showGame(){ $('select').style.display='none'; $('game').style.display='block'; render(); }
+const DIFF={stark:['Nehéz','#d6624a'],lannister:['Közepes','#e3c244'],targaryen:['Közepes','#e3c244'],baratheon:['Könnyű','#5ab078'],tyrell:['Könnyű','#5ab078'],greyjoy:['Nehéz','#d6624a'],martell:['Nehéz','#d6624a']};
+function renderSelect(){
+  $('hgrid').innerHTML=Object.keys(HOUSES).filter(k=>HOUSES[k].playable).map(k=>{
+    const h=HOUSES[k], d=DIFF[k]||['',''];
+    return `<div class="hcard" data-h="${k}">${chibi(k)}<div class="nm">${h.sigil} ${h.name}</div>
+      <div class="mt">„${h.motto}"</div><div class="bn">${h.bonus}</div>
+      <div style="font-size:10px;font-weight:800;margin-top:4px;color:${d[1]}">⚔️ ${d[0]}</div></div>`;
+  }).join('');
+  $('hgrid').querySelectorAll('[data-h]').forEach(c=>c.onclick=()=>newGame(c.dataset.h));
+}
+
+function render(){
+  const h=HOUSES[S.house];
+  $('hHouseSig').textContent=h.sigil;
+  $('hHouseName').textContent='Ház '+h.name;
+  const mine=regionsOf(S.house).length, total=Object.keys(S.reg).length;
+  $('hStat').textContent=`${S.turn}. kör · ${mine}/${total} tartomány`;
+  $('hGold').innerHTML=`🪙 ${S.gold}`;
+  const thr=S.reg.crownlands.owner===S.house, rm=rivalMax();
+  $('goalLine').innerHTML=`🎯 Vastrón: ${thr?'👑 <b>nálad</b>':'👑 még nem'} · te <b>${mine}</b> vs legnagyobb rivális <b>${rm}</b>`;
+  renderMap(); renderLegend(); renderPanel(); renderLog();
+}
+
+function renderMap(){
+  const R=S.reg, seen=new Set();
+  let lines='';
+  for(const k in R) R[k].adj.forEach(a=>{ const key=[k,a].sort().join('-'); if(seen.has(key))return; seen.add(key);
+    lines+=`<line x1="${R[k].x}" y1="${R[k].y}" x2="${R[a].x}" y2="${R[a].y}" stroke="#3a4a42" stroke-width="2" opacity=".5"/>`; });
+  const attackable = S.sel ? new Set(R[S.sel].adj.filter(a=>R[a].owner!==S.house)) : new Set();
+  let nodes='';
+  for(const k in R){ const r=R[k], h=HOUSES[r.owner]||HOUSES.wild;
+    const isSel=S.sel===k, isView=S.view===k, isAtk=attackable.has(k);
+    const stroke=isSel?'#e3c244':isAtk?'#d6624a':isView?'#f3e9d6':'#0d0a06';
+    const sw=isSel||isAtk?3.5:isView?2.5:1.5;
+    nodes+=`<g class="node" data-r="${k}">
+      <circle cx="${r.x}" cy="${r.y}" r="22" fill="${h.color}" stroke="${stroke}" stroke-width="${sw}" ${isAtk?'stroke-dasharray="4 3"':''}/>
+      <text x="${r.x}" y="${r.y-3}" font-size="17" text-anchor="middle">${h.sigil}</text>
+      <text x="${r.x}" y="${r.y+13}" font-size="11" font-weight="800" text-anchor="middle" fill="#fff" stroke="#000" stroke-width=".5">${r.army}</text>
+      <text x="${r.x}" y="${r.y+34}" font-size="8.5" text-anchor="middle" fill="#d8cbb0" font-weight="700">${r.short}${r.throne?' 👑':''}</text>
+    </g>`;
+  }
+  $('map').innerHTML=lines+nodes;
+  $('map').querySelectorAll('.node').forEach(n=>n.onclick=()=>tap(n.dataset.r));
+}
+function renderLegend(){
+  const present=[...new Set(Object.values(S.reg).map(r=>r.owner))];
+  $('legend').innerHTML=present.map(id=>`<span><b style="color:${HOUSES[id].color==='#1a1a1a'||HOUSES[id].color==='#2b2b2b'?'#aaa':HOUSES[id].color}">${HOUSES[id].sigil}</b> ${HOUSES[id].name}${id===S.house?' (te)':''}</span>`).join('');
+}
+
+function tap(id){
+  if(S.done) return;
+  const r=S.reg[id];
+  if(r.owner===S.house){ S.sel=(S.sel===id?null:id); S.view=id; render(); return; }
+  // ellenség/semleges
+  S.view=id;
+  render();
+}
+
+function renderPanel(){
+  const id=S.view||S.sel, r=S.reg[id], h=HOUSES[r.owner]||HOUSES.wild, mine=r.owner===S.house;
+  const canAtk = S.sel && S.sel!==id && S.reg[S.sel].adj.includes(id) && r.owner!==S.house && S.reg[S.sel].army>1;
+  let acts='';
+  if(mine){
+    const rec=Math.max(1,Math.round(3*HOUSES[S.house].rec));
+    const upCost=(r.upg+1)*18;
+    acts=`<div class="acts">
+      <button class="btn gold" data-a="recruit" ${S.gold<rec?'disabled':''}>🗡️ Toboroz (${rec}🪙/fő)</button>
+      <button class="btn" data-a="upgrade" ${r.upg>=3||S.gold<upCost?'disabled':''}>⬆️ Fejleszt${r.upg>=3?' (max)':` (${upCost}🪙)`}</button></div>
+      <p class="hint">Koppints egy <span style="color:var(--bad)">szaggatott</span> szomszédos tartományra a támadáshoz.</p>`;
+  }else if(canAtk){
+    acts=`<div class="acts"><button class="btn red" data-a="attack">⚔️ Támadás innen: ${S.reg[S.sel].short}</button></div>`;
+  }else{
+    acts=`<p class="hint">Ellenséges tartomány. Előbb válaszd ki a saját (szomszédos) tartományodat, hogy innen támadj.</p>`;
+  }
+  $('panel').innerHTML=`<div class="ph">${chibi(r.owner,'sm')}
+    <div><div class="pn">${r.name}${r.throne?' 👑':''}</div><div class="po">${r.cap} · ${h.sigil} ${h.name}${mine?' (te)':''}</div></div></div>
+    <div class="stats">
+      <div class="stat">Sereg<b>🛡️ ${r.army}</b></div>
+      <div class="stat">Bevétel<b>🪙 ${regIncome(r)}</b></div>
+      <div class="stat">Szint<b>⬆️ ${r.upg}/3</b></div>
+    </div>${acts}`;
+  const p=$('panel');
+  const rb=p.querySelector('[data-a="recruit"]'); if(rb) rb.onclick=()=>recruit(id);
+  const ub=p.querySelector('[data-a="upgrade"]'); if(ub) ub.onclick=()=>upgrade(id);
+  const ab=p.querySelector('[data-a="attack"]'); if(ab) ab.onclick=()=>openAttack(S.sel,id);
+}
+
+function renderLog(){
+  $('logBox').innerHTML=S.log.length?S.log.map(e=>`<div class="${e.c}">${e.t}</div>`).join(''):'<div>A háború még nem kezdődött…</div>';
+}
+
+/* ---------- MODÁLOK ---------- */
+function openOverlay(html){ $('modal').innerHTML=html; $('overlay').classList.add('show'); }
+function closeOverlay(){ $('overlay').classList.remove('show'); }
+function toastModal(msg){ openOverlay(`<h2>${msg}</h2><div class="mrow"><button class="btn" id="ok">Rendben</button></div>`); $('ok').onclick=closeOverlay; }
+
+function openRecruit(id,cost,max){
+  const r=S.reg[id], def=Math.min(max,Math.max(1,Math.floor(max/2)));
+  openOverlay(`<h2>🗡️ Toborzás – ${r.short}</h2>
+    <p class="po">${cost}🪙 / katona · max ${max}</p>
+    ${chibi(S.house)}
+    <div class="slabel"><span id="rN">${def} katona</span><span id="rC">${def*cost}🪙</span></div>
+    <input type="range" id="rS" min="1" max="${max}" value="${def}">
+    <div class="mrow"><button class="btn ghost" id="rCancel">Mégse</button><button class="btn gold" id="rGo">Toborzás</button></div>`);
+  const s=$('rS'); const upd=()=>{ const n=+s.value; $('rN').textContent=n+' katona'; $('rC').textContent=(n*cost)+'🪙'; };
+  s.oninput=upd;
+  $('rCancel').onclick=closeOverlay;
+  $('rGo').onclick=()=>{ const n=+s.value; S.gold-=n*cost; r.army+=n; pushLog(`${n} katonát toboroztál: ${r.short}.`,'n'); closeOverlay(); save(); render(); };
+}
+
+function openAttack(fromId,toId){
+  // legalább 1 fős őrség marad otthon, ezért max = sereg − 1
+  const from=S.reg[fromId], to=S.reg[toId], max=Math.max(1,from.army-1), def=Math.max(1,Math.round(max*0.75));
+  openOverlay(`<h2>⚔️ Támadás</h2>
+    <div class="vs atk-in"><div class="side a"><div class="nm">${HOUSES[from.owner].name}</div>${chibi(from.owner)}<div class="ar">🛡️ ${from.army}</div></div>
+      <div class="clash">⚔️</div>
+      <div class="side d"><div class="nm">${HOUSES[to.owner].name}</div>${chibi(to.owner)}<div class="ar">🛡️ ${to.army}${to.throne?' 👑':''}</div></div></div>
+    <div class="slabel"><span>Küldött sereg: <b id="aN">${def}</b></span><span>marad ${from.army-def} őrség</span></div>
+    <input type="range" id="aS" min="1" max="${max}" value="${def}">
+    <div class="mrow"><button class="btn ghost" id="aCancel">Mégse</button><button class="btn red" id="aGo">Roham!</button></div>`);
+  const s=$('aS'); const lab=$('aN');
+  const span=$('modal').querySelector('.slabel span:last-child');
+  const upd=()=>{ lab.textContent=s.value; span.textContent='marad '+(from.army-+s.value)+' őrség'; };
+  s.oninput=upd; upd();
+  $('aCancel').onclick=closeOverlay;
+  $('aGo').onclick=()=>resolveAttack(fromId,toId,+s.value);
+}
+
+function resolveAttack(fromId,toId,troops){
+  const res=doBattle(fromId,toId,troops);
+  const to=S.reg[toId];
+  if(res.captured) pushLog(`Elfoglaltad: ${to.short}! (erőd ${res.aP} vs ${res.dP})`,'w');
+  else pushLog(`Vereség ${to.short} alatt. (erőd ${res.aP} vs ${res.dP})`,'l');
+  S.sel=null; S.view=toId;
+  const winClass=res.won?'win':'lose';
+  openOverlay(`<h2>${res.won?'🏆 Győzelem!':'💀 Vereség'}</h2>
+    <div class="big">${res.won?(res.captured?'🚩':'⚔️'):'🛡️'}</div>
+    <p class="res ${winClass}">${res.won? (res.captured?`${to.short} a tiéd!`:'Megfutamítottad őket!') : 'A sereged visszaszorult.'}</p>
+    <p class="po">A te erőd: ${res.aP} · Védők: ${res.dP}</p>
+    <div class="mrow"><button class="btn gold" id="cont">Tovább</button></div>`);
+  $('cont').onclick=()=>{ closeOverlay(); checkEnd(); if(!S.done){ save(); render(); } };
+}
+
+function showEnd(won){
+  save();
+  openOverlay(`<h2>${won?'👑 A VASTRÓN A TIÉD!':'💀 A házad elbukott'}</h2>
+    ${chibi(S.house,'lg')}
+    <p class="res ${won?'win':'lose'}">${won?`Ház ${HOUSES[S.house].name} uralja a Hét Királyságot!`:`Ház ${HOUSES[S.house].name} minden tartományát elvesztette.`}</p>
+    <p class="po">${S.turn}. kör</p>
+    <div class="mrow"><button class="btn gold" id="again">Új játék</button></div>`);
+  $('again').onclick=()=>{ closeOverlay(); localStorage.removeItem(SAVE); showSelect(); };
+}
+
+/* ---------- MENÜ / INDÍTÁS ---------- */
+$('menuBtn').onclick=()=>{
+  openOverlay(`<h2>⚙️ Menü</h2><p class="po">Biztosan új játékot kezdesz? A mostani állás elvész.</p>
+    <div class="mrow"><button class="btn ghost" id="mClose">Vissza</button><button class="btn red" id="mNew">Új játék</button></div>`);
+  $('mClose').onclick=closeOverlay;
+  $('mNew').onclick=()=>{ closeOverlay(); localStorage.removeItem(SAVE); showSelect(); };
+};
+$('endTurn').onclick=endTurn;
+$('overlay').onclick=e=>{ if(e.target===$('overlay')) closeOverlay(); };
+
+const saved=load();
+if(saved && !saved.done){ S=saved; showGame(); }
+else showSelect();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
