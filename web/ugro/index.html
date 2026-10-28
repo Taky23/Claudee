@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#5c94fc">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none'">
+<title>Manó kalandja</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{ --sky:#5c94fc; --ui:#1a1230; --gold:#ffd24a; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  html,body{margin:0;height:100%;overflow:hidden;background:#0c1020;font:16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff}
+  #app{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  #stage{position:relative;width:100%;max-width:560px;aspect-ratio:4/3;background:var(--sky)}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+  /* HUD */
+  #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-weight:900;font-size:15px;text-shadow:2px 2px 0 #0007;pointer-events:none}
+  #hud .coins{color:var(--gold)}
+  /* Vezérlés */
+  .pad{position:absolute;bottom:14px;display:flex;gap:12px;z-index:5}
+  .pad.left{left:14px} .pad.right{right:14px}
+  .key{width:64px;height:64px;border-radius:50%;background:#ffffff26;border:2px solid #ffffff55;backdrop-filter:blur(4px);color:#fff;font-size:28px;font-weight:900;display:flex;align-items:center;justify-content:center}
+  .key:active,.key.on{background:#ffffff55}
+  .key.jump{width:76px;height:76px;background:#4fd16a40;border-color:#9effb0aa;font-size:22px}
+  /* Overlay képernyők */
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;background:#0a0a1ccc;backdrop-filter:blur(3px);padding:22px;z-index:10}
+  .screen.show{display:flex;animation:f .25s}
+  @keyframes f{from{opacity:0}}
+  .screen h1{margin:0;font-size:30px;font-weight:900;letter-spacing:1px;color:#ffe27a;text-shadow:3px 3px 0 #0008}
+  .screen h2{margin:0;font-size:22px}
+  .screen p{margin:0;color:#c7cbe0;font-size:14px;max-width:320px;line-height:1.5}
+  .btn{border:0;border-radius:14px;padding:14px 26px;font:inherit;font-weight:900;font-size:17px;background:linear-gradient(135deg,#4fd16a,#3aa856);color:#07230f;box-shadow:0 6px 0 #1f6b35;cursor:pointer}
+  .btn:active{transform:translateY(3px);box-shadow:0 3px 0 #1f6b35}
+  .btn.blue{background:linear-gradient(135deg,#6db3ff,#3a7fd6);color:#04203f;box-shadow:0 6px 0 #27568f}
+  .btn.blue:active{box-shadow:0 3px 0 #27568f}
+  .muted{position:absolute;top:8px;right:120px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .hero-emoji{font-size:54px}
+  .small{font-size:12px;color:#8891b5}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="c" width="320" height="240"></canvas>
+    <div id="hud">
+      <span id="hudLife">❤️❤️❤️</span>
+      <span id="hudLvl">1. pálya</span>
+      <span class="coins" id="hudCoin">🪙 0</span>
+    </div>
+
+    <!-- Vezérlés -->
+    <div class="pad left">
+      <div class="key" id="kLeft">◀</div>
+      <div class="key" id="kRight">▶</div>
+    </div>
+    <div class="pad right">
+      <div class="key jump" id="kJump">UGRÁS</div>
+    </div>
+
+    <!-- Képernyők -->
+    <div class="screen show" id="scTitle">
+      <div class="hero-emoji">🧝</div>
+      <h1>MANÓ KALANDJA</h1>
+      <p>Fuss, ugrálj, taposd le az ellenfeleket, gyűjtsd az érméket, és érd el a zászlót! 🚩</p>
+      <button class="btn" id="btnStart">▶ Játék</button>
+      <p class="small">Telefonon: a bal alsó nyilak + jobb alsó UGRÁS.<br>Gépen: ◀ ▶ nyilak és SZÓKÖZ.</p>
+    </div>
+    <div class="screen" id="scLevel">
+      <h2 id="lvlDone">Pálya kész! 🎉</h2>
+      <p id="lvlStat"></p>
+      <button class="btn" id="btnNext">Tovább →</button>
+    </div>
+    <div class="screen" id="scOver">
+      <div class="hero-emoji">💀</div>
+      <h2>Elfogytak az életeid</h2>
+      <p id="overStat"></p>
+      <button class="btn blue" id="btnRetry">Újra</button>
+    </div>
+    <div class="screen" id="scWin">
+      <div class="hero-emoji">👑</div>
+      <h1>VÉGIGVITTED!</h1>
+      <p id="winStat"></p>
+      <button class="btn" id="btnAgain">Újra az elejéről</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const cv=$('c'), ctx=cv.getContext('2d');
+const W=320, H=240, T=16;
+
+/* ---------- PÁLYÁK ----------
+  Tiszta, biztosan teljesíthető pályák egy építőből (a rések max 3 mező szélesek).
+  Jelek: X=föld  B=tégla  ?=érmés blokk  U=üres  ==emelvény  o=érme  e=ellenfél  P=start  F=zászló  ^=tüske
+  A felszín a 11. sor; a talaj a 12–14. sor. */
+const SURF=11;
+const LEVELDEFS=[
+  { w:58, gaps:[[22,23],[40,42]], start:2, flag:55,
+    enemies:[16,34,50], spikes:[],
+    groundCoins:[8,9,10,28,29,46,47],
+    airCoins:[[12,8],[14,8],[16,8],[35,7],[37,7],[39,7]],
+    blocks:[[30,7,'?'],[32,7,'?']],
+    platforms:[] },
+  { w:68, gaps:[[18,19],[34,35],[48,49],[60,61]], start:2, flag:65,
+    enemies:[10,28,56], spikes:[42],
+    groundCoins:[6,7,22,23,38,39,52,53],
+    airCoins:[[13,8],[14,7],[15,8]],
+    blocks:[[23,7,'?'],[24,7,'?']],
+    platforms:[] },
+  { w:80, gaps:[[14,15],[26,28],[40,42],[54,56],[68,69]], start:2, flag:77,
+    enemies:[8,34,62], spikes:[20,48],
+    groundCoins:[5,6,22,23,36,37,58,59,74],
+    airCoins:[[10,7],[11,7],[12,7],[36,6],[37,6],[58,7],[59,7]],
+    blocks:[[22,7,'?'],[37,7,'?'],[58,7,'?']],
+    platforms:[] },
+];
+function buildGrid(d){
+  const Hn=15, g=Array.from({length:Hn},()=>Array(d.w).fill(' '));
+  for(let x=0;x<d.w;x++) if(!(d.gaps||[]).some(([a,b])=>x>=a&&x<=b)){ g[12][x]='X'; g[13][x]='X'; g[14][x]='X'; }
+  (d.platforms||[]).forEach(p=>{ for(let i=0;i<p.w;i++) g[p.y][p.x+i]=p.t||'='; });
+  (d.blocks||[]).forEach(([x,y,t])=>{ g[y][x]=t||'?'; });
+  (d.airCoins||[]).forEach(([x,y])=>{ g[y][x]='o'; });
+  (d.groundCoins||[]).forEach(x=>{ g[SURF][x]='o'; });
+  (d.spikes||[]).forEach(x=>{ g[SURF][x]='^'; });
+  (d.enemies||[]).forEach(x=>{ g[SURF][x]='e'; });
+  g[SURF][d.start!=null?d.start:2]='P';
+  g[SURF][d.flag]='F';
+  return g.map(r=>r.join(''));
+}
+const LEVELS=LEVELDEFS.map(buildGrid);
+const SOLID=new Set(['X','B','?','U','=','#']);
+
+/* ---------- ÁLLAPOT ---------- */
+let state='title', level=0, lives=3, coins=0, totalCoins=0;
+let tiles=[], levelW=0, cam=0;
+let player, enemies=[], pickups=[], flag=null, deco=[];
+const SAVE='ugro-v1';
+function bestLevel(){ try{ return +localStorage.getItem(SAVE)||0; }catch(e){ return 0; } }
+function saveBest(l){ try{ if(l>bestLevel()) localStorage.setItem(SAVE,l); }catch(e){} }
+
+/* ---------- INPUT ---------- */
+const input={left:false,right:false,jump:false,jumpEdge:false};
+function bindKey(el,prop){
+  const on=e=>{ e.preventDefault(); if(prop==='jump'&&!input.jump) input.jumpEdge=true; input[prop]=true; el.classList.add('on'); };
+  const off=e=>{ e.preventDefault(); input[prop]=false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown',on); el.addEventListener('pointerup',off);
+  el.addEventListener('pointercancel',off); el.addEventListener('pointerleave',off);
+}
+bindKey($('kLeft'),'left'); bindKey($('kRight'),'right'); bindKey($('kJump'),'jump');
+addEventListener('keydown',e=>{
+  if(['ArrowLeft','ArrowRight','ArrowUp',' ','Spacebar'].includes(e.key)) e.preventDefault();
+  if(e.key==='ArrowLeft') input.left=true;
+  if(e.key==='ArrowRight') input.right=true;
+  if((e.key==='ArrowUp'||e.key===' '||e.key==='Spacebar'||e.key==='z')&&!input.jump){ input.jumpEdge=true; input.jump=true; }
+});
+addEventListener('keyup',e=>{
+  if(e.key==='ArrowLeft') input.left=false;
+  if(e.key==='ArrowRight') input.right=false;
+  if(e.key==='ArrowUp'||e.key===' '||e.key==='Spacebar'||e.key==='z') input.jump=false;
+});
+
+/* ---------- HANG ---------- */
+let actx=null, muted=false;
+function beep(freq,dur,type,vol){
+  if(muted) return;
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||'square'; o.frequency.value=freq; g.gain.value=vol||0.06;
+    o.connect(g); g.connect(actx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+dur);
+    o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+const sfx={ jump:()=>beep(520,0.14,'square'), coin:()=>{beep(880,0.07,'square');setTimeout(()=>beep(1320,0.1,'square'),70);},
+  stomp:()=>beep(200,0.12,'sawtooth',0.08), hurt:()=>{beep(300,0.2,'sawtooth',0.08);setTimeout(()=>beep(140,0.25,'sawtooth',0.08),120);},
+  win:()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'square'),i*110));} };
+
+/* ---------- PÁLYA BETÖLTÉS ---------- */
+function loadLevel(n){
+  const raw=LEVELS[n]; levelW=raw[0].length;
+  tiles=raw.map(r=>r.split(''));
+  enemies=[]; pickups=[]; flag=null; deco=[];
+  for(let y=0;y<tiles.length;y++) for(let x=0;x<tiles[y].length;x++){
+    const ch=tiles[y][x];
+    if(ch==='P'){ player=mkPlayer(x*T, y*T); tiles[y][x]=' '; }
+    else if(ch==='e'){ enemies.push(mkEnemy(x*T, y*T)); tiles[y][x]=' '; }
+    else if(ch==='o'){ pickups.push({x:x*T+2,y:y*T+2,w:12,h:12,got:false,t:Math.random()*6}); tiles[y][x]=' '; }
+    else if(ch==='F'){ flag={x:x*T+6,y:y*T,h:T*3}; tiles[y][x]=' '; }
+  }
+  if(!player) player=mkPlayer(T, (tiles.length-3)*T);
+  coins=0; cam=0; updateHud();
+}
+function mkPlayer(x,y){ return {x,y,w:12,h:14,vx:0,vy:0,onGround:false,face:1,anim:0,coyote:0,buffer:0,squash:0,invuln:0,alive:true,spawnX:x,spawnY:y}; }
+function mkEnemy(x,y){ return {x:x+2,y:y+2,w:12,h:12,vx:-0.45,alive:true,t:Math.random()*6}; }
+
+function solidAt(px,py){ const tx=Math.floor(px/T), ty=Math.floor(py/T);
+  if(ty<0) return false; if(tx<0||tx>=levelW||ty>=tiles.length) return false;
+  return SOLID.has(tiles[ty][tx]); }
+function spikeAt(px,py){ const tx=Math.floor(px/T), ty=Math.floor(py/T);
+  if(tx<0||tx>=levelW||ty<0||ty>=tiles.length) return false; return tiles[ty][tx]==='^'; }
+
+/* ---------- FIZIKA ---------- */
+const GRAV=0.42, MOVE=0.5, MAXVX=2.3, FRICT=0.80, JUMP=7.9, JUMP_MIN=4.8;
+function update(){
+  if(state!=='play') return;
+  const p=player;
+  // vízszintes
+  if(input.left){ p.vx-=MOVE; p.face=-1; } if(input.right){ p.vx+=MOVE; p.face=1; }
+  if(!input.left&&!input.right) p.vx*=FRICT;
+  p.vx=Math.max(-MAXVX,Math.min(MAXVX,p.vx));
+  if(Math.abs(p.vx)<0.05) p.vx=0;
+  // ugrás puffer + coyote
+  if(input.jumpEdge){ p.buffer=8; input.jumpEdge=false; }
+  if(p.buffer>0) p.buffer--;
+  if(p.coyote>0) p.coyote--;
+  if(p.buffer>0 && (p.onGround||p.coyote>0)){ p.vy=-JUMP; p.onGround=false; p.coyote=0; p.buffer=0; p.squash=-6; sfx.jump(); }
+  if(!input.jump && p.vy<-JUMP_MIN) p.vy=-JUMP_MIN; // változó magasságú ugrás (min. használható koppintás)
+  p.vy+=GRAV; if(p.vy>9) p.vy=9;
+
+  moveAxis(p,'x'); moveAxis(p,'y');
+
+  if(Math.abs(p.vx)>0.3 && p.onGround) p.anim+=Math.abs(p.vx)*0.25; else p.anim=0;
+  if(p.squash<0) p.squash+=1;
+  if(p.invuln>0) p.invuln--;
+
+  // leesés / tüske
+  if(p.y>tiles.length*T+20 || (p.invuln<=0 && (spikeAt(p.x+2,p.y+p.h)||spikeAt(p.x+p.w-2,p.y+p.h)))) return hurt();
+
+  // ellenfelek
+  enemies.forEach(en=>{ if(!en.alive) return; en.t+=0.1;
+    en.x+=en.vx;
+    // forduljon falnál / szakadéknál
+    const ahead=en.x+(en.vx<0?-1:en.w+1);
+    const footX=en.x+(en.vx<0?-1:en.w+1);
+    if(solidAt(en.vx<0?en.x-1:en.x+en.w+1, en.y+en.h/2)) en.vx*=-1;
+    else if(!solidAt(footX, en.y+en.h+2)) en.vx*=-1;
+    // ütközés a játékossal
+    if(p.invuln<=0 && aabb(p,en)){
+      if(p.vy>0 && p.y+p.h-p.vy <= en.y+4){ en.alive=false; p.vy=-JUMP*0.6; p.squash=-5; sfx.stomp(); coins+=1; totalCoins+=1; updateHud(); }
+      else hurt();
+    }
+  });
+  // érmék
+  pickups.forEach(c=>{ if(c.got) return; c.t+=0.12; if(aabb(p,c)){ c.got=true; coins+=1; totalCoins+=1; sfx.coin(); updateHud(); } });
+  // zászló
+  if(flag && p.x+p.w>flag.x && p.x<flag.x+10 && p.y+p.h>flag.y){ return levelComplete(); }
+
+  // kamera
+  cam=Math.max(0,Math.min(levelW*T-W, p.x+p.w/2-W/2));
+}
+function moveAxis(p,ax){
+  if(ax==='x'){ p.x+=p.vx;
+    if(p.vx!==0){ const dir=p.vx>0?1:-1, edge=p.vx>0?p.x+p.w:p.x;
+      for(let yy=p.y+1; yy<p.y+p.h; yy+=6){ if(solidAt(edge,yy)){ if(dir>0) p.x=Math.floor((p.x+p.w)/T)*T-p.w-0.01; else p.x=Math.floor(p.x/T)*T+T+0.01; p.vx=0; break; } }
+      if(solidAt(edge,p.y+p.h-1)){ if(dir>0) p.x=Math.floor((p.x+p.w)/T)*T-p.w-0.01; else p.x=Math.floor(p.x/T)*T+T+0.01; p.vx=0; }
+    }
+    if(p.x<0){ p.x=0; p.vx=0; }
+  } else { p.y+=p.vy; p.onGround=false;
+    if(p.vy>0){ for(let xx=p.x+1; xx<p.x+p.w; xx+=6){ if(solidAt(xx,p.y+p.h)){ p.y=Math.floor((p.y+p.h)/T)*T-p.h-0.01; p.vy=0; p.onGround=true; p.coyote=6; break; } } }
+    else if(p.vy<0){ for(let xx=p.x+1; xx<p.x+p.w; xx+=6){ if(solidAt(xx,p.y)){ const ty=Math.floor(p.y/T); // fejelés
+          if(tiles[ty][Math.floor(xx/T)]==='?'){ tiles[ty][Math.floor(xx/T)]='U'; coins+=1; totalCoins+=1; sfx.coin(); updateHud(); }
+          p.y=ty*T+T+0.01; p.vy=0; break; } } }
+  }
+}
+function aabb(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+
+function hurt(){
+  lives--; sfx.hurt(); updateHud();
+  if(lives<=0) return gameOver();
+  const p=player; p.x=p.spawnX; p.y=p.spawnY; p.vx=0; p.vy=0; p.invuln=90; cam=Math.max(0,p.x-W/2);
+}
+function levelComplete(){ state='level'; sfx.win(); saveBest(level+1);
+  $('lvlDone').textContent=(level+1)+'. pálya kész! 🎉';
+  $('lvlStat').textContent=`Összegyűjtött érme: ${totalCoins} 🪙 · Életek: ${lives} ❤️`;
+  $('btnNext').textContent = level+1<LEVELS.length ? 'Tovább →' : 'Finálé 👑';
+  show('scLevel');
+}
+function gameOver(){ state='over'; $('overStat').textContent=`Eljutottál a ${level+1}. pályáig · ${totalCoins} 🪙`; show('scOver'); }
+function winGame(){ state='win'; saveBest(LEVELS.length); $('winStat').textContent=`Minden pálya teljesítve! Összesen ${totalCoins} 🪙 gyűjtve. Hős vagy! 🧝`; show('scWin'); }
+
+/* ---------- RAJZ ---------- */
+function render(){
+  // ég + felhők (párallax)
+  ctx.fillStyle='#5c94fc'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#ffffff30';
+  for(let i=0;i<6;i++){ const cx=((i*140 - cam*0.3)% (levelW*T+200)); const x=((cx%(W+120))+W+120)%(W+120)-60; cloud(x, 30+ (i%3)*26); }
+  // dombok háttér
+  ctx.fillStyle='#6fb33f'; for(let i=0;i<10;i++){ const x=((i*180 - cam*0.5)% (levelW*T))%( W+200)-100; ctx.beginPath(); ctx.arc(x+100, H-24, 70,Math.PI,0); ctx.fill(); }
+
+  const x0=Math.floor(cam/T), x1=Math.ceil((cam+W)/T);
+  for(let y=0;y<tiles.length;y++) for(let x=x0;x<=x1;x++){ if(x<0||x>=levelW) continue; drawTile(tiles[y][x], x*T-cam, y*T); }
+
+  pickups.forEach(c=>{ if(c.got) return; const s=Math.abs(Math.cos(c.t)); ctx.save(); ctx.translate(c.x-cam+6,c.y+6);
+    ctx.fillStyle='#ffd24a'; ctx.beginPath(); ctx.ellipse(0,0,5*s+1.5,6,0,0,7); ctx.fill();
+    ctx.fillStyle='#b8860b'; ctx.beginPath(); ctx.ellipse(0,0,2*s,3,0,0,7); ctx.fill(); ctx.restore(); });
+
+  if(flag){ ctx.fillStyle='#cfd6e6'; ctx.fillRect(flag.x-cam,flag.y,2,flag.h);
+    ctx.fillStyle='#e8434d'; ctx.beginPath(); ctx.moveTo(flag.x-cam+2,flag.y+2); ctx.lineTo(flag.x-cam+16,flag.y+7); ctx.lineTo(flag.x-cam+2,flag.y+12); ctx.fill();
+    ctx.fillStyle='#8a94ab'; ctx.fillRect(flag.x-cam-2,flag.y+flag.h,6,4); }
+
+  enemies.forEach(en=>{ if(!en.alive) return; drawEnemy(en); });
+  if(player) drawPlayer();
+}
+function cloud(x,y){ ctx.beginPath(); ctx.arc(x,y,12,0,7); ctx.arc(x+14,y+2,15,0,7); ctx.arc(x+30,y,11,0,7); ctx.fill(); }
+function drawTile(ch,x,y){
+  if(ch==='X'){ ctx.fillStyle='#8b5a2b'; ctx.fillRect(x,y,T,T); ctx.fillStyle='#5fbf3f'; ctx.fillRect(x,y,T,5);
+    ctx.fillStyle='#4a9a2f'; ctx.fillRect(x,y+4,T,2); ctx.fillStyle='#7a4a22'; ctx.fillRect(x+2,y+8,3,3); ctx.fillRect(x+9,y+11,3,3); }
+  else if(ch==='B'){ ctx.fillStyle='#c0662e'; ctx.fillRect(x,y,T,T); ctx.strokeStyle='#7a3d18'; ctx.lineWidth=1;
+    ctx.strokeRect(x+0.5,y+0.5,T-1,7); ctx.strokeRect(x+0.5,y+7.5,T-1,8); ctx.beginPath(); ctx.moveTo(x+8,y); ctx.lineTo(x+8,y+8); ctx.moveTo(x+4,y+8); ctx.lineTo(x+4,y+16); ctx.moveTo(x+12,y+8); ctx.lineTo(x+12,y+16); ctx.stroke(); }
+  else if(ch==='?'){ ctx.fillStyle='#e8a92a'; ctx.fillRect(x,y,T,T); ctx.fillStyle='#b8800f'; ctx.fillRect(x,y,T,2); ctx.fillRect(x,y+T-2,T,2);
+    ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui'; ctx.textAlign='center'; ctx.fillText('?',x+8,y+12); ctx.textAlign='left'; }
+  else if(ch==='U'){ ctx.fillStyle='#9a7636'; ctx.fillRect(x,y,T,T); ctx.fillStyle='#6e5226'; ctx.fillRect(x+2,y+2,T-4,T-4); }
+  else if(ch==='='){ ctx.fillStyle='#b5651d'; ctx.fillRect(x,y,T,8); ctx.fillStyle='#8a4a14'; ctx.fillRect(x,y+6,T,2); }
+  else if(ch==='#'){ ctx.fillStyle='#777e95'; ctx.fillRect(x,y,T,T); ctx.fillStyle='#5a6075'; ctx.fillRect(x+1,y+1,T-2,T-2); }
+  else if(ch==='^'){ ctx.fillStyle='#c9ced9'; ctx.beginPath(); ctx.moveTo(x,y+T); ctx.lineTo(x+8,y+4); ctx.lineTo(x+16,y+T); ctx.fill(); ctx.fillStyle='#9aa0ad'; ctx.beginPath(); ctx.moveTo(x+8,y+4); ctx.lineTo(x+16,y+T); ctx.lineTo(x+8,y+T); ctx.fill(); }
+}
+function drawPlayer(){
+  const p=player; if(p.invuln>0 && Math.floor(p.invuln/4)%2) return;
+  const sx=p.x-cam, sy=p.y;
+  const sq=p.squash<0?p.squash:0; const sw=p.w-sq, sh=p.h+sq;
+  const ox=sx-(sw-p.w)/2, oy=sy+(p.h-sh);
+  ctx.save(); ctx.translate(ox+sw/2, oy+sh); ctx.scale(p.face,1);
+  // lábak
+  const step=Math.sin(p.anim)*2;
+  ctx.fillStyle='#3a2f6b'; ctx.fillRect(-sw/2+1, -3, 4, 3+(p.onGround?step:0)); ctx.fillRect(sw/2-5, -3, 4, 3-(p.onGround?step:0));
+  // test
+  ctx.fillStyle='#4fd16a'; roundRect(-sw/2, -sh, sw, sh-3, 3); ctx.fill();
+  // has
+  ctx.fillStyle='#bff3c8'; roundRect(-sw/2+2, -sh+5, sw-4, sh-9, 2); ctx.fill();
+  // fej
+  ctx.fillStyle='#e8c9a8'; ctx.beginPath(); ctx.arc(0,-sh-3,6,0,7); ctx.fill();
+  // sapka (manó)
+  ctx.fillStyle='#e8434d'; ctx.beginPath(); ctx.moveTo(-6,-sh-4); ctx.lineTo(6,-sh-4); ctx.lineTo(3,-sh-12); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(3,-sh-12,1.6,0,7); ctx.fill();
+  // szemek
+  ctx.fillStyle='#222'; ctx.beginPath(); ctx.arc(2.2,-sh-3,1.3,0,7); ctx.fill();
+  ctx.restore();
+}
+function drawEnemy(en){
+  const sx=en.x-cam, sy=en.y, wob=Math.sin(en.t)*1.2;
+  ctx.fillStyle='#9a5bd6'; roundRect(sx, sy+wob, en.w, en.h-wob, 4); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(sx+4,sy+5,2.3,0,7); ctx.arc(sx+en.w-4,sy+5,2.3,0,7); ctx.fill();
+  ctx.fillStyle='#222'; ctx.beginPath(); ctx.arc(sx+4+(en.vx<0?-0.6:0.6),sy+5,1.1,0,7); ctx.arc(sx+en.w-4+(en.vx<0?-0.6:0.6),sy+5,1.1,0,7); ctx.fill();
+  ctx.strokeStyle='#3a1f5c'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(sx+3,sy+10); ctx.lineTo(sx+en.w-3,sy+10); ctx.stroke();
+  ctx.fillStyle='#7a3fb0'; ctx.fillRect(sx+1,sy+en.h-2,3,2); ctx.fillRect(sx+en.w-4,sy+en.h-2,3,2);
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+/* ---------- HUROK ---------- */
+let acc=0, last=0;
+function frame(ts){ requestAnimationFrame(frame);
+  if(!last) last=ts; let dt=(ts-last)/16.67; last=ts; if(dt>3) dt=3; acc+=dt;
+  while(acc>=1){ update(); acc-=1; }
+  render();
+}
+requestAnimationFrame(frame);
+
+function updateHud(){ $('hudLife').textContent='❤️'.repeat(Math.max(0,lives)); $('hudCoin').textContent='🪙 '+totalCoins; $('hudLvl').textContent=(level+1)+'. pálya'; }
+
+/* ---------- KÉPERNYŐK ---------- */
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('show',s.id===id)); }
+function hideScreens(){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show')); }
+function startGame(){ level=0; lives=3; totalCoins=0; loadLevel(0); state='play'; hideScreens(); }
+$('btnStart').onclick=startGame;
+$('btnNext').onclick=()=>{ level++; if(level>=LEVELS.length) return winGame(); loadLevel(level); state='play'; hideScreens(); };
+$('btnRetry').onclick=startGame;
+$('btnAgain').onclick=startGame;
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
