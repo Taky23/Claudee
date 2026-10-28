@@ -64,9 +64,10 @@
     <div class="screen show" id="scTitle">
       <div class="hero-emoji">🧝</div>
       <h1>MANÓ KALANDJA</h1>
-      <p>Fuss, ugrálj, taposd le az ellenfeleket, gyűjtsd az érméket, és érd el a zászlót! 🚩</p>
+      <p>Fuss, ugrálj, taposd le az ellenfeleket, gyűjtsd az érméket, és érd el a zászlót! 🚩 8 pálya vár.</p>
       <button class="btn" id="btnStart">▶ Játék</button>
-      <p class="small">Telefonon: a bal alsó nyilak + jobb alsó UGRÁS.<br>Gépen: ◀ ▶ nyilak és SZÓKÖZ.</p>
+      <p class="small">Power-upok: 🛡️ pajzs (1 találat) · ⭐ csillag (sérthetetlenség) · 👟 dupla ugrás · ❤️ extra élet</p>
+      <p class="small">Telefonon: bal alsó nyilak + jobb alsó UGRÁS.<br>Gépen: ◀ ▶ nyilak és SZÓKÖZ (dupla ugráshoz nyomd kétszer).</p>
     </div>
     <div class="screen" id="scLevel">
       <h2 id="lvlDone">Pálya kész! 🎉</h2>
@@ -99,25 +100,34 @@ const W=320, H=240, T=16;
   Jelek: X=föld  B=tégla  ?=érmés blokk  U=üres  ==emelvény  o=érme  e=ellenfél  P=start  F=zászló  ^=tüske
   A felszín a 11. sor; a talaj a 12–14. sor. */
 const SURF=11;
+// Power-upok: S=pajzs 🛡️  T=csillag ⭐(sérthetetlenség)  W=dupla ugrás 👟  L=extra élet ❤️
 const LEVELDEFS=[
-  { w:58, gaps:[[22,23],[40,42]], start:2, flag:55,
-    enemies:[16,34,50], spikes:[],
-    groundCoins:[8,9,10,28,29,46,47],
+  { w:58, gaps:[[22,23],[40,42]], flag:55,
+    enemies:[16,34,50], groundCoins:[8,9,10,28,29,46,47],
     airCoins:[[12,8],[14,8],[16,8],[35,7],[37,7],[39,7]],
-    blocks:[[30,7,'?'],[32,7,'?']],
-    platforms:[] },
-  { w:68, gaps:[[18,19],[34,35],[48,49],[60,61]], start:2, flag:65,
-    enemies:[10,28,56], spikes:[42],
-    groundCoins:[6,7,22,23,38,39,52,53],
-    airCoins:[[13,8],[14,7],[15,8]],
-    blocks:[[23,7,'?'],[24,7,'?']],
-    platforms:[] },
-  { w:80, gaps:[[14,15],[26,28],[40,42],[54,56],[68,69]], start:2, flag:77,
-    enemies:[8,34,62], spikes:[20,48],
-    groundCoins:[5,6,22,23,36,37,58,59,74],
+    blocks:[[30,7,'?'],[32,7,'?']], powerups:[[25,8,'S']] },
+  { w:68, gaps:[[18,19],[34,35],[48,49],[60,61]], flag:65,
+    enemies:[10,28,56], spikes:[42], groundCoins:[6,7,22,23,38,39,52,53],
+    airCoins:[[13,8],[14,7],[15,8]], blocks:[[23,7,'?'],[24,7,'?']], powerups:[[30,7,'L']] },
+  { w:80, gaps:[[14,15],[26,28],[40,42],[54,56],[68,69]], flag:77,
+    enemies:[8,34,62], spikes:[20,48], groundCoins:[5,6,22,23,36,37,58,59,74],
     airCoins:[[10,7],[11,7],[12,7],[36,6],[37,6],[58,7],[59,7]],
-    blocks:[[22,7,'?'],[37,7,'?'],[58,7,'?']],
-    platforms:[] },
+    blocks:[[22,7,'?'],[37,7,'?'],[58,7,'?']], powerups:[[31,6,'W']] },
+  { w:74, gaps:[[16,17],[30,31],[45,46],[59,61]], flag:71,
+    enemies:[10,24,38,52,66], groundCoins:[6,7,22,36,50,64],
+    airCoins:[[12,7],[13,7],[26,7],[40,7]], blocks:[[24,7,'?'],[52,7,'?']], powerups:[[20,6,'T']] },
+  { w:84, gaps:[[14,16],[26,27],[38,40],[50,51],[62,64],[74,75]], flag:81,
+    enemies:[9,21,33,46,57,70], groundCoins:[6,20,32,48,60,72],
+    airCoins:[[10,7],[11,7],[44,6],[45,6]], blocks:[[20,7,'?'],[57,7,'?']], powerups:[[33,6,'S']] },
+  { w:84, gaps:[[13,14],[24,26],[36,37],[48,50],[60,61],[72,74]], flag:81,
+    enemies:[9,31,55,68], spikes:[20,44,65], groundCoins:[6,30,54],
+    airCoins:[[29,6],[56,7]], blocks:[[30,7,'?']], powerups:[[18,7,'W'],[56,7,'L']] },
+  { w:90, gaps:[[17,18],[35,36],[53,54],[71,72]], flag:87,
+    enemies:[8,26,44,62,80], groundCoins:[5,30,58,84],
+    airCoins:[[13,7],[40,6],[66,7]], blocks:[[30,7,'?'],[58,7,'?']], powerups:[[22,7,'T'],[48,6,'S']] },
+  { w:96, gaps:[[22,24],[40,41],[58,60],[76,77]], flag:93,
+    enemies:[9,32,50,68,86], spikes:[16], groundCoins:[6,36,54,90],
+    airCoins:[[28,6],[62,6]], blocks:[[36,7,'?'],[62,7,'?']], powerups:[[12,7,'W'],[46,6,'T'],[72,7,'L']] },
 ];
 function buildGrid(d){
   const Hn=15, g=Array.from({length:Hn},()=>Array(d.w).fill(' '));
@@ -128,17 +138,19 @@ function buildGrid(d){
   (d.groundCoins||[]).forEach(x=>{ g[SURF][x]='o'; });
   (d.spikes||[]).forEach(x=>{ g[SURF][x]='^'; });
   (d.enemies||[]).forEach(x=>{ g[SURF][x]='e'; });
+  (d.powerups||[]).forEach(([x,y,t])=>{ g[y][x]=t; });
   g[SURF][d.start!=null?d.start:2]='P';
   g[SURF][d.flag]='F';
   return g.map(r=>r.join(''));
 }
 const LEVELS=LEVELDEFS.map(buildGrid);
 const SOLID=new Set(['X','B','?','U','=','#']);
+const POWER={S:['🛡️','#3fc0e8'],T:['⭐','#ffd24a'],W:['👟','#eaeaea'],L:['❤️','#e8434d']};
 
 /* ---------- ÁLLAPOT ---------- */
 let state='title', level=0, lives=3, coins=0, totalCoins=0;
 let tiles=[], levelW=0, cam=0;
-let player, enemies=[], pickups=[], flag=null, deco=[];
+let player, enemies=[], pickups=[], powerups=[], flag=null, deco=[];
 const SAVE='ugro-v1';
 function bestLevel(){ try{ return +localStorage.getItem(SAVE)||0; }catch(e){ return 0; } }
 function saveBest(l){ try{ if(l>bestLevel()) localStorage.setItem(SAVE,l); }catch(e){} }
@@ -178,24 +190,26 @@ function beep(freq,dur,type,vol){
 }
 const sfx={ jump:()=>beep(520,0.14,'square'), coin:()=>{beep(880,0.07,'square');setTimeout(()=>beep(1320,0.1,'square'),70);},
   stomp:()=>beep(200,0.12,'sawtooth',0.08), hurt:()=>{beep(300,0.2,'sawtooth',0.08);setTimeout(()=>beep(140,0.25,'sawtooth',0.08),120);},
-  win:()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'square'),i*110));} };
+  win:()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'square'),i*110));},
+  power:()=>{[660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,0.09,'square'),i*55));} };
 
 /* ---------- PÁLYA BETÖLTÉS ---------- */
 function loadLevel(n){
   const raw=LEVELS[n]; levelW=raw[0].length;
   tiles=raw.map(r=>r.split(''));
-  enemies=[]; pickups=[]; flag=null; deco=[];
+  enemies=[]; pickups=[]; powerups=[]; flag=null; deco=[];
   for(let y=0;y<tiles.length;y++) for(let x=0;x<tiles[y].length;x++){
     const ch=tiles[y][x];
     if(ch==='P'){ player=mkPlayer(x*T, y*T); tiles[y][x]=' '; }
     else if(ch==='e'){ enemies.push(mkEnemy(x*T, y*T)); tiles[y][x]=' '; }
     else if(ch==='o'){ pickups.push({x:x*T+2,y:y*T+2,w:12,h:12,got:false,t:Math.random()*6}); tiles[y][x]=' '; }
+    else if(POWER[ch]){ powerups.push({x:x*T,y:y*T,w:16,h:16,type:ch,got:false,t:Math.random()*6}); tiles[y][x]=' '; }
     else if(ch==='F'){ flag={x:x*T+6,y:y*T,h:T*3}; tiles[y][x]=' '; }
   }
   if(!player) player=mkPlayer(T, (tiles.length-3)*T);
   coins=0; cam=0; updateHud();
 }
-function mkPlayer(x,y){ return {x,y,w:12,h:14,vx:0,vy:0,onGround:false,face:1,anim:0,coyote:0,buffer:0,squash:0,invuln:0,alive:true,spawnX:x,spawnY:y}; }
+function mkPlayer(x,y){ return {x,y,w:12,h:14,vx:0,vy:0,onGround:false,face:1,anim:0,coyote:0,buffer:0,squash:0,invuln:0,alive:true,spawnX:x,spawnY:y,shield:false,star:0,doubleJump:false,jumps:1}; }
 function mkEnemy(x,y){ return {x:x+2,y:y+2,w:12,h:12,vx:-0.45,alive:true,t:Math.random()*6}; }
 
 function solidAt(px,py){ const tx=Math.floor(px/T), ty=Math.floor(py/T);
@@ -218,9 +232,15 @@ function update(){
   if(input.jumpEdge){ p.buffer=8; input.jumpEdge=false; }
   if(p.buffer>0) p.buffer--;
   if(p.coyote>0) p.coyote--;
-  if(p.buffer>0 && (p.onGround||p.coyote>0)){ p.vy=-JUMP; p.onGround=false; p.coyote=0; p.buffer=0; p.squash=-6; sfx.jump(); }
-  if(!input.jump && p.vy<-JUMP_MIN) p.vy=-JUMP_MIN; // változó magasságú ugrás (min. használható koppintás)
+  if(p.onGround) p.jumps=p.doubleJump?2:1;
+  const canGround=p.onGround||p.coyote>0;
+  if(p.buffer>0 && (canGround || (p.doubleJump && p.jumps>0))){
+    p.vy=-JUMP; p.onGround=false; p.coyote=0; p.buffer=0; p.squash=-6; sfx.jump();
+    p.jumps = canGround ? (p.doubleJump?2:1)-1 : p.jumps-1;
+  }
+  if(!input.jump && p.vy<-JUMP_MIN) p.vy=-JUMP_MIN; // változó magasságú ugrás
   p.vy+=GRAV; if(p.vy>9) p.vy=9;
+  if(p.star>0){ p.star--; if(p.star===0) updateHud(); }
 
   moveAxis(p,'x'); moveAxis(p,'y');
 
@@ -228,25 +248,30 @@ function update(){
   if(p.squash<0) p.squash+=1;
   if(p.invuln>0) p.invuln--;
 
-  // leesés / tüske
-  if(p.y>tiles.length*T+20 || (p.invuln<=0 && (spikeAt(p.x+2,p.y+p.h)||spikeAt(p.x+p.w-2,p.y+p.h)))) return hurt();
+  // leesés (mindig életbe kerül) / tüske (pajzs/csillag véd)
+  if(p.y>tiles.length*T+20) return loseLife();
+  if(p.invuln<=0 && p.star<=0 && (spikeAt(p.x+2,p.y+p.h)||spikeAt(p.x+p.w-2,p.y+p.h))) return hurt();
 
   // ellenfelek
   enemies.forEach(en=>{ if(!en.alive) return; en.t+=0.1;
     en.x+=en.vx;
     // forduljon falnál / szakadéknál
-    const ahead=en.x+(en.vx<0?-1:en.w+1);
     const footX=en.x+(en.vx<0?-1:en.w+1);
     if(solidAt(en.vx<0?en.x-1:en.x+en.w+1, en.y+en.h/2)) en.vx*=-1;
     else if(!solidAt(footX, en.y+en.h+2)) en.vx*=-1;
     // ütközés a játékossal
-    if(p.invuln<=0 && aabb(p,en)){
-      if(p.vy>0 && p.y+p.h-p.vy <= en.y+4){ en.alive=false; p.vy=-JUMP*0.6; p.squash=-5; sfx.stomp(); coins+=1; totalCoins+=1; updateHud(); }
-      else hurt();
+    if(aabb(p,en)){
+      if(p.star>0){ en.alive=false; sfx.stomp(); coins+=1; totalCoins+=1; updateHud(); }
+      else if(p.invuln<=0){
+        if(p.vy>0 && p.y+p.h-p.vy <= en.y+4){ en.alive=false; p.vy=-JUMP*0.6; p.squash=-5; sfx.stomp(); coins+=1; totalCoins+=1; updateHud(); }
+        else hurt();
+      }
     }
   });
   // érmék
   pickups.forEach(c=>{ if(c.got) return; c.t+=0.12; if(aabb(p,c)){ c.got=true; coins+=1; totalCoins+=1; sfx.coin(); updateHud(); } });
+  // power-upok
+  powerups.forEach(pu=>{ if(pu.got) return; pu.t+=0.1; if(aabb(p,pu)){ pu.got=true; applyPower(pu.type); } });
   // zászló
   if(flag && p.x+p.w>flag.x && p.x<flag.x+10 && p.y+p.h>flag.y){ return levelComplete(); }
 
@@ -269,10 +294,23 @@ function moveAxis(p,ax){
 }
 function aabb(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
 
-function hurt(){
+function loseLife(){
   lives--; sfx.hurt(); updateHud();
   if(lives<=0) return gameOver();
-  const p=player; p.x=p.spawnX; p.y=p.spawnY; p.vx=0; p.vy=0; p.invuln=90; cam=Math.max(0,p.x-W/2);
+  const p=player; p.x=p.spawnX; p.y=p.spawnY; p.vx=0; p.vy=0; p.invuln=90; p.star=0; cam=Math.max(0,p.x-W/2);
+}
+function hurt(){
+  const p=player; if(p.star>0||p.invuln>0) return;
+  if(p.shield){ p.shield=false; p.invuln=70; p.vy=-3.5; p.vx=-p.face*2; sfx.hurt(); updateHud(); return; } // pajzs elnyel egy találatot
+  loseLife();
+}
+function applyPower(t){
+  const p=player;
+  if(t==='S') p.shield=true;
+  else if(t==='T') p.star=8*60;
+  else if(t==='W') p.doubleJump=true;
+  else if(t==='L') lives=Math.min(99,lives+1);
+  sfx.power(); updateHud();
 }
 function levelComplete(){ state='level'; sfx.win(); saveBest(level+1);
   $('lvlDone').textContent=(level+1)+'. pálya kész! 🎉';
@@ -303,9 +341,28 @@ function render(){
     ctx.fillStyle='#e8434d'; ctx.beginPath(); ctx.moveTo(flag.x-cam+2,flag.y+2); ctx.lineTo(flag.x-cam+16,flag.y+7); ctx.lineTo(flag.x-cam+2,flag.y+12); ctx.fill();
     ctx.fillStyle='#8a94ab'; ctx.fillRect(flag.x-cam-2,flag.y+flag.h,6,4); }
 
+  // power-up tárgyak
+  powerups.forEach(pu=>{ if(pu.got) return; const by=Math.sin(pu.t)*2.2; drawPower(pu.type, pu.x-cam, pu.y+by); });
+
   enemies.forEach(en=>{ if(!en.alive) return; drawEnemy(en); });
-  if(player) drawPlayer();
+  if(player){ drawAura(); drawPlayer(); }
 }
+function drawPower(t,x,y){
+  const col=(POWER[t]||['',''])[1], em=(POWER[t]||['',''])[0];
+  ctx.save(); ctx.translate(x+8,y+8);
+  ctx.fillStyle=col; ctx.globalAlpha=0.25; ctx.beginPath(); ctx.arc(0,0,10,0,7); ctx.fill(); ctx.globalAlpha=1;
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(0,0,7,0,7); ctx.fill();
+  ctx.fillStyle='#10131f'; ctx.font='9px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(em,0,0.5);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.restore();
+}
+function drawAura(){
+  const p=player, cx=p.x-cam+p.w/2, cy=p.y+p.h/2;
+  if(p.star>0){ const hue=(perf()*0.4)%360; ctx.strokeStyle=`hsl(${hue},90%,60%)`; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,12,0,7); ctx.stroke();
+    // csillám
+    for(let i=0;i<3;i++){ const a=perf()*0.05+i*2.1; ctx.fillStyle=`hsl(${(hue+i*120)%360},90%,70%)`; ctx.beginPath(); ctx.arc(cx+Math.cos(a)*13,cy+Math.sin(a)*13,1.5,0,7); ctx.fill(); } }
+  if(p.shield){ ctx.strokeStyle='#5fe0ff'; ctx.globalAlpha=0.9; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,11,0,7); ctx.stroke(); ctx.globalAlpha=1; }
+}
+function perf(){ return performance.now()/10; }
 function cloud(x,y){ ctx.beginPath(); ctx.arc(x,y,12,0,7); ctx.arc(x+14,y+2,15,0,7); ctx.arc(x+30,y,11,0,7); ctx.fill(); }
 function drawTile(ch,x,y){
   if(ch==='X'){ ctx.fillStyle='#8b5a2b'; ctx.fillRect(x,y,T,T); ctx.fillStyle='#5fbf3f'; ctx.fillRect(x,y,T,5);
@@ -360,7 +417,10 @@ function frame(ts){ requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
-function updateHud(){ $('hudLife').textContent='❤️'.repeat(Math.max(0,lives)); $('hudCoin').textContent='🪙 '+totalCoins; $('hudLvl').textContent=(level+1)+'. pálya'; }
+function updateHud(){ $('hudLife').textContent='❤️'.repeat(Math.max(0,Math.min(6,lives)))+(lives>6?'×'+lives:'');
+  $('hudCoin').textContent='🪙 '+totalCoins;
+  let pw=''; if(player){ if(player.shield) pw+=' 🛡️'; if(player.star>0) pw+=' ⭐'; if(player.doubleJump) pw+=' 👟'; }
+  $('hudLvl').textContent=(level+1)+'/'+LEVELS.length+pw; }
 
 /* ---------- KÉPERNYŐK ---------- */
 function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('show',s.id===id)); }

@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.ugro",
+  "appName": "Manó kalandja",
+  "webDir": "www",
+  "backgroundColor": "#0c1020ff",
+  "android": {
+    "backgroundColor": "#0c1020ff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/ugro/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}
