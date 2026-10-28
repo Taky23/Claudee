@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#5c94fc"/>
+  <!-- felhő -->
+  <g fill="#ffffff55"><circle cx="120" cy="120" r="30"/><circle cx="160" cy="128" r="38"/><circle cx="205" cy="120" r="28"/></g>
+  <!-- talaj -->
+  <rect x="0" y="392" width="512" height="120" fill="#8b5a2b"/>
+  <rect x="0" y="392" width="512" height="26" fill="#5fbf3f"/>
+  <!-- manó hős -->
+  <g transform="translate(256 300)">
+    <rect x="-34" y="18" width="16" height="26" rx="4" fill="#3a2f6b"/>
+    <rect x="18" y="18" width="16" height="26" rx="4" fill="#3a2f6b"/>
+    <rect x="-40" y="-40" width="80" height="80" rx="24" fill="#4fd16a"/>
+    <rect x="-26" y="-18" width="52" height="52" rx="16" fill="#bff3c8"/>
+    <circle cx="0" cy="-66" r="34" fill="#e8c9a8"/>
+    <path d="M-34 -70 L34 -70 L14 -128 Z" fill="#e8434d"/>
+    <circle cx="14" cy="-128" r="10" fill="#fff"/>
+    <circle cx="12" cy="-64" r="7" fill="#222"/>
+    <circle cx="-14" cy="-64" r="7" fill="#222"/>
+  </g>
+  <!-- érme -->
+  <g transform="translate(400 170)"><circle r="34" fill="#ffd24a" stroke="#b8860b" stroke-width="7"/><circle r="12" fill="#f0b320"/></g>
+</svg>
