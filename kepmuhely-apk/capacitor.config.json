@@ -1,0 +1,15 @@
+{
+  "appId": "hu.taky.kepmuhely",
+  "appName": "Képműhely",
+  "webDir": "www",
+  "backgroundColor": "#0e1116ff",
+  "android": {
+    "backgroundColor": "#0e1116ff",
+    "allowMixedContent": false
+  },
+  "server": {
+    "url": "https://taky23.github.io/Claudee/kepmuhely/",
+    "cleartext": false,
+    "errorPath": "error.html"
+  }
+}

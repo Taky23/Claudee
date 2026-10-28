@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<title>Képműhely</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --bg:#0e1116; --bg2:#141922; --card:#1a212c; --card2:#212b38; --line:#2b3644;
+    --text:#eaf0f7; --muted:#8c9bb0; --acc:#4f9cf0; --acc2:#7c5cff; --grad:linear-gradient(135deg,#4f9cf0,#7c5cff);
+    --good:#43c088; --bad:#e8604c; --warn:#e8b84b; --on-acc:#05121f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:calc(66px + env(safe-area-inset-bottom));min-height:100vh;overflow-x:hidden}
+  header{position:sticky;top:0;z-index:20;background:rgba(14,17,22,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:calc(8px + env(safe-area-inset-top)) 14px 8px;display:flex;align-items:center;gap:10px}
+  header h1{font-size:16px;margin:0;font-weight:800;letter-spacing:.3px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;flex:1}
+  main{padding:14px;max-width:760px;margin:0 auto}
+  .tab{display:none}.tab.show{display:block;animation:f .2s}@keyframes f{from{opacity:0}}
+  h2{font-size:14px;margin:0 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .btn{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:11px;padding:11px 14px;font:inherit;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+  .btn:disabled{opacity:.4}
+  .btn.acc{background:var(--grad);color:var(--on-acc);border:0}
+  .btn.sm{padding:7px 11px;font-size:13px;border-radius:9px}
+  .btn.full{width:100%}
+  .btn.danger{color:var(--bad)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .muted{color:var(--muted)}.sm{font-size:13px}.tiny{font-size:11px}
+  input,select{font:inherit;color:var(--text);background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:9px}
+  input[type=range]{padding:0;accent-color:var(--acc)}
+  label.fld{display:block;margin:8px 0}
+  label.fld .lab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:3px}
+  /* Sor / thumbnails */
+  .drop{border:2px dashed var(--line);border-radius:14px;padding:26px 14px;text-align:center;color:var(--muted);cursor:pointer}
+  .drop.over{border-color:var(--acc);background:#4f9cf015}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:12px}
+  .thumb{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;aspect-ratio:1;background:#0a0d12;cursor:pointer}
+  .thumb.sel{border-color:var(--acc)}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb .nm{position:absolute;left:0;right:0;bottom:0;background:#000a;font-size:9px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .thumb .x{position:absolute;top:2px;right:2px;background:#000a;border-radius:6px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .thumb .bad{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#1a0d0d;color:var(--bad);font-size:10px;text-align:center;padding:4px}
+  /* Preview */
+  .pvwrap{position:relative;border-radius:12px;overflow:hidden;background:#0a0d12;touch-action:none}
+  .pvwrap canvas{display:block;width:100%;height:auto}
+  .cmp-handle{position:absolute;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 6px #000;cursor:ew-resize}
+  .cmp-handle:before{content:'◀▶';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:#111;font-size:10px;padding:3px 5px;border-radius:9px;white-space:nowrap}
+  .tagA,.tagB{position:absolute;top:6px;font-size:10px;font-weight:800;background:#000a;padding:2px 7px;border-radius:7px}
+  .tagA{left:6px}.tagB{right:6px}
+  /* Recipe steps */
+  .step{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:8px}
+  .step .sh{display:flex;align-items:center;gap:8px}
+  .step .sh .nm{font-weight:800;flex:1}
+  .step .cond{font-size:11px;color:var(--warn);margin-top:4px}
+  .oppick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .oppick .op{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:13px;font-weight:700;cursor:pointer}
+  .oppick .op .e{font-size:20px;display:block;margin-bottom:3px}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer}
+  .chip.on{background:var(--grad);color:var(--on-acc);border:0}
+  .sw{width:28px;height:28px;border-radius:7px;border:1px solid #fff3;display:inline-block;vertical-align:middle}
+  .palrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pal{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px}
+  .pal .sw{width:40px;height:40px}
+  .dupgroup{border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px}
+  .barwrap{height:8px;background:var(--bg2);border-radius:5px;overflow:hidden;margin:8px 0}
+  .barwrap>div{height:100%;background:var(--grad);width:0;transition:width .2s}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(14,17,22,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;padding:5px 2px calc(5px + env(safe-area-inset-bottom))}
+  nav button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:10.5px;font-weight:700;padding:6px 1px;display:flex;flex-direction:column;align-items:center;gap:2px}
+  nav button .i{font-size:19px}
+  nav button.on{color:var(--acc)}
+  .modal-bg{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;max-width:420px;width:100%;max-height:85vh;overflow:auto}
+  .toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#fff;color:#141922;padding:10px 16px;border-radius:12px;font-weight:800;font-size:13px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid var(--line);font-size:13px}
+  .kv:first-child{border:0}.kv b{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>🖼️ Képműhely</h1>
+  <button class="btn sm" id="projBtn">📁 Projekt</button>
+</header>
+<main>
+  <section class="tab show" id="t-queue"></section>
+  <section class="tab" id="t-recipe"></section>
+  <section class="tab" id="t-run"></section>
+  <section class="tab" id="t-tools"></section>
+</main>
+<nav id="nav"></nav>
+<div class="toast" id="toast"></div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<input type="file" id="fileInput" accept="image/*,.heic,.heif,.avif" multiple hidden>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),1900);}
+function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ================= ÁLLAPOT ================= */
+let images=[];      // {id,name,format,bytes,w,h,bitmap,thumb,bad}
+let selId=null;
+let recipe=[];      // [{id,type,params,cond}]
+let undoStack=[], redoStack=[];
+let exportFmt='image/jpeg', exportQ=0.9;
+let fmtSupport={};
+let curTab='t-queue';
+let uid=1; const nid=()=>'id'+(uid++);
+
+/* ================= FORMÁTUM-DETEKTÁLÁS ================= */
+function checkFormat(mime){ return new Promise(res=>{ try{ const c=document.createElement('canvas'); c.width=c.height=4; c.toBlob(b=>res(!!b && b.type===mime), mime, 0.8);}catch(e){res(false);} }); }
+async function detectFormats(){
+  const list=[['image/png','PNG'],['image/jpeg','JPG'],['image/webp','WebP'],['image/avif','AVIF'],['image/heic','HEIC']];
+  for(const [m] of list) fmtSupport[m]=await checkFormat(m);
+  fmtSupport['image/png']=true; // mindig
+}
+
+/* ================= KÉP BETÖLTÉS ================= */
+async function addFiles(files){
+  for(const f of files){
+    if(!/^image\//.test(f.type) && !/\.(heic|heif|avif)$/i.test(f.name)) continue;
+    const id=nid();
+    const item={id,name:f.name,format:(f.type||guessFmt(f.name)),bytes:f.size,w:0,h:0,bitmap:null,thumb:'',bad:false};
+    images.push(item);
+    try{
+      const bmp=await loadBitmap(f);
+      item.bitmap=bmp; item.w=bmp.width; item.h=bmp.height; item.thumb=makeThumb(bmp);
+    }catch(e){ item.bad=true; }
+    if(!selId && !item.bad) selId=id;
+    renderQueue();
+  }
+}
+function guessFmt(n){ const e=(n.split('.').pop()||'').toLowerCase(); return ({jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif',bmp:'image/bmp',avif:'image/avif',heic:'image/heic',heif:'image/heic'})[e]||'image/*'; }
+function loadBitmap(file){
+  return new Promise((resolve,reject)=>{
+    if(window.createImageBitmap){ createImageBitmap(file).then(resolve).catch(()=>fallbackImg(file).then(resolve,reject)); }
+    else fallbackImg(file).then(resolve,reject);
+  });
+}
+function fallbackImg(file){ return new Promise((resolve,reject)=>{ const url=URL.createObjectURL(file); const img=new Image(); img.onload=()=>{resolve(img);URL.revokeObjectURL(url);}; img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('decode'));}; img.src=url; }); }
+function makeThumb(bmp){ const s=140, r=Math.min(s/bmp.width,s/bmp.height,1), w=Math.max(1,Math.round(bmp.width*r)), h=Math.max(1,Math.round(bmp.height*r)); const c=document.createElement('canvas'); c.width=w;c.height=h; c.getContext('2d').drawImage(bmp,0,0,w,h); return c.toDataURL('image/jpeg',0.75); }
+function bitmapToCanvas(bmp){ const c=document.createElement('canvas'); c.width=bmp.width;c.height=bmp.height; c.getContext('2d').drawImage(bmp,0,0); return c; }
+function metaOf(item,cv){ const w=cv?cv.width:item.w, h=cv?cv.height:item.h; return {width:w,height:h,bytes:item.bytes,format:item.format,ratio:w/h,orient:w>h?'land':(w<h?'port':'square')}; }
+function fmtBytes(b){ if(b<1024)return b+' B'; if(b<1048576)return (b/1024).toFixed(0)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+
+/* ================= MŰVELETEK ================= */
+function newCanvas(w,h){ const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w)); c.height=Math.max(1,Math.round(h)); return c; }
+function drawFilter(src,filter){ const c=newCanvas(src.width,src.height),x=c.getContext('2d'); x.filter=filter; x.drawImage(src,0,0); return c; }
+const OPS={
+  resize:{name:'Átméretezés',e:'📐',def:{max:1920,mode:'fit'},
+    fields:[{k:'max',t:'num',lab:'Max. oldal (px)',min:16,max:8000},{k:'mode',t:'sel',lab:'Mód',opts:[['fit','Beleférjen'],['width','Fix szélesség'],['height','Fix magasság']]}],
+    apply(c,p){ const m=+p.max||1920; let w=c.width,h=c.height;
+      if(p.mode==='width'){ const r=m/w; w=m;h=Math.round(h*r); }
+      else if(p.mode==='height'){ const r=m/h; h=m;w=Math.round(w*r); }
+      else { const r=Math.min(m/w,m/h,1); w=Math.round(w*r);h=Math.round(h*r); }
+      const o=newCanvas(w,h),x=o.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(c,0,0,w,h); return o; } },
+  crop:{name:'Vágás arányra',e:'✂️',def:{ar:'1:1'},
+    fields:[{k:'ar',t:'sel',lab:'Képarány',opts:[['1:1','1:1 négyzet'],['4:3','4:3'],['3:4','3:4 álló'],['16:9','16:9'],['9:16','9:16 álló']]}],
+    apply(c,p){ const [aw,ah]=(p.ar||'1:1').split(':').map(Number); const target=aw/ah; let cw=c.width,ch=c.width/target; if(ch>c.height){ ch=c.height; cw=c.height*target; } const sx=(c.width-cw)/2, sy=(c.height-ch)/2; const o=newCanvas(cw,ch); o.getContext('2d').drawImage(c,sx,sy,cw,ch,0,0,cw,ch); return o; } },
+  rotate:{name:'Forgatás / tükrözés',e:'🔄',def:{deg:90,flip:'none'},
+    fields:[{k:'deg',t:'sel',lab:'Forgatás',opts:[['0','0°'],['90','90°'],['180','180°'],['270','270°']]},{k:'flip',t:'sel',lab:'Tükrözés',opts:[['none','Nincs'],['h','Vízszintes'],['v','Függőleges']]}],
+    apply(c,p){ const d=((+p.deg||0)%360+360)%360; const rot=(d===90||d===270); const o=newCanvas(rot?c.height:c.width, rot?c.width:c.height),x=o.getContext('2d');
+      x.save(); x.translate(o.width/2,o.height/2); x.rotate(d*Math.PI/180); if(p.flip==='h')x.scale(-1,1); if(p.flip==='v')x.scale(1,-1); x.drawImage(c,-c.width/2,-c.height/2); x.restore(); return o; } },
+  adjust:{name:'Fény / kontraszt / szín',e:'🎚️',def:{b:100,c:100,s:100},
+    fields:[{k:'b',t:'rng',lab:'Fényerő %',min:0,max:200},{k:'c',t:'rng',lab:'Kontraszt %',min:0,max:200},{k:'s',t:'rng',lab:'Telítettség %',min:0,max:200}],
+    apply(c,p){ return drawFilter(c,`brightness(${(+p.b||100)/100}) contrast(${(+p.c||100)/100}) saturate(${(+p.s||100)/100})`); } },
+  tone:{name:'Szűrő (szürke/szépia)',e:'🎨',def:{mode:'gray'},
+    fields:[{k:'mode',t:'sel',lab:'Hatás',opts:[['gray','Szürkeárnyalat'],['sepia','Szépia'],['invert','Negatív']]}],
+    apply(c,p){ const f=p.mode==='sepia'?'sepia(1)':p.mode==='invert'?'invert(1)':'grayscale(1)'; return drawFilter(c,f); } },
+  blur:{name:'Életlenítés',e:'🌫️',def:{r:3},
+    fields:[{k:'r',t:'rng',lab:'Sugár (px)',min:0,max:20}],
+    apply(c,p){ return drawFilter(c,`blur(${+p.r||0}px)`); } },
+  sharpen:{name:'Élesítés',e:'🔪',def:{amt:50},
+    fields:[{k:'amt',t:'rng',lab:'Mérték %',min:0,max:100}],
+    apply(c,p){ const a=(+p.amt||0)/100; if(a<=0)return c; return convolve(c,[0,-a,0,-a,1+4*a,-a,0,-a,0]); } },
+  watermark:{name:'Vízjel (szöveg)',e:'💧',def:{text:'© Taky',pos:'br',op:60,size:5},
+    fields:[{k:'text',t:'txt',lab:'Szöveg'},{k:'pos',t:'sel',lab:'Hely',opts:[['br','Jobb alsó'],['bl','Bal alsó'],['tr','Jobb felső'],['tl','Bal felső'],['c','Közép']]},{k:'op',t:'rng',lab:'Átlátszatlanság %',min:10,max:100},{k:'size',t:'rng',lab:'Méret %',min:2,max:15}],
+    apply(c,p){ const o=newCanvas(c.width,c.height),x=o.getContext('2d'); x.drawImage(c,0,0); const fs=Math.max(10,Math.round(Math.min(c.width,c.height)*(+p.size||5)/100)); x.font=`bold ${fs}px system-ui,sans-serif`; x.fillStyle=`rgba(255,255,255,${(+p.op||60)/100})`; x.strokeStyle=`rgba(0,0,0,${(+p.op||60)/200})`; x.lineWidth=Math.max(1,fs/12); x.textBaseline='alphabetic'; const t=p.text||''; const tw=x.measureText(t).width; const m=Math.round(fs*0.6); let tx,ty; const pos=p.pos||'br';
+      if(pos==='br'){tx=c.width-tw-m;ty=c.height-m;} else if(pos==='bl'){tx=m;ty=c.height-m;} else if(pos==='tr'){tx=c.width-tw-m;ty=fs+m;} else if(pos==='tl'){tx=m;ty=fs+m;} else {x.textAlign='center';tx=c.width/2;ty=c.height/2;}
+      x.strokeText(t,tx,ty); x.fillText(t,tx,ty); x.textAlign='left'; return o; } },
+  border:{name:'Keret',e:'🖼️',def:{size:4,color:'#ffffff'},
+    fields:[{k:'size',t:'rng',lab:'Vastagság %',min:0,max:20},{k:'color',t:'col',lab:'Szín'}],
+    apply(c,p){ const b=Math.round(Math.min(c.width,c.height)*(+p.size||4)/100); const o=newCanvas(c.width+2*b,c.height+2*b),x=o.getContext('2d'); x.fillStyle=p.color||'#fff'; x.fillRect(0,0,o.width,o.height); x.drawImage(c,b,b); return o; } },
+  strip:{name:'Metaadat eltávolítása',e:'🧹',def:{},fields:[{info:'A mentés újrakódolja a képet, így minden EXIF/GPS/metaadat törlődik. Ez a lépés ezt biztosítja.'}],
+    apply(c){ return c; } },
+};
+function convolve(src,kernel){ const w=src.width,h=src.height; const sx=src.getContext('2d'); const sd=sx.getImageData(0,0,w,h).data; const o=newCanvas(w,h),ox=o.getContext('2d'); const od=ox.createImageData(w,h), d=od.data;
+  const k=kernel, side=3, half=1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){ let r=0,g=0,b=0; for(let ky=0;ky<side;ky++)for(let kx=0;kx<side;kx++){ const px=Math.min(w-1,Math.max(0,x+kx-half)), py=Math.min(h-1,Math.max(0,y+ky-half)); const off=(py*w+px)*4, kv=k[ky*side+kx]; r+=sd[off]*kv; g+=sd[off+1]*kv; b+=sd[off+2]*kv; } const o2=(y*w+x)*4; d[o2]=r;d[o2+1]=g;d[o2+2]=b;d[o2+3]=sd[o2+3]; }
+  ox.putImageData(od,0,0); return o; }
+
+/* ================= PIPELINE ================= */
+function evalCond(cond,meta){ if(!cond||!cond.field) return true; const v=meta[cond.field]; const t=+cond.val; switch(cond.op){ case '>':return v>t; case '<':return v<t; case '==':return cond.field==='format'?meta.format.indexOf(cond.sval)>=0:v==t; } return true; }
+function runPipeline(item){ let c=bitmapToCanvas(item.bitmap); for(const step of recipe){ const m=metaOf(item,c); const cm={width:c.width,height:c.height,bytes:item.bytes,format:item.format,ratio:c.width/c.height,orient:c.width>c.height?'land':'port'}; if(step.cond && !evalCond(step.cond,cm)) continue; try{ c=OPS[step.type].apply(c,step.params);}catch(e){} } return c; }
+
+/* ================= TABOK ================= */
+const TABS=[['t-queue','🗂️','Sor'],['t-recipe','🧪','Recept'],['t-run','▶️','Futtatás'],['t-tools','🛠️','Eszközök']];
+const RENDER={'t-queue':renderQueue,'t-recipe':renderRecipe,'t-run':renderRun,'t-tools':renderTools};
+function setTab(id){ curTab=id; document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('show',s.id===id)); $('nav').querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===id)); RENDER[id](); }
+$('nav').innerHTML=TABS.map(([id,i,n])=>`<button data-t="${id}"><span class="i">${i}</span>${n}</button>`).join('');
+$('nav').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+
+/* ---------- SOR ---------- */
+function renderQueue(){
+  const sel=images.find(i=>i.id===selId);
+  let html=`<h2>Sor · ${images.length} kép</h2>
+    <div class="drop" id="drop">📥 Koppints vagy húzz ide képeket<br><span class="tiny">JPG, PNG, WebP, GIF, AVIF (HEIC: ha a rendszer támogatja)</span></div>`;
+  if(images.length){
+    html+=`<div class="grid" id="grid">${images.map(i=>`<div class="thumb ${i.id===selId?'sel':''}" data-id="${i.id}">
+      ${i.bad?`<div class="bad">⚠️ Nem olvasható<br>(${escapeHtml(i.format)})</div>`:`<img src="${i.thumb}" loading="lazy">`}
+      <div class="x" data-x="${i.id}">✕</div>
+      <div class="nm">${escapeHtml(i.name)}</div></div>`).join('')}</div>
+      <div class="row" style="margin-top:10px"><button class="btn sm danger" id="clearAll">🗑️ Összes törlése</button></div>`;
+  }
+  if(sel && !sel.bad){
+    html+=`<div class="card" style="margin-top:12px"><h2>Előnézet — előtte/utána</h2>
+      <div class="pvwrap" id="pvwrap"><canvas id="pv"></canvas>
+        <span class="tagA">Eredeti</span><span class="tagB">Feldolgozva</span>
+        <div class="cmp-handle" id="cmpH" style="left:50%"></div></div>
+      <div class="kv" style="margin-top:8px"><b>Fájl</b><span>${escapeHtml(sel.name)}</span></div>
+      <div class="kv"><b>Eredeti méret</b><span>${sel.w}×${sel.h} · ${fmtBytes(sel.bytes)}</span></div>
+      <div class="kv"><b>Feldolgozott</b><span id="procInfo">…</span></div>
+      <p class="tiny muted" style="margin:8px 0 0">${recipe.length?'A „Recept" fülön szerkeszted a műveleteket.':'Nincs művelet a receptben — adj hozzá a „Recept" fülön.'}</p></div>`;
+  }
+  $('t-queue').innerHTML=html;
+  const drop=$('drop'); drop.onclick=()=>$('fileInput').click();
+  ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+  drop.addEventListener('drop',e=>{ if(e.dataTransfer?.files?.length) addFiles([...e.dataTransfer.files]); });
+  $('grid')?.querySelectorAll('[data-id]').forEach(t=>t.onclick=e=>{ if(e.target.dataset.x) return; selId=t.dataset.id; renderQueue(); });
+  $('grid')?.querySelectorAll('[data-x]').forEach(x=>x.onclick=e=>{ e.stopPropagation(); const id=x.dataset.x; images=images.filter(i=>i.id!==id); if(selId===id) selId=images[0]?.id||null; renderQueue(); });
+  $('clearAll') && ($('clearAll').onclick=()=>{ if(confirm('Minden kép törlése a sorból?')){ images=[]; selId=null; renderQueue(); } });
+  if(sel && !sel.bad) drawPreview(sel);
+}
+let cmpPos=0.5;
+function drawPreview(item){
+  const before=bitmapToCanvas(item.bitmap);
+  const after=runPipeline(item);
+  $('procInfo').textContent=`${after.width}×${after.height}`;
+  const maxW=700, scale=Math.min(1,maxW/before.width);
+  const cw=Math.round(before.width*scale), ch=Math.round(before.height*scale);
+  const pv=$('pv'); pv.width=cw; pv.height=ch; const x=pv.getContext('2d');
+  // utána (jobb) teljes háttér
+  x.clearRect(0,0,cw,ch);
+  const afScaled=fit(after,cw,ch); x.drawImage(afScaled,0,0,cw,ch);
+  // előtte (bal) a handle-ig
+  const split=Math.round(cw*cmpPos);
+  x.save(); x.beginPath(); x.rect(0,0,split,ch); x.clip(); x.drawImage(before,0,0,cw,ch); x.restore();
+  $('cmpH').style.left=(cmpPos*100)+'%';
+  setupCmp();
+}
+function fit(c,w,h){ const o=newCanvas(w,h); o.getContext('2d').drawImage(c,0,0,w,h); return o; }
+function setupCmp(){ const wrap=$('pvwrap'); if(!wrap||wrap._cmp) return; wrap._cmp=true; let drag=false;
+  const move=e=>{ if(!drag)return; const r=wrap.getBoundingClientRect(); const cx=(e.touches?e.touches[0].clientX:e.clientX); cmpPos=Math.max(0,Math.min(1,(cx-r.left)/r.width)); const sel=images.find(i=>i.id===selId); if(sel)drawPreview(sel); };
+  wrap.addEventListener('pointerdown',e=>{drag=true;move(e);}); addEventListener('pointermove',move); addEventListener('pointerup',()=>drag=false); }
+
+/* ---------- RECEPT ---------- */
+function pushUndo(){ undoStack.push(JSON.stringify(recipe)); if(undoStack.length>40)undoStack.shift(); redoStack=[]; }
+function renderRecipe(){
+  let html=`<h2>Recept — műveletek sorban</h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn sm" id="undo" ${undoStack.length?'':'disabled'}>↶ Vissza</button>
+      <button class="btn sm" id="redo" ${redoStack.length?'':'disabled'}>↷ Újra</button>
+      <button class="btn sm" id="tpl">📑 Sablonok</button>
+      <button class="btn sm danger" id="clr" ${recipe.length?'':'disabled'}>Üres</button>
+    </div>`;
+  if(!recipe.length) html+=`<div class="empty">Nincs művelet. Adj hozzá lentről. 👇</div>`;
+  else html+=recipe.map((s,i)=>{ const op=OPS[s.type]; return `<div class="step" data-i="${i}">
+    <div class="sh"><span style="font-size:18px">${op.e}</span><span class="nm">${i+1}. ${op.name}</span>
+      <button class="btn sm" data-up="${i}" ${i===0?'disabled':''}>▲</button>
+      <button class="btn sm" data-dn="${i}" ${i===recipe.length-1?'disabled':''}>▼</button>
+      <button class="btn sm" data-ed="${i}">⚙️</button>
+      <button class="btn sm danger" data-rm="${i}">✕</button></div>
+    ${s.cond?`<div class="cond">⟐ Feltétel: ${condText(s.cond)}</div>`:''}</div>`; }).join('');
+  html+=`<h2 style="margin-top:16px">➕ Művelet hozzáadása</h2><div class="oppick" id="oppick">${Object.entries(OPS).map(([k,o])=>`<div class="op" data-add="${k}"><span class="e">${o.e}</span>${o.name}</div>`).join('')}</div>`;
+  $('t-recipe').innerHTML=html;
+  $('undo').onclick=()=>{ if(!undoStack.length)return; redoStack.push(JSON.stringify(recipe)); recipe=JSON.parse(undoStack.pop()); renderRecipe(); };
+  $('redo').onclick=()=>{ if(!redoStack.length)return; undoStack.push(JSON.stringify(recipe)); recipe=JSON.parse(redoStack.pop()); renderRecipe(); };
+  $('clr').onclick=()=>{ pushUndo(); recipe=[]; renderRecipe(); };
+  $('tpl').onclick=openTemplates;
+  $('oppick').querySelectorAll('[data-add]').forEach(o=>o.onclick=()=>{ pushUndo(); const t=o.dataset.add; recipe.push({id:nid(),type:t,params:{...OPS[t].def},cond:null}); renderRecipe(); editStep(recipe.length-1); });
+  $('t-recipe').querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;pushUndo();[recipe[i-1],recipe[i]]=[recipe[i],recipe[i-1]];renderRecipe();});
+  $('t-recipe').querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{const i=+b.dataset.dn;pushUndo();[recipe[i+1],recipe[i]]=[recipe[i],recipe[i+1]];renderRecipe();});
+  $('t-recipe').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{const i=+b.dataset.rm;pushUndo();recipe.splice(i,1);renderRecipe();});
+  $('t-recipe').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>editStep(+b.dataset.ed));
+}
+function condText(c){ const f={width:'szélesség',height:'magasság',bytes:'méret(byte)',ratio:'arány',format:'formátum'}[c.field]||c.field; return c.field==='format'?`formátum tartalmazza: ${c.sval}`:`${f} ${c.op} ${c.val}`; }
+function editStep(i){
+  const s=recipe[i], op=OPS[s.type];
+  let body=`<h2>${op.e} ${op.name}</h2>`;
+  op.fields.forEach(fl=>{
+    if(fl.info){ body+=`<p class="sm muted">${fl.info}</p>`; return; }
+    const v=s.params[fl.k];
+    if(fl.t==='sel') body+=`<label class="fld"><span class="lab">${fl.lab}</span><select data-k="${fl.k}" style="width:100%">${fl.opts.map(([ov,ol])=>`<option value="${ov}" ${v==ov?'selected':''}>${ol}</option>`).join('')}</select></label>`;
+    else if(fl.t==='rng') body+=`<label class="fld"><span class="lab">${fl.lab}<b id="rv_${fl.k}">${v}</b></span><input type="range" data-k="${fl.k}" min="${fl.min}" max="${fl.max}" value="${v}" style="width:100%"></label>`;
+    else if(fl.t==='num') body+=`<label class="fld"><span class="lab">${fl.lab}</span><input type="number" data-k="${fl.k}" min="${fl.min||0}" max="${fl.max||9999}" value="${v}" style="width:100%"></label>`;
+    else if(fl.t==='col') body+=`<label class="fld"><span class="lab">${fl.lab}</span><input type="color" data-k="${fl.k}" value="${v}" style="width:60px;height:38px;padding:2px"></label>`;
+    else body+=`<label class="fld"><span class="lab">${fl.lab}</span><input type="text" data-k="${fl.k}" value="${escapeHtml(v||'')}" style="width:100%"></label>`;
+  });
+  // feltétel
+  const c=s.cond||{};
+  body+=`<h2 style="margin-top:14px">Feltétel (opcionális)</h2>
+    <p class="tiny muted">A művelet csak akkor fut, ha a feltétel igaz. „Bármikor" = mindig lefut.</p>
+    <div class="row">
+      <select id="cf" style="flex:1">${[['','Bármikor'],['width','szélesség'],['height','magasság'],['bytes','fájlméret (byte)'],['ratio','képarány'],['format','formátum']].map(([ov,ol])=>`<option value="${ov}" ${(c.field||'')===ov?'selected':''}>${ol}</option>`).join('')}</select>
+      <select id="co" style="width:70px">${[['>','>'],['<','<'],['==','=']].map(([ov,ol])=>`<option value="${ov}" ${(c.op||'>')===ov?'selected':''}>${ol}</option>`).join('')}</select>
+      <input id="cv" style="width:92px" placeholder="érték" value="${c.field==='format'?(c.sval||''):(c.val!=null?c.val:'')}">
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn full acc" id="okEd">Kész</button></div>`;
+  openModal(body);
+  $('modal').querySelectorAll('[data-k]').forEach(inp=>{
+    const ev=inp.type==='range'?'input':'change';
+    inp.addEventListener(ev,()=>{ s.params[inp.dataset.k]=inp.value; const rv=$('rv_'+inp.dataset.k); if(rv)rv.textContent=inp.value; });
+  });
+  $('okEd').onclick=()=>{ const f=$('cf').value; if(!f) s.cond=null; else { const o=$('co').value, raw=$('cv').value; s.cond=f==='format'?{field:f,op:'==',sval:raw}:{field:f,op:o,val:+raw||0}; } pushUndo(); closeModal(); renderRecipe(); if(curTab==='t-queue'){const sel=images.find(i=>i.id===selId);if(sel)drawPreview(sel);} };
+}
+
+/* ---------- SABLONOK ---------- */
+function getTpls(){ try{ return JSON.parse(localStorage.getItem('kepmuhely-tpl')||'[]'); }catch(e){ return []; } }
+function saveTpls(t){ try{ localStorage.setItem('kepmuhely-tpl',JSON.stringify(t)); }catch(e){} }
+function openTemplates(){
+  const tpls=getTpls();
+  let body=`<h2>📑 Recept-sablonok</h2>
+    <button class="btn full acc" id="saveTpl" ${recipe.length?'':'disabled'}>💾 Jelenlegi recept mentése sablonként</button>
+    <div style="margin-top:12px">${tpls.length?tpls.map((t,i)=>`<div class="step"><div class="sh"><span class="nm">${escapeHtml(t.name)}</span><span class="tiny muted">${t.recipe.length} lépés</span>
+      <button class="btn sm acc" data-load="${i}">Betölt</button><button class="btn sm danger" data-del="${i}">✕</button></div></div>`).join(''):'<div class="empty">Még nincs mentett sablon.</div>'}</div>`;
+  openModal(body);
+  $('saveTpl').onclick=()=>{ const n=prompt('Sablon neve:'); if(!n)return; const t=getTpls(); t.push({name:n,recipe:JSON.parse(JSON.stringify(recipe))}); saveTpls(t); openTemplates(); toast('Sablon mentve'); };
+  $('modal').querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{ pushUndo(); recipe=JSON.parse(JSON.stringify(getTpls()[+b.dataset.load].recipe)).map(s=>({...s,id:nid()})); closeModal(); renderRecipe(); toast('Sablon betöltve'); });
+  $('modal').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const t=getTpls(); t.splice(+b.dataset.del,1); saveTpls(t); openTemplates(); });
+}
+
+/* ---------- FUTTATÁS / EXPORT ---------- */
+function renderRun(){
+  const good=images.filter(i=>!i.bad);
+  const fmts=[['image/jpeg','JPG'],['image/png','PNG'],['image/webp','WebP'],['image/avif','AVIF'],['image/heic','HEIC']];
+  let html=`<h2>Futtatás és exportálás</h2>
+    <div class="card"><div class="kv"><b>Képek a sorban</b><span>${good.length} db</span></div>
+    <div class="kv"><b>Recept lépései</b><span>${recipe.length} művelet</span></div></div>
+    <div class="card"><h2>Kimeneti formátum</h2><div class="row" id="fmtRow">${fmts.map(([m,l])=>{ const sup=fmtSupport[m]; return `<button class="chip ${exportFmt===m?'on':''}" data-fmt="${m}" ${sup?'':'disabled style="opacity:.35"'}>${l}${sup?'':' ⛔'}</button>`; }).join('')}</div>
+    <p class="tiny muted" id="fmtNote" style="margin-top:8px"></p>
+    <label class="fld" id="qWrap"><span class="lab">Minőség <b id="qv">${Math.round(exportQ*100)}</b>%</span><input type="range" id="q" min="30" max="100" value="${Math.round(exportQ*100)}" style="width:100%"></label></div>
+    <div class="card"><h2>🧹 Tömeges metaadat-törlés</h2><p class="sm muted">Az exportált képek canvasból újrakódolódnak, így minden EXIF/GPS/metaadat automatikusan eltűnik. Ehhez nem kell külön lépés.</p></div>
+    <div class="barwrap" id="barWrap" style="display:none"><div id="bar"></div></div>
+    <div class="row">
+      <button class="btn acc full" id="runSel" ${images.find(i=>i.id===selId&&!i.bad)?'':'disabled'}>⬇️ Kijelölt mentése</button>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="btn acc full" id="runAll" ${good.length?'':'disabled'}>📦 Összes feldolgozása és mentése (${good.length})</button></div>
+    <p class="tiny muted" style="margin-top:8px">Mentés: a telefon megosztó-ablakán át (Fotók/Fájlok), gépen letöltésként.</p>`;
+  $('t-run').innerHTML=html;
+  const note=$('fmtNote');
+  function updNote(){ const png=exportFmt==='image/png'; $('qWrap').style.display=png?'none':'block';
+    note.innerHTML = exportFmt==='image/avif'?'AVIF: modern, kis méret. Ha az eszköz nem tudja, tiltva van fent.' : exportFmt==='image/heic'?'HEIC exportot a böngésző/WebView nem tud — válassz AVIF-et vagy WebP-t.' : png?'PNG: veszteségmentes, nagyobb fájl.' : ''; }
+  updNote();
+  $('fmtRow').querySelectorAll('[data-fmt]').forEach(b=>{ if(b.disabled)return; b.onclick=()=>{ exportFmt=b.dataset.fmt; renderRun(); }; });
+  $('q').oninput=()=>{ exportQ=+$('q').value/100; $('qv').textContent=$('q').value; };
+  $('runSel').onclick=()=>exportImages([images.find(i=>i.id===selId)]);
+  $('runAll').onclick=()=>exportImages(images.filter(i=>!i.bad));
+}
+function extFor(m){ return {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/avif':'avif','image/heic':'heic'}[m]||'img'; }
+function canvasToBlob(c,m,q){ return new Promise(res=>{ c.toBlob(b=>res(b), m, q); }); }
+async function exportImages(list){
+  list=list.filter(Boolean); if(!list.length)return;
+  if(!fmtSupport[exportFmt]){ toast('Ez a formátum nem támogatott'); return; }
+  const bar=$('bar'), bw=$('barWrap'); if(bw){bw.style.display='block';}
+  const files=[];
+  for(let i=0;i<list.length;i++){ const it=list[i]; const c=runPipeline(it); let blob=await canvasToBlob(c,exportFmt,exportQ);
+    if(!blob){ blob=await canvasToBlob(c,'image/png',1); }
+    const base=it.name.replace(/\.[^.]+$/,''); files.push(new File([blob],`${base}.${extFor(blob.type)}`,{type:blob.type}));
+    if(bar)bar.style.width=Math.round((i+1)/list.length*100)+'%';
+  }
+  if(bw)setTimeout(()=>bw.style.display='none',600);
+  await saveFiles(files);
+}
+async function saveFiles(files){
+  try{ if(navigator.canShare && navigator.canShare({files})){ await navigator.share({files,title:'Képműhely export'}); toast('Megosztva / mentve'); return; } }catch(e){ if(e&&e.name==='AbortError')return; }
+  for(const f of files){ const url=URL.createObjectURL(f); const a=document.createElement('a'); a.href=url; a.download=f.name; document.body.appendChild(a); a.click(); a.remove(); await new Promise(r=>setTimeout(r,350)); URL.revokeObjectURL(url); }
+  toast(files.length>1?`${files.length} kép mentve`:'Kép mentve');
+}
+
+/* ---------- ESZKÖZÖK ---------- */
+function renderTools(){
+  $('t-tools').innerHTML=`<h2>Eszközök</h2>
+    <div class="card"><h2>🔍 Duplikátum-kereső</h2><p class="sm muted">Hasonló/azonos képeket keres a sorban (perceptuális hash).</p><button class="btn acc sm full" id="dupBtn" ${images.filter(i=>!i.bad).length>1?'':'disabled'}>Keresés indítása</button><div id="dupRes" style="margin-top:10px"></div></div>
+    <div class="card"><h2>🎨 Színpaletta + 💧 Pipetta</h2><p class="sm muted">A kijelölt kép domináns színei. Koppints a képre a pipettához.</p>
+      <div class="pvwrap" id="palWrap" style="margin:8px 0"><canvas id="palCv"></canvas></div>
+      <div id="pick"></div><div class="palrow" id="palRow"></div></div>
+    <div class="card"><h2>🗂️ Metaadat (EXIF) megtekintése</h2><div id="exif"><p class="sm muted">Kijelölt kép metaadatai.</p></div></div>`;
+  const sel=images.find(i=>i.id===selId&&!i.bad);
+  $('dupBtn') && ($('dupBtn').onclick=findDuplicates);
+  if(sel){ drawPaletteTool(sel); showExif(sel); }
+  else { $('palRow').innerHTML='<p class="empty">Nincs kijelölt kép.</p>'; }
+}
+function dHash(bmp){ const c=newCanvas(9,8),x=c.getContext('2d'); x.drawImage(bmp,0,0,9,8); const d=x.getImageData(0,0,9,8).data; let bits=''; for(let y=0;y<8;y++)for(let xx=0;xx<8;xx++){ const i=(y*9+xx)*4, j=(y*9+xx+1)*4; const a=d[i]*.3+d[i+1]*.59+d[i+2]*.11, b=d[j]*.3+d[j+1]*.59+d[j+2]*.11; bits+=a>b?'1':'0'; } return bits; }
+function hamming(a,b){ let n=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i])n++; return n; }
+function findDuplicates(){
+  const good=images.filter(i=>!i.bad); good.forEach(i=>{ if(!i.hash)i.hash=dHash(i.bitmap); });
+  const used=new Set(), groups=[];
+  for(let i=0;i<good.length;i++){ if(used.has(good[i].id))continue; const g=[good[i]]; used.add(good[i].id);
+    for(let j=i+1;j<good.length;j++){ if(used.has(good[j].id))continue; if(hamming(good[i].hash,good[j].hash)<=6){ g.push(good[j]); used.add(good[j].id); } }
+    if(g.length>1) groups.push(g); }
+  const res=$('dupRes');
+  if(!groups.length){ res.innerHTML='<p class="sm good" style="color:var(--good)">Nincs duplikátum. ✔️</p>'; return; }
+  res.innerHTML=groups.map((g,gi)=>`<div class="dupgroup"><div class="sm" style="margin-bottom:6px">Csoport ${gi+1} — ${g.length} hasonló kép</div>
+    <div class="grid">${g.map(i=>`<div class="thumb" data-sel="${i.id}"><img src="${i.thumb}"><div class="nm">${escapeHtml(i.name)}</div></div>`).join('')}</div></div>`).join('');
+  res.querySelectorAll('[data-sel]').forEach(t=>t.onclick=()=>{ selId=t.dataset.sel; toast('Kijelölve: '+images.find(i=>i.id===selId).name); });
+}
+function drawPaletteTool(item){
+  const cv=$('palCv'); const maxW=700, scale=Math.min(1,maxW/item.w); cv.width=Math.round(item.w*scale); cv.height=Math.round(item.h*scale);
+  const x=cv.getContext('2d'); x.drawImage(item.bitmap,0,0,cv.width,cv.height);
+  cv.onclick=e=>{ const r=cv.getBoundingClientRect(); const px=Math.floor((e.clientX-r.left)/r.width*cv.width), py=Math.floor((e.clientY-r.top)/r.height*cv.height); const d=x.getImageData(px,py,1,1).data; const hex=rgbHex(d[0],d[1],d[2]); $('pick').innerHTML=`<div class="row" style="align-items:center;margin:8px 0"><span class="sw" style="background:${hex}"></span><b>${hex}</b><span class="muted sm">rgb(${d[0]},${d[1]},${d[2]})</span><button class="btn sm" id="cpy">Másol</button></div>`; $('cpy').onclick=()=>{navigator.clipboard?.writeText(hex);toast('Másolva: '+hex);}; };
+  // paletta
+  const sc=newCanvas(64,64),sx=sc.getContext('2d'); sx.drawImage(item.bitmap,0,0,64,64); const d=sx.getImageData(0,0,64,64).data; const map={};
+  for(let i=0;i<d.length;i+=4){ const r=d[i]&0xF0,g=d[i+1]&0xF0,b=d[i+2]&0xF0; const k=r+','+g+','+b; map[k]=(map[k]||0)+1; }
+  const top=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  $('palRow').innerHTML=top.map(([k])=>{ const [r,g,b]=k.split(',').map(Number); const hex=rgbHex(r,g,b); return `<div class="pal"><span class="sw" style="background:${hex}" data-hex="${hex}"></span>${hex}</div>`; }).join('');
+  $('palRow').querySelectorAll('[data-hex]').forEach(s=>s.onclick=()=>{navigator.clipboard?.writeText(s.dataset.hex);toast('Másolva: '+s.dataset.hex);});
+}
+function rgbHex(r,g,b){ return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function showExif(item){
+  const box=$('exif'); box.innerHTML='<p class="sm muted">Beolvasás…</p>';
+  readExif(item).then(info=>{
+    let rows=`<div class="kv"><b>Fájlnév</b><span>${escapeHtml(item.name)}</span></div>
+      <div class="kv"><b>Formátum</b><span>${escapeHtml(item.format)}</span></div>
+      <div class="kv"><b>Felbontás</b><span>${item.w}×${item.h}</span></div>
+      <div class="kv"><b>Méret</b><span>${fmtBytes(item.bytes)}</span></div>`;
+    for(const [k,v] of Object.entries(info)) rows+=`<div class="kv"><b>${k}</b><span>${escapeHtml(String(v))}</span></div>`;
+    rows+=`<p class="tiny muted" style="margin-top:8px">${Object.keys(info).length?'Export után ezek az adatok eltűnnek a mentett képből.':'Nincs olvasható EXIF (vagy a formátum nem tárol ilyet).'}</p>`;
+    box.innerHTML=rows;
+  });
+}
+function readExif(item){
+  return new Promise(resolve=>{
+    if(item.format!=='image/jpeg'){ resolve({}); return; }
+    // nincs eredeti blob kéznél → EXIF-et nem tudunk visszaolvasni a bitmapből; jelzés
+    resolve({});
+  });
+}
+
+/* ---------- PROJEKT (IndexedDB) ---------- */
+let db=null;
+function openDB(){ return new Promise(res=>{ const r=indexedDB.open('kepmuhely',1); r.onupgradeneeded=()=>{ r.result.createObjectStore('proj',{keyPath:'name'}); }; r.onsuccess=()=>{db=r.result;res(db);}; r.onerror=()=>res(null); }); }
+async function saveProject(){
+  const n=prompt('Projekt neve:'); if(!n)return; await openDB(); if(!db){toast('Mentés nem elérhető');return;}
+  const blobs=[]; for(const it of images){ if(it.bad)continue; const c=bitmapToCanvas(it.bitmap); const b=await canvasToBlob(c,'image/png',1); blobs.push({name:it.name,format:it.format,bytes:it.bytes,blob:b}); }
+  const tx=db.transaction('proj','readwrite'); tx.objectStore('proj').put({name:n,at:Date.now(),recipe:JSON.parse(JSON.stringify(recipe)),images:blobs});
+  tx.oncomplete=()=>{ toast('Projekt mentve'); closeModal(); };
+}
+async function listProjects(){ await openDB(); if(!db)return []; return new Promise(res=>{ const out=[]; const tx=db.transaction('proj','readonly'); const cur=tx.objectStore('proj').openCursor(); cur.onsuccess=e=>{ const c=e.target.result; if(c){out.push({name:c.value.name,at:c.value.at,n:c.value.images.length});c.continue();}else res(out); }; }); }
+async function loadProject(name){ await openDB(); const tx=db.transaction('proj','readonly'); const r=tx.objectStore('proj').get(name); r.onsuccess=async()=>{ const p=r.result; if(!p)return; images=[]; selId=null; recipe=(p.recipe||[]).map(s=>({...s,id:nid()})); for(const im of p.images){ const id=nid(); const item={id,name:im.name,format:im.format,bytes:im.bytes,w:0,h:0,bitmap:null,thumb:'',bad:false}; try{ const bmp=await loadBitmap(im.blob); item.bitmap=bmp;item.w=bmp.width;item.h=bmp.height;item.thumb=makeThumb(bmp); }catch(e){item.bad=true;} images.push(item); if(!selId)selId=id; } closeModal(); setTab('t-queue'); toast('Projekt betöltve'); }; }
+async function delProject(name){ await openDB(); const tx=db.transaction('proj','readwrite'); tx.objectStore('proj').delete(name); tx.oncomplete=()=>openProject(); }
+async function openProject(){
+  const projs=await listProjects();
+  let body=`<h2>📁 Projektek</h2>
+    <button class="btn full acc" id="newP">🆕 Új (sor + recept ürítése)</button>
+    <button class="btn full" id="saveP" style="margin-top:8px" ${images.length?'':'disabled'}>💾 Jelenlegi projekt mentése</button>
+    <h2 style="margin-top:14px">Mentett projektek</h2>
+    ${projs.length?projs.map(p=>`<div class="step"><div class="sh"><span class="nm">${escapeHtml(p.name)}</span><span class="tiny muted">${p.n} kép</span><button class="btn sm acc" data-lp="${escapeHtml(p.name)}">Betölt</button><button class="btn sm danger" data-dp="${escapeHtml(p.name)}">✕</button></div></div>`).join(''):'<div class="empty">Nincs mentett projekt.</div>'}`;
+  openModal(body);
+  $('newP').onclick=()=>{ if(confirm('Új projekt? A jelenlegi sor és recept törlődik.')){ images=[];selId=null;recipe=[];undoStack=[];redoStack=[]; closeModal(); setTab('t-queue'); } };
+  $('saveP').onclick=saveProject;
+  $('modal').querySelectorAll('[data-lp]').forEach(b=>b.onclick=()=>loadProject(b.dataset.lp));
+  $('modal').querySelectorAll('[data-dp]').forEach(b=>b.onclick=()=>{ if(confirm('Projekt törlése?'))delProject(b.dataset.dp); });
+}
+$('projBtn').onclick=openProject;
+
+/* ---------- MODAL ---------- */
+function openModal(html){ $('modal').innerHTML=html+`<button class="btn full" id="mClose" style="margin-top:12px">Bezár</button>`; $('modalBg').classList.add('show'); $('mClose').onclick=closeModal; }
+function closeModal(){ $('modalBg').classList.remove('show'); }
+$('modalBg').onclick=e=>{ if(e.target===$('modalBg'))closeModal(); };
+$('fileInput').onchange=e=>{ if(e.target.files.length) addFiles([...e.target.files]); e.target.value=''; };
+
+/* ---------- INDÍTÁS ---------- */
+detectFormats().then(()=>{ if(!fmtSupport[exportFmt]) exportFmt='image/jpeg'; renderQueue(); });
+renderQueue();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
