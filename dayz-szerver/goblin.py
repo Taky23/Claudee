@@ -55,8 +55,19 @@ class Hiba(Exception):
 
 # ---------------------------------------------------------------- általános segédek
 def beallitasok() -> dict:
-    with open(ITT / "beallitasok.json", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(ITT / "beallitasok.json", encoding="utf-8-sig") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise Hiba(f"Nincs meg a beallitasok.json itt: {ITT}") from None
+    except json.JSONDecodeError as e:
+        sorok = e.doc.splitlines()
+        sor = sorok[e.lineno - 1] if 0 < e.lineno <= len(sorok) else ""
+        raise Hiba(
+            f"Hiba a beallitasok.json {e.lineno}. sorában (valószínűleg hiányzik vagy fölösleges egy \" idézőjel vagy egy , vessző):\n"
+            f"    {sor.strip()}\n"
+            "Javítsd ki, vagy töltsd le újra az eredeti beallitasok.json-t."
+        ) from None
 
 
 def ment_beallitasok(cfg: dict) -> None:

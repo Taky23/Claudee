@@ -323,3 +323,14 @@ def test_local_server_mod_is_found(tmp_path, monkeypatch):
     cfg = {"modok": [{"nev": "SibnicServerSide", "minta": "sibnic", "csak_szerver": True, "helyi_mappa": "szerver_modok"}]}
     modok = g.modok_masolasa(cfg, None, srv)
     assert modok[0]["nev"] == "SibnicServerSide" and (srv / "@SibnicServerSide" / "addons").is_dir()
+
+
+def test_broken_config_gives_readable_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(g, "ITT", tmp_path)
+    (tmp_path / "beallitasok.json").write_text('{\n  "szerver": {\n    "nev": "a" "b",\n  }\n}', encoding="utf-8")
+    with pytest.raises(g.Hiba, match=r"3\. sorában") as e:
+        g.beallitasok()
+    assert '"nev": "a" "b",' in str(e.value)
+    # a Jegyzettömb BOM-mal mentett fájlja is működik
+    (tmp_path / "beallitasok.json").write_text('﻿{"a": 1}', encoding="utf-8")
+    assert g.beallitasok() == {"a": 1}
