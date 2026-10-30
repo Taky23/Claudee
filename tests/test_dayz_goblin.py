@@ -140,16 +140,35 @@ def test_full_flow(tmp_path, monkeypatch):
     cfg = json.loads((ROOT / "dayz-szerver" / "beallitasok.json").read_text(encoding="utf-8"))
     cfg["utvonalak"] = {"dayz": str(dayz), "dayz_szerver": str(srv)}
     cfg["superadminok_steam64"] = ["76561198000000000"]
+    cfg["steam_felhasznalo"] = "goblin"
+    # a CF és az Expansion-Vehicles Workshop azonosítóval van megadva → SteamCMD tölti le (itt kamu letöltő)
+    hivasok = []
+
+    def kamu_steamcmd(args):
+        hivasok.append(args)
+        for i, a in enumerate(args):
+            if a == "+workshop_download_item":
+                wid = args[i + 2]
+                d = g.workshop_tartalom(wid)
+                (d / "keys").mkdir(parents=True)
+                (d / "keys" / f"{wid}.bikey").write_bytes(b"k")
+                nev = {"1559212036": "CF", "2291785437": "DayZ-Expansion-Vehicles"}[wid]
+                (d / "meta.cpp").write_text(f'protocol = 1;\nname = "{nev}";\n')
+    monkeypatch.setattr(g, "steamcmd_futtat", kamu_steamcmd)
+    monkeypatch.setattr(g, "workshop_cimek", lambda ids: {"1559212036": "CF", "2291785437": "DayZ-Expansion-Vehicles"})
     cfgfile = tmp_path / "beallitasok.json"
     cfgfile.write_text(json.dumps(cfg), encoding="utf-8")
     monkeypatch.setattr(g, "ITT", tmp_path)
     monkeypatch.setattr(g, "expansion_sablon", lambda: tpl)
 
     g.telepit()
+    assert len(hivasok) == 1 and "+app_update" not in hivasok[0]  # a szerver már megvolt
+    assert hivasok[0][:2] == ["+login", "goblin"] and hivasok[0].count("+workshop_download_item") == 2
     mis = srv / "mpmissions" / "goblin.chernarusplus"
-    assert (srv / "@CF").is_dir() and (srv / "@DabsFramework").is_dir() and (srv / "keys" / "cf.bikey").exists()
+    assert (srv / "@CF").is_dir() and (srv / "@DabsFramework").is_dir() and (srv / "keys" / "1559212036.bikey").exists()
+    assert (srv / "@CF" / "meta.cpp").exists()  # a SteamCMD-s példány ment, nem a !Workshop-os
     bat = (srv / "inditas.bat").read_text()
-    assert '"-mod=@CF;@DabsFramework;@VPPAdminTools;@DayZ-Expansion-Licensed;@DayZ-Expansion-Bundle;@EscapeFromTarkov;@SNAFUWeapons"' in bat
+    assert '"-mod=@CF;@DabsFramework;@VPPAdminTools;@DayZ-Expansion-Licensed;@DayZ-Expansion-Bundle;@DayZ-Expansion-Vehicles;@EscapeFromTarkov;@SNAFUWeapons"' in bat
     cfgtxt = (srv / "serverDZ.cfg").read_text(encoding="utf-8")
     assert 'template = "goblin.chernarusplus"' in cfgtxt and "maxPlayers = 5" in cfgtxt and "Loot Goblinok" in cfgtxt
     assert json.loads(cfgfile.read_text(encoding="utf-8"))["szerver"]["admin_jelszo"]
@@ -164,7 +183,8 @@ def test_full_flow(tmp_path, monkeypatch):
     assert "Vehicle_Parts|" in (tr / "GreenMountain_Traders.map").read_text()  # csak a Vehicles cserélődik
     assert len((mis / "expansion" / "objects" / "Goblin_GreenMountain_Fenyek.map").read_text().splitlines()) == 14
     assert (srv / "profiles" / "VPPAdminTools" / "Permissions" / "SuperAdmins" / "SuperAdmins.txt").read_text().strip() == "76561198000000000"
-    g.telepit()  # újrafuttatható
+    g.telepit()  # újrafuttatható, és a már letöltött modokat nem tölti le újra
+    assert len(hivasok) == 1
     assert (mis / "cfgeconomycore.xml").read_text().count('folder="goblin_ce"') == 1
 
     # --- testreszab előtt: első indítás nélkül szól
@@ -246,3 +266,41 @@ def test_keres(tmp_path, monkeypatch, capsys):
     g.keres("NissanGTR")
     out = capsys.readouterr().out
     assert "Bandit_NissanGTR" in out and "str_gtr_name" not in out
+
+
+def test_workshop_id():
+    assert g.workshop_id("2291785437") == "2291785437"
+    assert g.workshop_id("https://steamcommunity.com/sharedfiles/filedetails/?id=2291785437&searchtext=") == "2291785437"
+    assert g.workshop_id("") == "" and g.workshop_id("valami") == ""
+
+
+def test_illik():
+    cf = {"nev": "CF", "minta": "cf", "pontos": True, "mas_nevek": ["communityframework"]}
+    assert g.illik(cf, "@CF") and g.illik(cf, "Community Framework") and not g.illik(cf, "@CF-Addon")
+    assert g.illik({"minta": "snafu"}, "SNAFU Weapons")
+
+
+def test_wrong_workshop_link_is_rejected(tmp_path, monkeypatch):
+    monkeypatch.setattr(g, "ITT", tmp_path)
+    monkeypatch.setattr(g, "workshop_cimek", lambda ids: {ids[0]: "Some Random Map"})
+    monkeypatch.setattr(g, "steamcmd_futtat", lambda args: pytest.fail("nem szabad letölteni"))
+    cfg = {"steam_felhasznalo": "x", "modok": [{"nev": "SNAFUWeapons", "minta": "snafu", "workshop": "123"}]}
+    with pytest.raises(g.Hiba, match="másik modra"):
+        g.modok_letoltese(cfg, tmp_path, mindet=False)
+
+
+def test_server_is_installed_when_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(g, "ITT", tmp_path)
+    monkeypatch.setattr(g, "workshop_cimek", lambda ids: {})
+    hivas = []
+
+    def kamu(args):
+        hivas.append(args)
+        d = Path(args[args.index("+force_install_dir") + 1])
+        d.mkdir(parents=True)
+        (d / "DayZServer_x64.exe").write_bytes(b"")
+    monkeypatch.setattr(g, "steamcmd_futtat", kamu)
+    cfg = {"steam_felhasznalo": "x", "modok": []}
+    szerver = g.modok_letoltese(cfg, None, mindet=False)
+    assert szerver == tmp_path / "DayZServer" and (szerver / "DayZServer_x64.exe").exists()
+    assert hivas[0][:2] == ["+force_install_dir", str(tmp_path / "DayZServer")] and "223350" in hivas[0]

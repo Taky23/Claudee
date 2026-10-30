@@ -16,33 +16,41 @@ A saját gépedről futó, modolt DayZ szerver telepítője és beállítója.
 
 ## Mi kell hozzá
 - Windows, legalább 16 GB RAM (32 GB-tal kényelmes, ha a gépen játszol is)
-- **DayZ** a Steamen
-- **DayZ Server**: Steam → Könyvtár → a lenyíló listában pipáld be az **Eszközök** (Tools) részt → **DayZ Server** → Telepítés
+- **DayZ** a Steamen (a fiókodnak birtokolnia kell, mert csak így tölthetők le a szerver és a modok)
 - **Python 3.10 vagy újabb**: [python.org](https://www.python.org/downloads/). Telepítéskor pipáld be az **Add python.exe to PATH** opciót.
 
-## 1. Modok feliratkozása
-A Steam Workshop DayZ részén iratkozz fel ezekre (a keresőbe a nevüket írd):
+**A DayZ Servert és a modokat a telepítő magától letölti** a Steam hivatalos letöltőjével (SteamCMD). Feliratkozni nem kell, és a DayZ Servert sem kell kézzel telepíteni.
+
+## 1. A modok Workshop-linkjei
+A `beallitasok.json` → `modok` listában minden modnál van egy `workshop` mező. Ide kell a mod Workshop-linkje vagy azonosítója (a link végén lévő `?id=` utáni szám). Nyisd meg a mod oldalát a Steamben, jobb klikk → **Oldal URL-jének másolása**, és illeszd be:
+```json
+{ "nev": "SNAFUWeapons", "minta": "snafu", "loot": true, "workshop": "https://steamcommunity.com/sharedfiles/filedetails/?id=…" },
+```
+A telepítő ellenőrzi, hogy a link tényleg ahhoz a modhoz tartozik-e. Ha nem, nem tölt le semmit, és szól.
 
 | Mod | Megjegyzés |
 |---|---|
-| **CF** (Community Framework) | kötelező alap |
+| **CF** (Community Framework) | kötelező alap (azonosítója már be van írva) |
 | **Dabs Framework** | kötelező alap |
 | **VPPAdminTools** | admin eszköz |
 | **DayZ-Expansion-Licensed** | Expansion alap |
 | **DayZ-Expansion-Bundle** | Expansion: kereskedők, ATM, AI, térkép, … |
-| **DayZ-Expansion-Vehicles** (id: 2291785437) | a helikopterek miatt |
+| **DayZ-Expansion-Vehicles** | a helikopterek miatt (azonosítója már be van írva) |
 | **Escape From Tarkov** | Tarkovos tárgyak |
 | **SNAFU Weapons** | fegyverek (modern katonai fegyverek, mesterlövészpuskák) |
 | **Mortys Weapons** | nem kötelező: .50-es Barrett M82A1 |
-| **Bandits Nissan GTR Limit**, **Nissan Skyline GT-R R34**, **Audi RSQ8 Mansory**, **m3gtr** | a BM különleges autói |
+| **Bandits Nissan GTR Limit**, **Nissan Skyline GT-R R34**, **Audi RSQ8 Mansory**, **m3gtr** | nem kötelező: a BM különleges autói |
 
-Utána **indítsd el egyszer a DayZ launchert**, hogy letöltse őket. A modok a DayZ mappájában lévő `!Workshop` mappába kerülnek.
+Amelyik modnál üresen hagyod a `workshop` mezőt, azt a telepítő a DayZ `!Workshop` mappájában keresi, vagyis ott is működik, ha előtte kézzel feliratkoztál rá.
 
 > ⚠️ Az Escape From Tarkov mod utoljára 2022-ben frissült, ezért előfordulhat, hogy a mostani DayZ-vel már nem működik. Ha a szerver miatta nem indul, vedd ki a `beallitasok.json` → `modok` listából.
+
+**A haveroknak nem kell semmit előre letölteniük:** amikor a DayZ launcherben csatlakoznak a szerverhez, a launcher felajánlja a hiányzó modok letöltését.
 
 ## 2. Beállítások
 Nyisd meg a `beallitasok.json` fájlt (pl. Jegyzettömbbel):
 - `superadminok_steam64`: írd be a saját **Steam64 azonosítódat**, egy 17 jegyű számot, ami 7656-tal kezdődik. Steamben a profilodon: jobb klikk → **Steam URL másolása**, vagy a [steamid.io](https://steamid.io) oldalon.
+- `steam_felhasznalo`: a Steam **bejelentkezési neved** (nem a becenév). Ha üresen hagyod, a telepítő megkérdezi.
 - `szerver → jelszo`: ezzel tudnak belépni a haverok. Ha üresen hagyod, bárki beléphet.
 
 A telepítő a Steam64 azonosítódat a VPP Admin Tools superadmin listájába írja (`profiles/VPPAdminTools/Permissions/SuperAdmins/SuperAdmins.txt`). Ha belépés után mégsem éred el az admin menüt, szólj, és megnézzük.
@@ -53,12 +61,15 @@ A `dayz-szerver` mappában kattints a címsorba, írd be, hogy `cmd`, és nyomj 
 python goblin.py telepit
 ```
 Ez megcsinálja:
+- letölti a SteamCMD-t, azzal a **DayZ Servert** (ha még nincs meg) és a **modokat**. Első alkalommal a SteamCMD **kéri a Steam jelszavadat és a Steam Guard kódot**, ezeket ott, a fekete ablakban kell beírnod (a jelszó gépelés közben nem látszik). A jelszót a program nem menti, a bejelentkezést a SteamCMD maga jegyzi meg;
 - a modokat és kulcsaikat átmásolja a szerverhez;
-- összerakja a küldetést (mission) az Expansion hivatalos sablonjából (a letöltéséhez internet kell);
+- összerakja a küldetést (mission) az Expansion hivatalos sablonjából;
 - megírja a `serverDZ.cfg`-t és az `inditas.bat`-ot a szerver mappájába;
 - generál egy admin jelszót, és elmenti a `beallitasok.json`-ba.
 
-Ha később új modot adsz hozzá, vagy frissülnek a modok, futtasd újra. Teljesen tiszta küldetéshez: `python goblin.py telepit --ujra`.
+Ha a DayZ Server a Steamben már telepítve van, azt használja. Ha nincs, a `dayz-szerver/DayZServer` mappába kerül.
+
+**Frissítés** (ha frissül a DayZ vagy egy mod): `python goblin.py frissit`. Ez mindent újratölt, és újra összerak. Teljesen tiszta küldetéshez: `python goblin.py telepit --ujra`.
 
 ## 4. Router: port nyitás (hogy a haverok is be tudjanak lépni)
 A router beállításaiban (általában `192.168.0.1` vagy `192.168.1.1`) a **Port Forwarding / Porttovábbítás** menüben irányítsd a gépedre:
@@ -68,7 +79,7 @@ A router beállításaiban (általában `192.168.0.1` vagy `192.168.1.1`) a **Po
 Az első indításkor a Windows tűzfal rákérdez: **Engedélyezés**. A haverok a **nyilvános IP-címeddel** csatlakoznak (pl. a [whatismyip.com](https://www.whatismyip.com) mutatja), te magad pedig a `127.0.0.1:2302` címmel.
 
 ## 5. Első indítás
-1. A DayZ Server mappájában indítsd el az `inditas.bat`-ot. Az első betöltés pár percig tart.
+1. A DayZ Server mappájában (a telepítő a végén kiírja, hol van) indítsd el az `inditas.bat`-ot. Az első betöltés pár percig tart.
 2. Amikor a szerver betöltött (a DayZ launcherben megjelenik), állítsd le: zárd be az ablakot, vagy Ctrl+C, majd I.
 3. Ekkor az Expansion legenerálta a saját beállításait. Futtasd:
 ```

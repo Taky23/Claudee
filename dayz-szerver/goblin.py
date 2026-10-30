@@ -1,7 +1,8 @@
 """Loot Goblinok DayZ szerver – telepítő és testreszabó.
 
 Használat (Windowson, a dayz-szerver mappában):
-  python goblin.py telepit      – modok másolása, küldetés (mission) összerakása, serverDZ.cfg, inditas.bat
+  python goblin.py telepit      – DayZ Server és modok letöltése (SteamCMD), küldetés (mission), serverDZ.cfg, inditas.bat
+  python goblin.py frissit      – a DayZ Server és az összes mod frissítése, utána telepít
   python goblin.py testreszab   – az első indítás UTÁN: kereskedők, Black Market, AI, járműkulcsok
   python goblin.py keres GTR    – osztálynevek (classname) keresése a modokban, pl. az autókhoz
 
@@ -17,13 +18,19 @@ import os
 import re
 import secrets
 import shutil
+import subprocess
 import sys
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
 
 ITT = Path(__file__).resolve().parent
 EXP_MISSZIOK_ZIP = "https://github.com/ExpansionModTeam/DayZ-Expansion-Missions/archive/refs/heads/master.zip"
+STEAMCMD_ZIP = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip"
+STEAM_API_RESZLETEK = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+DAYZ_APP = "221100"
+DAYZ_SZERVER_APP = "223350"
 VANILLA_KULDETES = "dayzOffline.chernarusplus"
 GREEN_MOUNTAIN_FAJLOK = {
     "traders": "GreenMountain_Traders.map",
@@ -50,6 +57,11 @@ class Hiba(Exception):
 def beallitasok() -> dict:
     with open(ITT / "beallitasok.json", encoding="utf-8") as f:
         return json.load(f)
+
+
+def ment_beallitasok(cfg: dict) -> None:
+    with open(ITT / "beallitasok.json", "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
 def norm(s: str) -> str:
@@ -137,7 +149,7 @@ def steam_konyvtarak() -> list[Path]:
     return utak
 
 
-def utvonalak(cfg: dict) -> tuple[Path, Path]:
+def utvonalak(cfg: dict, kell_szerver: bool = True) -> tuple[Path | None, Path | None]:
     u = cfg.get("utvonalak", {})
     dayz = Path(u["dayz"]) if u.get("dayz") else None
     szerver = Path(u["dayz_szerver"]) if u.get("dayz_szerver") else None
@@ -145,15 +157,18 @@ def utvonalak(cfg: dict) -> tuple[Path, Path]:
         common = lib / "steamapps" / "common"
         if not dayz and (common / "DayZ").is_dir():
             dayz = common / "DayZ"
-        if not szerver and (common / "DayZServer").is_dir():
+        if not szerver and (common / "DayZServer" / "DayZServer_x64.exe").exists():
             szerver = common / "DayZServer"
-    if not dayz or not dayz.is_dir():
-        raise Hiba("Nem találom a DayZ mappáját. Írd be a beallitasok.json → utvonalak → dayz mezőbe.")
-    if not szerver or not (szerver / "DayZServer_x64.exe").exists():
-        raise Hiba(
-            "Nem találom a DayZ szervert. Telepítsd a Steamből (Könyvtár → Eszközök → DayZ Server), "
-            "vagy írd be az útvonalát a beallitasok.json → utvonalak → dayz_szerver mezőbe."
-        )
+    if not szerver and (ITT / "DayZServer" / "DayZServer_x64.exe").exists():
+        szerver = ITT / "DayZServer"
+    if dayz and not dayz.is_dir():
+        dayz = None
+    if szerver and not (szerver / "DayZServer_x64.exe").exists():
+        if u.get("dayz_szerver"):
+            raise Hiba(f"A megadott DayZ szerver mappában nincs DayZServer_x64.exe: {szerver}")
+        szerver = None
+    if kell_szerver and not szerver:
+        raise Hiba("Nem találom a DayZ szervert. Futtasd előbb: python goblin.py telepit")
     return dayz, szerver
 
 
@@ -167,8 +182,7 @@ def mod_keres(workshop: Path, mod: dict) -> Path | None:
     for d in workshop.iterdir():
         if not d.name.startswith("@") or not d.is_dir():
             continue
-        n = norm(d.name)
-        if (n == mod["minta"]) if mod.get("pontos") else (mod["minta"] in n):
+        if illik(mod, d.name):
             talalat.append(d)
     if len(talalat) > 1:
         nevek = ", ".join(t.name for t in talalat)
@@ -176,21 +190,136 @@ def mod_keres(workshop: Path, mod: dict) -> Path | None:
     return talalat[0] if talalat else None
 
 
-def modok_masolasa(cfg: dict, dayz: Path, szerver: Path) -> list[dict]:
-    workshop = dayz / "!Workshop"
-    if not workshop.is_dir():
-        raise Hiba(
-            "Nincs !Workshop mappa a DayZ-ben. Iratkozz fel a modokra a Steam Workshopon, "
-            "és indítsd el egyszer a DayZ launchert, hogy letöltse őket."
-        )
+def workshop_id(ertek) -> str:
+    """„2291785437” vagy a Workshop-link („…?id=2291785437…”) → „2291785437”."""
+    ertek = str(ertek or "").strip()
+    m = re.search(r"[?&]id=(\d+)", ertek)
+    if m:
+        return m[1]
+    return ertek if ertek.isdigit() else ""
+
+
+def steamcmd_mappa() -> Path:
+    return ITT / "_steamcmd"
+
+
+def workshop_tartalom(wid: str) -> Path:
+    return steamcmd_mappa() / "steamapps" / "workshop" / "content" / DAYZ_APP / wid
+
+
+def steamcmd_exe() -> Path:
+    exe = steamcmd_mappa() / ("steamcmd.exe" if sys.platform == "win32" else "steamcmd.sh")
+    if not exe.exists():
+        if sys.platform != "win32":
+            raise Hiba("A SteamCMD letöltése csak Windowson automatikus.")
+        print("  SteamCMD letöltése…")
+        with urllib.request.urlopen(STEAMCMD_ZIP, timeout=120) as r:
+            zipfile.ZipFile(io.BytesIO(r.read())).extractall(steamcmd_mappa())
+    return exe
+
+
+def steamcmd_futtat(args: list[str]) -> None:
+    """A SteamCMD a konzolban kérdezi a jelszót és a Steam Guard kódot, ezért a kimenetét nem nyeljük el."""
+    subprocess.run([str(steamcmd_exe()), *args, "+quit"], check=False)
+
+
+def workshop_cimek(azonositok: list[str]) -> dict[str, str]:
+    """Workshop azonosító → a mod címe (a Steam nyilvános API-ja alapján). Hiba esetén üres."""
+    if not azonositok:
+        return {}
+    adat = {"itemcount": len(azonositok), **{f"publishedfileids[{i}]": a for i, a in enumerate(azonositok)}}
+    try:
+        with urllib.request.urlopen(STEAM_API_RESZLETEK, data=urllib.parse.urlencode(adat).encode(), timeout=20) as r:
+            valasz = json.load(r)
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for d in valasz.get("response", {}).get("publishedfiledetails", []):
+        if str(d.get("consumer_app_id")) == DAYZ_APP and d.get("title"):
+            out[str(d["publishedfileid"])] = d["title"]
+    return out
+
+
+def mod_nev_metabol(mappa: Path) -> str:
+    meta = mappa / "meta.cpp"
+    if meta.exists():
+        m = re.search(r'name\s*=\s*"([^"]*)"', meta.read_text(encoding="utf-8", errors="ignore"))
+        if m:
+            return m[1]
+    return ""
+
+
+def illik(mod: dict, nev: str) -> bool:
+    n = norm(nev)
+    if (n == mod["minta"]) if mod.get("pontos") else (mod["minta"] in n):
+        return True
+    return any(norm(m) in n for m in mod.get("mas_nevek", []))
+
+
+def modok_letoltese(cfg: dict, szerver: Path | None, mindet: bool) -> Path:
+    """A hiányzó (vagy frissítésnél az összes) modot és a DayZ Servert letölti SteamCMD-vel."""
+    kellenek = []
+    for mod in cfg["modok"]:
+        wid = workshop_id(mod.get("workshop"))
+        if wid and (mindet or not workshop_tartalom(wid).is_dir()):
+            kellenek.append((mod, wid))
+    kell_szerver = szerver is None or mindet
+    if not kellenek and not kell_szerver:
+        return szerver
+
+    cimek = workshop_cimek([w for _, w in kellenek])
+    for mod, wid in kellenek:
+        cim = cimek.get(wid)
+        if cim is None and cimek:
+            raise Hiba(f"A(z) {mod['nev']} Workshop azonosítója ({wid}) nem egy DayZ mod. Ellenőrizd a linket a beallitasok.json-ban.")
+        if cim and not illik(mod, cim):
+            raise Hiba(f"A(z) {mod['nev']} helyére megadott Workshop link egy másik modra mutat: „{cim}”. Ellenőrizd a beallitasok.json-ban.")
+
+    felh = cfg.get("steam_felhasznalo", "").strip()
+    if not felh:
+        felh = input("\nSteam felhasználónév (a DayZ-t birtokló fiók; a jelszót a SteamCMD kérdezi): ").strip()
+        if not felh:
+            raise Hiba("Steam felhasználónév nélkül nem tudok letölteni.")
+        cfg["steam_felhasznalo"] = felh
+        ment_beallitasok(cfg)
+    args = []
+    cel_szerver = szerver or ITT / "DayZServer"
+    if kell_szerver:
+        args += ["+force_install_dir", str(cel_szerver)]
+    args += ["+login", felh]
+    if kell_szerver:
+        args += ["+app_update", DAYZ_SZERVER_APP, "validate"]
+    for _, wid in kellenek:
+        args += ["+workshop_download_item", DAYZ_APP, wid, "validate"]
+    print(f"\nLetöltés SteamCMD-vel: {'DayZ Server + ' if kell_szerver else ''}{len(kellenek)} mod. "
+          "Ha kéri, írd be a Steam jelszavad és a Steam Guard kódot (a jelszó gépelés közben nem látszik).")
+    steamcmd_futtat(args)
+    if kell_szerver and not (cel_szerver / "DayZServer_x64.exe").exists():
+        raise Hiba("A DayZ Server letöltése nem sikerült (rossz jelszó vagy Steam Guard kód?). Futtasd újra.")
+    rossz = [m["nev"] for m, w in kellenek if not workshop_tartalom(w).is_dir()]
+    if rossz:
+        raise Hiba("Nem sikerült letölteni: " + ", ".join(rossz) + ". Futtasd újra; nagy modnál a SteamCMD néha többször is nekifut.")
+    return cel_szerver
+
+
+def modok_masolasa(cfg: dict, dayz: Path | None, szerver: Path) -> list[dict]:
+    workshop = dayz / "!Workshop" if dayz else None
     (szerver / "keys").mkdir(exist_ok=True)
     meglevo = []
     hianyzo = []
     for mod in cfg["modok"]:
-        forras = mod_keres(workshop, mod)
+        wid = workshop_id(mod.get("workshop"))
+        forras = workshop_tartalom(wid) if wid and workshop_tartalom(wid).is_dir() else None
+        if forras:
+            meta_nev = mod_nev_metabol(forras)
+            if meta_nev and not illik(mod, meta_nev):
+                raise Hiba(f"A(z) {mod['nev']} helyén letöltött mod valójában: „{meta_nev}”. Ellenőrizd a Workshop linkjét.")
+        elif workshop and workshop.is_dir():
+            forras = mod_keres(workshop, mod)
         if not forras:
-            (hianyzo if not mod.get("opcionalis") else []).append(mod["nev"])
-            print(f"  – {mod['nev']}: nincs feliratkozva" + (" (nem kötelező)" if mod.get("opcionalis") else " ⚠️"))
+            if not mod.get("opcionalis"):
+                hianyzo.append(mod["nev"])
+            print(f"  – {mod['nev']}: nincs meg" + (" (nem kötelező)" if mod.get("opcionalis") else " ⚠️"))
             continue
         cel = szerver / f"@{mod['nev']}"
         if cel.exists():
@@ -200,10 +329,11 @@ def modok_masolasa(cfg: dict, dayz: Path, szerver: Path) -> list[dict]:
         for kulcs in cel.rglob("*.bikey"):
             shutil.copy2(kulcs, szerver / "keys" / kulcs.name)
             kulcsok += 1
-        print(f"  ✓ {mod['nev']}  ← {forras.name}  ({kulcsok} kulcs)")
+        print(f"  ✓ {mod['nev']}  ← {mod_nev_metabol(cel) or forras.name}  ({kulcsok} kulcs)")
         meglevo.append({**mod, "mappa": cel})
     if hianyzo:
-        raise Hiba("Hiányzó kötelező modok: " + ", ".join(hianyzo) + ". Iratkozz fel rájuk, indítsd el egyszer a DayZ launchert, és futtasd újra.")
+        raise Hiba("Hiányzó kötelező modok: " + ", ".join(hianyzo) + ". Add meg a Workshop linkjüket a beallitasok.json-ban "
+                   "(modok → workshop), vagy iratkozz fel rájuk, és indítsd el egyszer a DayZ launchert.")
     return meglevo
 
 
@@ -389,18 +519,18 @@ goto start
 """
 
 
-def telepit(ujra: bool = False) -> None:
+def telepit(ujra: bool = False, frissit: bool = False) -> None:
     cfg = beallitasok()
-    dayz, szerver = utvonalak(cfg)
-    print(f"DayZ: {dayz}\nDayZ szerver: {szerver}\n\nModok:")
+    dayz, szerver = utvonalak(cfg, kell_szerver=False)
+    szerver = modok_letoltese(cfg, szerver, mindet=frissit)
+    print(f"\nDayZ szerver: {szerver}\n\nModok:")
     modok = modok_masolasa(cfg, dayz, szerver)
     print("\nKüldetés:")
     kuldetes_osszerakasa(cfg, szerver, modok, ujra)
 
     if not cfg["szerver"].get("admin_jelszo"):
         cfg["szerver"]["admin_jelszo"] = secrets.token_urlsafe(9)
-        with open(ITT / "beallitasok.json", "w", encoding="utf-8") as f:
-            json.dump(cfg, f, indent=2, ensure_ascii=False)
+        ment_beallitasok(cfg)
         print(f"\n🔑 Admin jelszó (elmentve a beallitasok.json-ba): {cfg['szerver']['admin_jelszo']}")
     (szerver / "serverDZ.cfg").write_text(szerver_cfg(cfg), encoding="utf-8")
     (szerver / "inditas.bat").write_text(inditas_bat(cfg, modok), encoding="utf-8")
@@ -412,6 +542,7 @@ def telepit(ujra: bool = False) -> None:
     else:
         print("⚠️ Nincs megadva Steam64 azonosító a superadminok_steam64 mezőben, így admin eszköz nem lesz.")
     print(f"\n✅ Kész. Indítás: {szerver / 'inditas.bat'}\n"
+          "A haveroknak nem kell előre feliratkozniuk: a DayZ launcher csatlakozáskor felajánlja a hiányzó modok letöltését.\n"
           "Az első indítás után állítsd le a szervert, és futtasd: python goblin.py testreszab")
 
 
@@ -792,12 +923,14 @@ def main(argv: list[str]) -> int:
             stream.reconfigure(encoding="utf-8", errors="replace")  # ékezetek és ikonok a Windows konzolon is
         except (AttributeError, ValueError):
             pass
-    if len(argv) < 2 or argv[1] not in ("telepit", "testreszab", "keres"):
+    if len(argv) < 2 or argv[1] not in ("telepit", "frissit", "testreszab", "keres"):
         print(__doc__)
         return 1
     try:
         if argv[1] == "telepit":
             telepit(ujra="--ujra" in argv)
+        elif argv[1] == "frissit":
+            telepit(frissit=True)
         elif argv[1] == "testreszab":
             testreszab()
         else:
@@ -807,6 +940,9 @@ def main(argv: list[str]) -> int:
             keres(argv[2])
     except Hiba as e:
         print(f"\n❌ {e}")
+        return 1
+    except KeyboardInterrupt:
+        print("\nMegszakítva.")
         return 1
     return 0
 

@@ -10,25 +10,27 @@
 
   "superadminok_steam64": ["IDE_JON_A_STEAM64_AZONOSITOD"],
 
+  "steam_felhasznalo": "",
+
   "utvonalak": {
     "dayz": "",
     "dayz_szerver": ""
   },
 
   "modok": [
-    { "nev": "CF", "minta": "cf", "pontos": true },
-    { "nev": "DabsFramework", "minta": "dabsframework" },
-    { "nev": "VPPAdminTools", "minta": "vppadmintools" },
-    { "nev": "DayZ-Expansion-Licensed", "minta": "dayzexpansionlicensed" },
-    { "nev": "DayZ-Expansion-Bundle", "minta": "dayzexpansionbundle" },
-    { "nev": "DayZ-Expansion-Vehicles", "minta": "dayzexpansionvehicles", "opcionalis": true },
-    { "nev": "EscapeFromTarkov", "minta": "escapefromtarkov", "loot": true },
-    { "nev": "SNAFUWeapons", "minta": "snafu", "loot": true },
-    { "nev": "MortysWeapons", "minta": "mortysweapons", "opcionalis": true, "loot": true },
-    { "nev": "BanditsNissanGTR", "minta": "nissangtr", "opcionalis": true },
-    { "nev": "NissanSkylineR34", "minta": "skyline", "opcionalis": true },
-    { "nev": "AudiRSQ8Mansory", "minta": "rsq8", "opcionalis": true },
-    { "nev": "m3gtr", "minta": "m3gtr", "opcionalis": true }
+    { "nev": "CF", "minta": "cf", "pontos": true, "mas_nevek": ["communityframework"], "workshop": "1559212036" },
+    { "nev": "DabsFramework", "minta": "dabsframework", "workshop": "" },
+    { "nev": "VPPAdminTools", "minta": "vppadmintools", "workshop": "" },
+    { "nev": "DayZ-Expansion-Licensed", "minta": "dayzexpansionlicensed", "workshop": "" },
+    { "nev": "DayZ-Expansion-Bundle", "minta": "dayzexpansionbundle", "workshop": "" },
+    { "nev": "DayZ-Expansion-Vehicles", "minta": "dayzexpansionvehicles", "opcionalis": true, "workshop": "2291785437" },
+    { "nev": "EscapeFromTarkov", "minta": "escapefromtarkov", "loot": true, "workshop": "" },
+    { "nev": "SNAFUWeapons", "minta": "snafu", "loot": true, "workshop": "" },
+    { "nev": "MortysWeapons", "minta": "mortysweapons", "opcionalis": true, "loot": true, "workshop": "" },
+    { "nev": "BanditsNissanGTR", "minta": "nissangtr", "opcionalis": true, "workshop": "" },
+    { "nev": "NissanSkylineR34", "minta": "skyline", "opcionalis": true, "workshop": "" },
+    { "nev": "AudiRSQ8Mansory", "minta": "rsq8", "opcionalis": true, "workshop": "" },
+    { "nev": "m3gtr", "minta": "m3gtr", "opcionalis": true, "workshop": "" }
   ],
 
   "green_mountain": {
