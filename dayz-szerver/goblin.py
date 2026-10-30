@@ -303,7 +303,11 @@ def kuldetes_osszerakasa(cfg: dict, szerver: Path, modok: list[dict], ujra: bool
         shutil.rmtree(goblin_ce)
     fajlok = []
     for mod in modok:
-        for i, p in enumerate(mod_types_fajlok(mod["mappa"])):
+        talalt = mod_types_fajlok(mod["mappa"])
+        if mod.get("loot") and not talalt:
+            print(f"  ⚠️ {mod['nev']}: nincs a modban types.xml, ezért a tárgyai lootként nem kerülnek elő "
+                  "(a mod leírásában szokott lenni letölthető types.xml – azt tedd a mod mappájába, és futtasd újra).")
+        for i, p in enumerate(talalt):
             nev = f"{norm(mod['nev'])}_{i}_types.xml"
             goblin_ce.mkdir(exist_ok=True)
             shutil.copy2(p, goblin_ce / nev)

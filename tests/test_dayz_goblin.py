@@ -128,7 +128,7 @@ def test_full_flow(tmp_path, monkeypatch):
     ws = dayz / "!Workshop"
     for name, extra in [("@CF", None), ("@Dabs Framework", None), ("@VPPAdminTools", None),
                         ("@DayZ-Expansion-Licensed", None), ("@DayZ-Expansion-Bundle", None),
-                        ("@Escape From Tarkov", "types"), ("@Mortys Weapons", None)]:
+                        ("@Escape From Tarkov", "types"), ("@SNAFU Weapons", "types")]:
         d = ws / name
         (d / "Keys").mkdir(parents=True)
         (d / "Keys" / f"{g.norm(name)}.bikey").write_bytes(b"k")
@@ -149,13 +149,14 @@ def test_full_flow(tmp_path, monkeypatch):
     mis = srv / "mpmissions" / "goblin.chernarusplus"
     assert (srv / "@CF").is_dir() and (srv / "@DabsFramework").is_dir() and (srv / "keys" / "cf.bikey").exists()
     bat = (srv / "inditas.bat").read_text()
-    assert '"-mod=@CF;@DabsFramework;@VPPAdminTools;@DayZ-Expansion-Licensed;@DayZ-Expansion-Bundle;@EscapeFromTarkov;@MortysWeapons"' in bat
+    assert '"-mod=@CF;@DabsFramework;@VPPAdminTools;@DayZ-Expansion-Licensed;@DayZ-Expansion-Bundle;@EscapeFromTarkov;@SNAFUWeapons"' in bat
     cfgtxt = (srv / "serverDZ.cfg").read_text(encoding="utf-8")
     assert 'template = "goblin.chernarusplus"' in cfgtxt and "maxPlayers = 5" in cfgtxt and "Loot Goblinok" in cfgtxt
     assert json.loads(cfgfile.read_text(encoding="utf-8"))["szerver"]["admin_jelszo"]
     econ = (mis / "cfgeconomycore.xml").read_text()
     assert 'folder="expansion_ce"' in econ and 'folder="goblin_ce"' in econ
-    assert (mis / "goblin_ce" / "escapefromtarkov_0_types.xml").exists()
+    assert (mis / "goblin_ce" / "escapefromtarkov_0_types.xml").exists() and (mis / "goblin_ce" / "snafuweapons_0_types.xml").exists()
+    assert not (srv / "@MortysWeapons").exists()  # nem kötelező, nincs feliratkozva
     assert 'name="VehicleUAZ"' in (mis / "cfgeventspawns.xml").read_text()
     tr = mis / "expansion" / "traders"
     assert sorted(p.name for p in tr.glob("*.map")) == ["GreenMountain_Traders.map"]

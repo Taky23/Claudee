@@ -11,7 +11,7 @@ A saját gépedről futó, modolt DayZ szerver telepítője és beállítója.
 | 🔑 **Járműkulcsok** | A megvett jármű zárva kerül ki a lerakóhelyre, és a vevő kulcsot kap hozzá. Csak a saját kulcsa nyitja, zárja és indítja, feltörni nem lehet. Egy **üres (párosítatlan) kulcs** hozzápárosítható egy gazdátlan, még kulcs nélküli járműhöz. |
 | 🏧 **ATM** | Pénz feltöltése és levétele. A bankszámla újraindítás után is megmarad. Vásárolni csak a nálad lévő készpénzzel lehet. |
 | 🤖 **AI katonák** | **Csak katonai helyeken** és **reptereken**. Délen kevesebb (1–2), északon több (2–4), a reptereken +2. Jól látható piros ruhát és láthatósági mellényt viselnek. Közepes célzás, kicsit gyengített sebzés. |
-| 🎯 **Modok** | Tarkovos ruhák, mellények, táskák, gyűjthető tárgyak (Escape From Tarkov mod), .50-es Barrett (Mortys Weapons), Expansion járművek. |
+| 🎯 **Modok** | Fegyverek: SNAFU Weapons (plusz opcionálisan a .50-es Barrett a Mortys Weaponsből). Tarkovos ruhák, mellények, táskák, gyűjthető tárgyak (Escape From Tarkov mod). Expansion járművek. |
 | 🛠️ **Admin** | VPP Admin Tools: teleport, tárgy- és jármű-lehívás, pozíció kiolvasása. |
 
 ## Mi kell hozzá
@@ -32,7 +32,8 @@ A Steam Workshop DayZ részén iratkozz fel ezekre (a keresőbe a nevüket írd)
 | **DayZ-Expansion-Bundle** | Expansion: kereskedők, ATM, AI, térkép, … |
 | **DayZ-Expansion-Vehicles** (id: 2291785437) | a helikopterek miatt |
 | **Escape From Tarkov** | Tarkovos tárgyak |
-| **Mortys Weapons** | .50-es Barrett M82A1 |
+| **SNAFU Weapons** | fegyverek (modern katonai fegyverek, mesterlövészpuskák) |
+| **Mortys Weapons** | nem kötelező: .50-es Barrett M82A1 |
 | **Bandits Nissan GTR Limit**, **Nissan Skyline GT-R R34**, **Audi RSQ8 Mansory**, **m3gtr** | a BM különleges autói |
 
 Utána **indítsd el egyszer a DayZ launchert**, hogy letöltse őket. A modok a DayZ mappájában lévő `!Workshop` mappába kerülnek.
@@ -98,7 +99,7 @@ python goblin.py keres m3gtr
 ```
 A listában általában a legrövidebb, a mod nevével kezdődő név a jármű. Írd be a `beallitasok.json` → `black_market` → `autok` → `osztaly` mezőbe, majd `testreszab`. Ugyanígy működik a VPP tárgy-lehívó keresője is: ha ott lehív egy autót, látszik a neve.
 
-A `.50`-es puskát és bármilyen más tárgyat a BM-be az `egyeb` listában adhatsz meg: `{ "nev": "Barrett", "osztaly": "…", "ar": [100000, 200000] }`.
+Bármilyen fegyvert vagy tárgyat (pl. SNAFU-s mesterlövészpuskát) a BM-be az `egyeb` listában adhatsz meg: `{ "nev": "Barrett", "osztaly": "…", "ar": [100000, 200000] }`.
 
 ## Finomhangolás (`beallitasok.json` → `ai`)
 | Mező | Jelentés |
