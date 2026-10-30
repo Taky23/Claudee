@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#11151a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Haveri Küldő">
-<title>Haveri Küldő</title>
+<meta name="apple-mobile-web-app-title" content="Kép to Link">
+<title>Kép to Link</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -79,7 +79,7 @@ li.file:first-child { border-top: 0; }
   <header>
     <img src="icon.svg" alt="">
     <div>
-      <h1>Haveri Küldő</h1>
+      <h1>Kép to Link</h1>
       <p>Fájlküldés közvetlenül gépről gépre, méretkorlát nélkül</p>
     </div>
   </header>
@@ -296,7 +296,7 @@ function sender() {
       };
       if (navigator.share) {
         $('#share').classList.remove('hidden');
-        $('#share').onclick = () => navigator.share({ title: 'Haveri Küldő', text: 'Küldtem fájlt, itt töltheted le:', url }).catch(() => {});
+        $('#share').onclick = () => navigator.share({ title: 'Kép to Link', text: 'Küldtem fájlt, itt töltheted le:', url }).catch(() => {});
       }
     });
     peer.on('connection', conn => setupFriend(conn));
