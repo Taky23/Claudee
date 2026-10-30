@@ -19,20 +19,20 @@
 
   "modok": [
     { "nev": "CF", "minta": "cf", "pontos": true, "mas_nevek": ["communityframework"], "workshop": "1559212036" },
-    { "nev": "DabsFramework", "minta": "dabsframework", "workshop": "" },
-    { "nev": "VPPAdminTools", "minta": "vppadmintools", "workshop": "" },
-    { "nev": "DayZ-Expansion-Licensed", "minta": "dayzexpansionlicensed", "workshop": "" },
-    { "nev": "DayZ-Expansion-Bundle", "minta": "dayzexpansionbundle", "workshop": "" },
+    { "nev": "DabsFramework", "minta": "dabsframework", "workshop": "2545327648" },
+    { "nev": "VPPAdminTools", "minta": "vppadmintools", "workshop": "3798147467" },
+    { "nev": "DayZ-Expansion-Licensed", "minta": "dayzexpansionlicensed", "workshop": "2116157322" },
+    { "nev": "DayZ-Expansion-Bundle", "minta": "dayzexpansionbundle", "workshop": "2572331007" },
     { "nev": "DayZ-Expansion-Vehicles", "minta": "dayzexpansionvehicles", "opcionalis": true, "workshop": "2291785437" },
-    { "nev": "EscapeFromTarkov", "minta": "escapefromtarkov", "loot": true, "workshop": "" },
-    { "nev": "SNAFUWeapons", "minta": "snafu", "loot": true, "workshop": "" },
+    { "nev": "EscapeFromTarkov", "minta": "escapefromtarkov", "loot": true, "workshop": "2885380137" },
+    { "nev": "SNAFUWeapons", "minta": "snafu", "loot": true, "workshop": "2443122116" },
     { "nev": "MortysWeapons", "minta": "mortysweapons", "opcionalis": true, "loot": true, "workshop": "" },
-    { "nev": "HelicopterPack", "minta": "helicopterpack", "opcionalis": true, "workshop": "" },
+    { "nev": "HelicopterPack", "minta": "helicopterpack", "opcionalis": true, "workshop": "2601807585" },
     { "nev": "SibnicServerSide", "minta": "sibnic", "opcionalis": true, "csak_szerver": true, "helyi_mappa": "szerver_modok" },
-    { "nev": "BanditsNissanGTR", "minta": "nissangtr", "opcionalis": true, "workshop": "" },
-    { "nev": "NissanSkylineR34", "minta": "skyline", "opcionalis": true, "workshop": "" },
-    { "nev": "AudiRSQ8Mansory", "minta": "rsq8", "opcionalis": true, "workshop": "" },
-    { "nev": "m3gtr", "minta": "m3gtr", "opcionalis": true, "workshop": "" }
+    { "nev": "BanditsNissanGTR", "minta": "nissangtr", "opcionalis": true, "workshop": "3214402149" },
+    { "nev": "NissanSkylineR34", "minta": "skyline", "opcionalis": true, "workshop": "3383255252" },
+    { "nev": "AudiRSQ8Mansory", "minta": "rsq8", "opcionalis": true, "workshop": "3383217281" },
+    { "nev": "m3gtr", "minta": "m3gtr", "opcionalis": true, "workshop": "3321136008" }
   ],
 
   "green_mountain": {

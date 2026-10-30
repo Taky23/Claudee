@@ -141,6 +141,9 @@ def test_full_flow(tmp_path, monkeypatch):
     cfg["utvonalak"] = {"dayz": str(dayz), "dayz_szerver": str(srv)}
     cfg["superadminok_steam64"] = ["76561198000000000"]
     cfg["steam_felhasznalo"] = "goblin"
+    for m in cfg["modok"]:  # a teszthez csak kettő jön a Workshopról, a többi a !Workshop mappából
+        if m["nev"] not in ("CF", "DayZ-Expansion-Vehicles"):
+            m["workshop"] = ""
     # a CF és az Expansion-Vehicles Workshop azonosítóval van megadva → SteamCMD tölti le (itt kamu letöltő)
     hivasok = []
 

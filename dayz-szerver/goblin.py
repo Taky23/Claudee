@@ -313,7 +313,8 @@ def modok_masolasa(cfg: dict, dayz: Path | None, szerver: Path) -> list[dict]:
         if forras:
             meta_nev = mod_nev_metabol(forras)
             if meta_nev and not illik(mod, meta_nev):
-                raise Hiba(f"A(z) {mod['nev']} helyén letöltött mod valójában: „{meta_nev}”. Ellenőrizd a Workshop linkjét.")
+                # A Workshop-címet letöltés előtt már ellenőriztük; a mod belső neve ettől eltérhet.
+                print(f"  ⚠️ {mod['nev']}: a letöltött mod belső neve „{meta_nev}”. Ha ez nem a várt mod, ellenőrizd a Workshop linkjét.")
         elif mod.get("helyi_mappa"):
             helyi = ITT / mod["helyi_mappa"]
             forras = mod_keres(helyi, mod) if helyi.is_dir() else None
