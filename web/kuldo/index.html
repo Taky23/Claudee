@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="theme-color" content="#11151a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Haveri Küldő">
+<title>Haveri Küldő</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #0f1317; --card: #171d23; --card2: #1e262e; --text: #e8ede6; --muted: #8d9a93;
+  --line: #27313a; --accent: #9fd356; --accent-2: #5fb3a1; --warn: #f0b03f; --bad: #ef5d5d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: calc(20px + env(safe-area-inset-top)) 16px 40px;
+}
+main { max-width: 640px; margin: 0 auto; }
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+header img { width: 48px; height: 48px; border-radius: 12px; }
+h1 { font-size: 24px; margin: 0; }
+header p { margin: 0; color: var(--muted); font-size: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin-bottom: 14px; }
+.card h2 { font-size: 16px; margin: 0 0 10px; }
+.muted { color: var(--muted); font-size: 14px; }
+.drop {
+  border: 2px dashed var(--line); border-radius: 18px; padding: 34px 16px; text-align: center; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.drop.over, .drop:hover { border-color: var(--accent); background: rgba(159, 211, 86, .06); }
+.drop b { display: block; font-size: 18px; margin-bottom: 4px; }
+button, .btn {
+  font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 10px 16px; cursor: pointer;
+  background: var(--accent); color: #11151a;
+}
+button.ghost { background: var(--card2); color: var(--text); border: 1px solid var(--line); }
+button.small { padding: 6px 12px; font-size: 14px; }
+button:disabled { opacity: .45; cursor: default; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.link {
+  flex: 1 1 260px; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; font: 14px/1.4 ui-monospace, Consolas, monospace; color: var(--accent); overflow-wrap: anywhere;
+}
+ul { list-style: none; margin: 0; padding: 0; }
+li.file { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+li.file:first-child { border-top: 0; }
+.ico { width: 40px; height: 40px; border-radius: 10px; background: var(--card2); display: grid; place-items: center; font-size: 20px; flex: none; }
+.meta { flex: 1; min-width: 0; }
+.name { font-weight: 600; overflow-wrap: anywhere; }
+.bar { height: 6px; background: var(--card2); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width .2s; }
+.status { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.dot.wait { background: var(--warn); }
+.dot.off { background: var(--bad); }
+.hidden { display: none !important; }
+.tip { border-style: dashed; font-size: 14px; color: var(--muted); }
+.tip b { color: var(--text); }
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--card2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-size: 14px;
+  opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Haveri Küldő</h1>
+      <p>Fájlküldés közvetlenül gépről gépre, méretkorlát nélkül</p>
+    </div>
+  </header>
+
+  <!-- ===== KÜLDŐ ===== -->
+  <section id="sender" class="hidden">
+    <div class="card">
+      <div id="drop" class="drop">
+        <b>📦 Húzd ide a fájlokat</b>
+        <span class="muted">vagy kattints a tallózáshoz (több fájl is mehet)</span>
+      </div>
+      <input id="pick" type="file" multiple hidden>
+    </div>
+
+    <div id="shareCard" class="card hidden">
+      <h2>🔗 Küldd el ezt a linket a haverodnak</h2>
+      <div class="row">
+        <div id="link" class="link">Kapcsolódás…</div>
+        <button id="copy" disabled>Másolás</button>
+        <button id="share" class="ghost hidden">Megosztás</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0">⚠️ Ezt az oldalt hagyd nyitva, amíg a haverod letölti (lekicsinyítheted). Ha bezárod, a link megszűnik.</p>
+    </div>
+
+    <div id="filesCard" class="card hidden">
+      <h2>📁 Küldésre váró fájlok</h2>
+      <ul id="files"></ul>
+    </div>
+
+    <div id="friendsCard" class="card hidden">
+      <h2>👥 Csatlakozott haverok</h2>
+      <ul id="friends"></ul>
+    </div>
+
+    <div class="card tip">
+      <b>Hogyan működik?</b><br>
+      A fájlok nem kerülnek fel semmilyen tárhelyre: közvetlenül a te gépedről mennek a haverodéra, titkosított kapcsolaton.
+      Csak az mehet le, aki megkapja a linket, és csak amíg ez az oldal nyitva van.
+    </div>
+  </section>
+
+  <!-- ===== FOGADÓ ===== -->
+  <section id="receiver" class="hidden">
+    <div class="card">
+      <div class="status"><span id="rDot" class="dot wait"></span><span id="rStatus">Kapcsolódás a haverodhoz…</span></div>
+    </div>
+    <div id="rFilesCard" class="card hidden">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 style="margin:0">📥 Neked küldött fájlok</h2>
+        <button id="all" class="small">Mindet letöltöm</button>
+      </div>
+      <ul id="rFiles"></ul>
+    </div>
+    <div id="bigWarn" class="card tip hidden">
+      <b>Nagy fájl?</b> Ebben a böngészőben a letöltés a memóriában gyűlik, ezért több GB-os fájlhoz gépen
+      <b>Chrome</b> vagy <b>Edge</b> ajánlott: azok egyenesen a lemezre írnak.
+    </div>
+    <div class="card tip">
+      <b>Biztonság:</b> a fájl közvetlenül a haverod gépéről jön. Csak attól tölts le, akiben megbízol,
+      és ismeretlen <b>.exe</b>-t ne futtass.
+    </div>
+  </section>
+</main>
+<div id="toast" class="toast"></div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+const PREFIX = 'claudee-kuldo-';
+const CHUNK = 64 * 1024;
+const HIGH_WATER = 8 * 1024 * 1024;
+const LOW_WATER = 1024 * 1024;
+const $ = s => document.querySelector(s);
+
+// ---------- segédek ----------
+function fmtSize(n) {
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + ' ' + u[i];
+}
+function fmtTime(s) {
+  if (!isFinite(s) || s < 0) return '';
+  s = Math.round(s);
+  return s >= 3600 ? `${Math.floor(s / 3600)} ó ${Math.floor(s % 3600 / 60)} p` : s >= 60 ? `${Math.floor(s / 60)} p ${s % 60} mp` : `${s} mp`;
+}
+function icon(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (/^(png|jpe?g|gif|webp|bmp|heic|svg)$/.test(ext)) return '🖼️';
+  if (/^(mp4|mkv|mov|avi|webm|m4v)$/.test(ext)) return '🎞️';
+  if (/^(mp3|wav|flac|ogg|m4a|opus)$/.test(ext)) return '🎵';
+  if (/^(zip|rar|7z|tar|gz)$/.test(ext)) return '🗜️';
+  if (/^(exe|msi|bat|cmd|apk)$/.test(ext)) return '⚙️';
+  if (/^(pdf|docx?|txt|epub|xlsx?)$/.test(ext)) return '📄';
+  return '📦';
+}
+function randomId() {
+  const abc = 'abcdefghijkmnpqrstuvwxyz23456789';
+  const b = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(b, x => abc[x % abc.length]).join('');
+}
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.h);
+  toast.h = setTimeout(() => t.classList.remove('show'), 2500);
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+// Sebesség és hátralévő idő mérése
+class Meter {
+  constructor(total) { this.total = total; this.t0 = performance.now(); this.done = 0; this.speed = 0; this.last = [this.t0, 0]; }
+  add(n) {
+    this.done += n;
+    const now = performance.now();
+    if (now - this.last[0] > 700) {
+      const s = (this.done - this.last[1]) / ((now - this.last[0]) / 1000);
+      this.speed = this.speed ? this.speed * .6 + s * .4 : s;
+      this.last = [now, this.done];
+    }
+  }
+  text() {
+    const pct = this.total ? Math.floor(this.done / this.total * 100) : 100;
+    const eta = this.speed ? (this.total - this.done) / this.speed : NaN;
+    return `${pct}% · ${fmtSize(this.done)} / ${fmtSize(this.total)}` + (this.speed ? ` · ${fmtSize(this.speed)}/s · még ${fmtTime(eta)}` : '');
+  }
+}
+function peerError(err) {
+  const map = {
+    'peer-unavailable': 'A haverod oldala már nincs nyitva, vagy rossz a link.',
+    'network': 'Nem érem el a kapcsolódási szervert. Van internet?',
+    'server-error': 'A kapcsolódási szerver most nem elérhető. Próbáld újra pár perc múlva.',
+    'browser-incompatible': 'Ez a böngésző nem támogatja a közvetlen küldést. Próbáld Chrome-ban vagy Edge-ben.',
+    'webrtc': 'Nem sikerült közvetlen kapcsolatot létrehozni (valószínűleg a hálózat tiltja).',
+  };
+  return map[err.type] || ('Hiba: ' + (err.message || err.type));
+}
+
+// ======================================================================
+// KÜLDŐ
+// ======================================================================
+function sender() {
+  $('#sender').classList.remove('hidden');
+  const files = [];
+  const friends = new Map(); // peerId -> friend
+  let peer = null, shortId = null, friendNo = 0;
+
+  const pick = $('#pick'), drop = $('#drop');
+  drop.onclick = () => pick.click();
+  pick.onchange = () => { addFiles(pick.files); pick.value = ''; };
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+  // Az egész oldalra ejtve is működjön.
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => { e.preventDefault(); if (!drop.contains(e.target)) addFiles(e.dataTransfer.files); });
+
+  window.addEventListener('beforeunload', e => {
+    if (files.length) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  function addFiles(list) {
+    for (const f of list) {
+      if (f.size === 0 && !f.type) continue; // mappát nem lehet így küldeni
+      files.push(f);
+    }
+    renderFiles();
+    if (files.length && !peer) startPeer();
+    broadcastList();
+  }
+
+  function listMsg() {
+    return JSON.stringify({ t: 'list', files: files.map((f, i) => f ? { i, name: f.name, size: f.size } : null).filter(Boolean) });
+  }
+  function broadcastList() {
+    for (const fr of friends.values()) if (fr.conn.open) fr.conn.send(listMsg());
+  }
+
+  function renderFiles() {
+    const ul = $('#files');
+    ul.innerHTML = '';
+    files.forEach((f, i) => {
+      if (!f) return;
+      const li = el('li', 'file');
+      li.append(el('div', 'ico', icon(f.name)));
+      const meta = el('div', 'meta');
+      meta.append(el('div', 'name', f.name), el('div', 'muted', fmtSize(f.size)));
+      const rm = el('button', 'ghost small', '✕');
+      rm.title = 'Eltávolítás';
+      rm.onclick = () => { files[i] = null; renderFiles(); broadcastList(); };
+      li.append(meta, rm);
+      ul.append(li);
+    });
+    const any = files.some(Boolean);
+    $('#filesCard').classList.toggle('hidden', !any);
+    $('#shareCard').classList.toggle('hidden', !any);
+  }
+
+  function startPeer() {
+    shortId = randomId();
+    peer = new Peer(PREFIX + shortId, { debug: 0 });
+    peer.on('open', () => {
+      const url = location.origin + location.pathname + '#' + shortId;
+      $('#link').textContent = url;
+      $('#copy').disabled = false;
+      $('#copy').onclick = async () => {
+        try { await navigator.clipboard.writeText(url); toast('✅ Link kimásolva'); }
+        catch { toast('Jelöld ki és másold ki kézzel'); }
+      };
+      if (navigator.share) {
+        $('#share').classList.remove('hidden');
+        $('#share').onclick = () => navigator.share({ title: 'Haveri Küldő', text: 'Küldtem fájlt, itt töltheted le:', url }).catch(() => {});
+      }
+    });
+    peer.on('connection', conn => setupFriend(conn));
+    peer.on('disconnected', () => { if (!peer.destroyed) setTimeout(() => peer.reconnect(), 1500); });
+    peer.on('error', err => {
+      if (err.type === 'unavailable-id') { peer.destroy(); peer = null; startPeer(); return; }
+      if (err.type === 'peer-unavailable') return;
+      toast(peerError(err));
+      if (!peer.open) $('#link').textContent = peerError(err);
+    });
+  }
+
+  function setupFriend(conn) {
+    const fr = { conn, no: ++friendNo, queue: [], sending: null, cancel: false, ui: null };
+    friends.set(conn.peer, fr);
+    conn.on('open', () => {
+      conn.send(listMsg());
+      renderFriend(fr, 'Csatlakozott, válogat…');
+    });
+    conn.on('data', raw => {
+      if (typeof raw !== 'string') return;
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
+      if (msg.t === 'get' && files[msg.i]) { fr.queue.push(msg.i); pump(fr); }
+      else if (msg.t === 'cancel') {
+        // A fogadó a visszajelzésig eldob minden beérkező darabot, ezért mindig válaszolni kell.
+        if (fr.sending != null) fr.cancel = true;
+        else conn.send(JSON.stringify({ t: 'aborted' }));
+      }
+    });
+    const gone = () => {
+      fr.cancel = true;
+      friends.delete(conn.peer);
+      if (fr.ui) fr.ui.remove();
+      $('#friendsCard').classList.toggle('hidden', friends.size === 0);
+    };
+    conn.on('close', gone);
+    conn.on('error', gone);
+  }
+
+  function renderFriend(fr, text, pct) {
+    if (!fr.ui) {
+      fr.ui = el('li', 'file');
+      fr.ui.append(el('div', 'ico', '🧑'));
+      const meta = el('div', 'meta');
+      fr.nameEl = el('div', 'name', `Haver #${fr.no}`);
+      fr.textEl = el('div', 'muted');
+      fr.barEl = el('div', 'bar');
+      fr.barEl.append(el('i'));
+      meta.append(fr.nameEl, fr.textEl, fr.barEl);
+      const kick = el('button', 'ghost small', 'Kidob');
+      kick.onclick = () => fr.conn.close();
+      fr.ui.append(meta, kick);
+      $('#friends').append(fr.ui);
+      $('#friendsCard').classList.remove('hidden');
+    }
+    fr.textEl.textContent = text;
+    fr.barEl.classList.toggle('hidden', pct == null);
+    if (pct != null) fr.barEl.firstChild.style.width = pct + '%';
+  }
+
+  function waitDrain(dc) {
+    if (dc.bufferedAmount < HIGH_WATER) return Promise.resolve();
+    dc.bufferedAmountLowThreshold = LOW_WATER;
+    return new Promise(res => dc.addEventListener('bufferedamountlow', res, { once: true }));
+  }
+
+  async function pump(fr) {
+    if (fr.sending != null) return;
+    while (fr.queue.length && friends.has(fr.conn.peer)) {
+      const i = fr.queue.shift();
+      const f = files[i];
+      if (!f) continue;
+      fr.sending = i;
+      fr.cancel = false;
+      const conn = fr.conn, dc = conn.dataChannel;
+      conn.send(JSON.stringify({ t: 'start', i, name: f.name, size: f.size }));
+      const m = new Meter(f.size);
+      let off = 0, lastUi = 0;
+      try {
+        while (off < f.size && !fr.cancel) {
+          await waitDrain(dc);
+          if (fr.cancel || !conn.open) break;
+          const buf = await f.slice(off, off + CHUNK).arrayBuffer();
+          conn.send(buf);
+          off += buf.byteLength;
+          m.add(buf.byteLength);
+          const now = performance.now();
+          if (now - lastUi > 250) { lastUi = now; renderFriend(fr, `⬆️ ${f.name} · ${m.text()}`, off / f.size * 100); }
+        }
+      } catch (e) {
+        fr.cancel = true;
+      }
+      if (fr.cancel) {
+        if (conn.open) conn.send(JSON.stringify({ t: 'aborted', i }));
+        renderFriend(fr, `⛔ Megszakítva: ${f.name}`);
+      } else {
+        conn.send(JSON.stringify({ t: 'end', i }));
+        renderFriend(fr, `✅ Elküldve: ${f.name}`, 100);
+      }
+      fr.sending = null;
+    }
+  }
+}
+
+// ======================================================================
+// FOGADÓ
+// ======================================================================
+function receiver(id) {
+  $('#receiver').classList.remove('hidden');
+  const canPickFile = 'showSaveFilePicker' in window;
+  const canPickDir = 'showDirectoryPicker' in window;
+  let list = [], ui = {}, conn = null, connected = false;
+  let queue = [], current = null, dropping = false, lastSave = 0;
+
+  const setStatus = (text, state) => { $('#rStatus').textContent = text; $('#rDot').className = 'dot ' + state; };
+
+  const peer = new Peer({ debug: 0 });
+  const timeout = setTimeout(() => {
+    if (!connected) setStatus('Nem érem el a haverodat. Lehet, hogy bezárta az oldalt, vagy rossz a link.', 'off');
+  }, 20000);
+  peer.on('open', () => {
+    conn = peer.connect(PREFIX + id, { serialization: 'raw', reliable: true });
+    conn.on('open', () => { connected = true; clearTimeout(timeout); setStatus('Kapcsolódva a haverodhoz ✅', 'on'); });
+    conn.on('data', onData);
+    conn.on('close', () => {
+      setStatus('A kapcsolat megszakadt (a haverod bezárta az oldalt?).', 'off');
+      if (current) fail('Megszakadt a kapcsolat');
+      $('#all').disabled = true;
+      Object.values(ui).forEach(u => u.btn.disabled = true);
+    });
+  });
+  peer.on('error', err => { clearTimeout(timeout); setStatus(peerError(err), 'off'); });
+
+  window.addEventListener('beforeunload', e => { if (current) { e.preventDefault(); e.returnValue = ''; } });
+
+  function onData(raw) {
+    if (typeof raw === 'string') {
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
+      if (msg.t === 'list') renderList(msg.files);
+      else if (msg.t === 'aborted') dropping = false;
+      return;
+    }
+    if (dropping || !current) return; // egy megszakított letöltés maradéka
+    const c = current;
+    c.received += raw.byteLength;
+    c.meter.add(raw.byteLength);
+    if (c.writable) c.chain = c.chain.then(() => c.writable.write(raw));
+    else c.chunks.push(raw);
+    const now = performance.now();
+    if (now - c.lastUi > 250 || c.received >= c.size) {
+      c.lastUi = now;
+      setRow(c.i, c.meter.text(), c.received / c.size * 100);
+    }
+    if (c.received >= c.size) finish(c);
+  }
+
+  function renderList(files) {
+    list = files;
+    const ul = $('#rFiles');
+    ul.innerHTML = '';
+    ui = {};
+    const total = files.reduce((s, f) => s + f.size, 0);
+    files.forEach(f => {
+      const li = el('li', 'file');
+      li.append(el('div', 'ico', icon(f.name)));
+      const meta = el('div', 'meta');
+      const text = el('div', 'muted', fmtSize(f.size));
+      const bar = el('div', 'bar hidden');
+      bar.append(el('i'));
+      meta.append(el('div', 'name', f.name), text, bar);
+      const btn = el('button', 'small', 'Letöltés');
+      btn.onclick = () => request([f]);
+      li.append(meta, btn);
+      ul.append(li);
+      ui[f.i] = { text, bar, btn, f };
+    });
+    $('#rFilesCard').classList.toggle('hidden', !files.length);
+    $('#all').classList.toggle('hidden', files.length < 2);
+    $('#bigWarn').classList.toggle('hidden', canPickFile || total < 1.5 * 1024 ** 3);
+    if (!files.length) setStatus('Kapcsolódva ✅ A haverod még nem tett be fájlt.', 'on');
+  }
+  $('#all').onclick = () => request(list.filter(f => !ui[f.i].done));
+
+  function setRow(i, text, pct) {
+    const u = ui[i];
+    if (!u) return;
+    u.text.textContent = text;
+    u.bar.classList.toggle('hidden', pct == null);
+    if (pct != null) u.bar.firstChild.style.width = pct + '%';
+  }
+
+  // A mentés helyét még a kattintáskor kell elkérni (a böngésző csak így engedi).
+  async function request(files) {
+    if (!files.length) return;
+    let dir = null;
+    try {
+      if (files.length > 1 && canPickDir) dir = await showDirectoryPicker({ mode: 'readwrite' });
+      for (const f of files) {
+        const u = ui[f.i];
+        if (u.busy) continue;
+        let handle = null;
+        if (dir) handle = await dir.getFileHandle(f.name, { create: true });
+        else if (canPickFile) handle = await showSaveFilePicker({ suggestedName: f.name });
+        u.busy = true;
+        u.btn.textContent = 'Mégse';
+        u.btn.onclick = () => cancel(f.i);
+        setRow(f.i, 'Sorban áll…');
+        queue.push({ f, handle });
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') toast('Nem sikerült a mentés helyét megnyitni.');
+    }
+    next();
+  }
+
+  async function next() {
+    if (current || !queue.length || !conn || !conn.open) return;
+    const { f, handle } = queue.shift();
+    const c = { i: f.i, size: f.size, name: f.name, received: 0, chunks: [], chain: Promise.resolve(), meter: new Meter(f.size), lastUi: 0, writable: null };
+    try {
+      if (handle) c.writable = await handle.createWritable();
+    } catch {
+      return fail('Nem tudok írni a kiválasztott helyre', c);
+    }
+    current = c;
+    setRow(c.i, 'Indul…', 0);
+    conn.send(JSON.stringify({ t: 'get', i: c.i }));
+    if (c.size === 0) finish(c);
+  }
+
+  async function finish(c) {
+    current = null;
+    const u = ui[c.i];
+    try {
+      if (c.writable) {
+        await c.chain;
+        await c.writable.close();
+      } else {
+        // A közvetlenül egymás után indított letöltések közül a böngésző eldobhatja az elsőt.
+        const wait = lastSave + 1500 - Date.now();
+        if (wait > 0) await new Promise(r => setTimeout(r, wait));
+        lastSave = Date.now();
+        const url = URL.createObjectURL(new Blob(c.chunks));
+        const a = el('a');
+        a.href = url;
+        a.download = c.name;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }
+      setRow(c.i, `✅ Letöltve · ${fmtSize(c.size)}`, 100);
+      if (u) { u.done = true; u.busy = false; u.btn.textContent = 'Újra'; u.btn.onclick = () => request([u.f]); }
+    } catch {
+      fail('Nem sikerült menteni', c);
+    }
+    next();
+  }
+
+  function fail(text, c = current) {
+    if (!c) return;
+    if (c === current) current = null;
+    if (c.writable) c.writable.abort().catch(() => {});
+    setRow(c.i, '⚠️ ' + text);
+    const u = ui[c.i];
+    if (u) { u.busy = false; u.btn.textContent = 'Újra'; u.btn.onclick = () => request([u.f]); }
+  }
+
+  function cancel(i) {
+    const qi = queue.findIndex(q => q.f.i === i);
+    if (qi >= 0) {
+      queue.splice(qi, 1);
+      const u = ui[i];
+      u.busy = false; u.btn.textContent = 'Letöltés'; u.btn.onclick = () => request([u.f]);
+      setRow(i, fmtSize(u.f.size));
+      return;
+    }
+    if (current && current.i === i) {
+      dropping = true; // a már úton lévő darabokat eldobjuk, amíg a küldő vissza nem jelez
+      conn.send(JSON.stringify({ t: 'cancel' }));
+      fail('Megszakítva');
+      next();
+    }
+  }
+}
+
+// ---------- indulás ----------
+const linkId = location.hash.slice(1).replace(/[^a-z0-9]/g, '');
+if (typeof Peer === 'undefined') {
+  document.body.textContent = 'Nem sikerült betölteni az appot. Frissítsd az oldalt.';
+} else if (linkId) {
+  receiver(linkId);
+} else {
+  sender();
+}
+window.addEventListener('hashchange', () => location.reload());
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
