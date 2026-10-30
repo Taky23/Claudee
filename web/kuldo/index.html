@@ -2,16 +2,12 @@
 <html lang="hu">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="theme-color" content="#11151a">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Haveri Küldő">
 <title>Haveri Küldő</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root {
   --bg: #0f1317; --card: #171d23; --card2: #1e262e; --text: #e8ede6; --muted: #8d9a93;
@@ -84,6 +80,13 @@ li.file:first-child { border-top: 0; }
     </div>
   </header>
 
+  <section id="mobile" class="hidden">
+    <div class="card">
+      <h2>💻 Ez az app csak számítógépen működik</h2>
+      <p class="muted" style="margin:0">Nyisd meg gépen (Chrome, Edge vagy Firefox), és ott küldhetsz vagy tölthetsz le fájlokat.</p>
+    </div>
+  </section>
+
   <!-- ===== KÜLDŐ ===== -->
   <section id="sender" class="hidden">
     <div class="card">
@@ -99,7 +102,6 @@ li.file:first-child { border-top: 0; }
       <div class="row">
         <div id="link" class="link">Kapcsolódás…</div>
         <button id="copy" disabled>Másolás</button>
-        <button id="share" class="ghost hidden">Megosztás</button>
       </div>
       <p class="muted" style="margin:10px 0 0">⚠️ Ezt az oldalt hagyd nyitva, amíg a haverod letölti (lekicsinyítheted). Ha bezárod, a link megszűnik.</p>
     </div>
@@ -294,10 +296,6 @@ function sender() {
         try { await navigator.clipboard.writeText(url); toast('✅ Link kimásolva'); }
         catch { toast('Jelöld ki és másold ki kézzel'); }
       };
-      if (navigator.share) {
-        $('#share').classList.remove('hidden');
-        $('#share').onclick = () => navigator.share({ title: 'Haveri Küldő', text: 'Küldtem fájlt, itt töltheted le:', url }).catch(() => {});
-      }
     });
     peer.on('connection', conn => setupFriend(conn));
     peer.on('disconnected', () => { if (!peer.destroyed) setTimeout(() => peer.reconnect(), 1500); });
@@ -587,7 +585,12 @@ function receiver(id) {
 
 // ---------- indulás ----------
 const linkId = location.hash.slice(1).replace(/[^a-z0-9]/g, '');
-if (typeof Peer === 'undefined') {
+const isMobile = navigator.userAgentData?.mobile
+  || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS gépnek álcázza magát
+if (isMobile) {
+  $('#mobile').classList.remove('hidden');
+} else if (typeof Peer === 'undefined') {
   document.body.textContent = 'Nem sikerült betölteni az appot. Frissítsd az oldalt.';
 } else if (linkId) {
   receiver(linkId);
@@ -596,7 +599,7 @@ if (typeof Peer === 'undefined') {
 }
 window.addEventListener('hashchange', () => location.reload());
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (!isMobile && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
