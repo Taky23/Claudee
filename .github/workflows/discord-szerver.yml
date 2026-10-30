@@ -1,0 +1,32 @@
+name: Discord szerver felállítása
+
+on:
+  workflow_dispatch:
+    inputs:
+      guild_id:
+        description: 'A szerver azonosítója (jobb klikk a szerverre → Azonosító másolása)'
+        required: true
+      alap_torlese:
+        description: 'Törölje az alap "általános" szobákat? (friss szervernél ajánlott)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  felallit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install "discord.py>=2.4" pytest
+      - run: python -m pytest -q -p no:cacheprovider tests/test_discord_sablon.py
+      - name: Rangok és szobák létrehozása
+        env:
+          DISCORD_SETUP_TOKEN: ${{ secrets.DISCORD_SETUP_TOKEN }}
+          GUILD_ID: ${{ inputs.guild_id }}
+          ALAP_TORLESE: ${{ inputs.alap_torlese }}
+        run: python -m discord_szerver.felallit
