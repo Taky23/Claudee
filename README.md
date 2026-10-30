@@ -132,6 +132,12 @@ Saját bot a baráti szerverhez (`szerverbot/`): `/raid` szervező jelentkező g
 💀 MIA kilépő-üzenet, gombos rangválasztó, szülinapok, sorsolás és csapatosztás. Leírás és beállítás:
 [szerverbot/README.md](szerverbot/README.md).
 
+## 🧌 DayZ szerver
+
+Saját gépről futó, modolt DayZ szerver (Chernarus, max. 5 fő) a `dayz-szerver/` mappában: Green Mountain kereskedőzóna autókkal,
+titkos Black Market helikopterekkel és különleges autókkal, járműkulcsok, ATM, csak katonai helyeken lévő, jól látható AI.
+Telepítés és beállítás: [dayz-szerver/README.md](dayz-szerver/README.md).
+
 ## 🏰 Discord szerver felállítása (egy gombnyomásra)
 
 A `discord_szerver/` mappa egy egyszer lefutó script, ami egy baráti Tarkov / DayZ / anime szervert rak össze:
