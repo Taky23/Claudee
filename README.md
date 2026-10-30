@@ -109,6 +109,8 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
   - **⏭️ Mit nézzek utána?** Egy anime befejezésekor felugrik a folytatás (ha van) és a hasonló ajánlások.
   - Az évkönyvhöz és a kihívásokhoz az app nézési naplót vezet (csak a telefonon), a bevezetése előtti nézések nem számítanak bele.
 
+- **📦 Haveri Küldő** (`web/kuldo/`) – fájlküldés közvetlenül gépről gépre, méretkorlát nélkül. Behúzod a fájlokat, és kapsz egy linket; aki megnyitja, közvetlenül tőled tölti le (WebRTC, titkosított kapcsolaton, tárhelyre semmi nem kerül fel). Gépen Chrome-ban és Edge-ben a letöltés egyenesen a lemezre íródik, így több GB-os fájl is mehet. A küldő oldalt nyitva kell hagyni, amíg a letöltés tart. A kapcsolat felépítéséhez a [PeerJS](https://peerjs.com) ingyenes szerverét használja (ezen csak a kapcsolódási adatok mennek át, a fájl nem), és ha a hálózat nem enged közvetlen kapcsolatot, a PeerJS nyilvános továbbító szerverén megy át, továbbra is titkosítva.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
