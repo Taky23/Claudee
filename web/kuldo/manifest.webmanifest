@@ -1,10 +1,11 @@
 {
   "name": "Haveri Küldő",
   "short_name": "Küldő",
-  "description": "Fájlküldés közvetlenül gépről gépre, méretkorlát nélkül (csak számítógépen).",
+  "description": "Fájlküldés közvetlenül gépről gépre, méretkorlát nélkül.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0f1317",
   "theme_color": "#11151a",
   "icons": [
