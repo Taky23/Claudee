@@ -124,6 +124,46 @@ Helyben is kipróbálhatod: `cd web && python -m http.server`, majd nyisd meg a 
 
 Asztali program (`desktop/epub-fordito/`): **EPUB → TXT**, **TXT → EPUB**, és **angol → magyar fordítás DeepL-lel** úgy, hogy az EPUB szerkezete (fejezetek, kiemelések, képek, tartalomjegyzék) megmarad. A fordítás magyar idézőjeleket használ, a kész részeket menti, így megszakítás vagy elfogyott keret után folytatható. A kész `EpubFordito.exe` a GitHub **Releases** oldalán van (a `.github/workflows/epub-fordito.yml` építi Windowson). Részletek: [desktop/epub-fordito/README.md](desktop/epub-fordito/README.md).
 
+## 🏰 Discord szerver felállítása (egy gombnyomásra)
+
+A `discord_szerver/` mappa egy egyszer lefutó script, ami egy baráti Tarkov / DayZ / anime szervert rak össze:
+rangokat (👑 Tulaj, 🛡️ Admin, 🔨 Moderátor, 💎 VIP, 🤖 Bot, 🎮 Tag, 🔇 Némított, valamint pingelhető 🎯 Tarkov, 🧟 DayZ,
+🌸 Anime, 🎲 Egyéb játékok), kategóriákat és szobákat (info, beszélgetés, Tarkov 5 fős raid hangszobákkal, DayZ,
+egyéb játékok, anime, hangcsatornák AFK-val, rejtett staff rész) és jogosultságokat. A pontos lista a
+[`discord_szerver/sablon.py`](discord_szerver/sablon.py) fájlban van. Újra lefuttatva semmit nem duplikál, és amit kézzel átírtál, azt nem bántja.
+
+A GitHubon fut, így telefonról is elindítható:
+
+1. **Bot létrehozása:** [Discord Developer Portal](https://discord.com/developers/applications) → **New Application** (bármilyen név) →
+   **Bot** fül → **Reset Token** → másold ki a tokent.
+2. **Meghívás:** az **OAuth2 → URL Generator** részen pipáld be a `bot` scope-ot és az **Administrator** jogot, nyisd meg a
+   generált linket, és válaszd ki a szerveredet.
+3. **Token a GitHubra:** a repóban **Settings → Secrets and variables → Actions → New repository secret**,
+   név: `DISCORD_SETUP_TOKEN`, érték: a token.
+4. **Futtatás:** **Actions** fül → **Discord szerver felállítása** → **Run workflow**, és írd be a szerver azonosítóját
+   (Discordban: Beállítások → Speciális → Fejlesztői mód, majd jobb klikk a szerverre → Azonosító másolása).
+   Friss szervernél hagyd bepipálva az alap „általános” szobák törlését.
+5. **Takarítás:** kb. fél perc múlva kész. Utána a botot kirúghatod a szerverről, a GitHubon pedig törölheted a secretet.
+
+Helyben is futtatható: `DISCORD_SETUP_TOKEN=... GUILD_ID=... python -m discord_szerver.felallit`
+
+### 👋 Üdvözlés és 💀 kilépők (Carl-bot)
+
+Ehhez folyamatosan futó bot kell, erre a legegyszerűbb az ingyenes [Carl-bot](https://carl.gg):
+
+- **Welcome → Welcome message** → `#👋・üdvözlés`:
+  > 🎉 Szia [név], üdv a **[szerver]** szerveren! Te vagy a **[létszám].** tagunk. 🔥
+  > Válaszd ki a játékaidat a `#🎭・rangok` szobában!
+- **Welcome → Goodbye message** → `#🚪・kilépők`:
+  > 💀 **[név]** — Missing in Action [MIA]
+- **Logging → Member join/leave** → `#📋・tag-napló`
+- **Autoroles:** a belépők kapják meg a 🎮 Tag rangot. Ehhez a Carl-bot rangja legyen a 🎮 Tag felett
+  (Szerverbeállítások → Szerepkörök, húzással).
+
+A `[név]`, `[szerver]`, `[létszám]` helyére a Carl-bot felületén lévő változókat szúrd be. A Discord saját belépési
+üzenetét (Szerverbeállítások → Áttekintés → Rendszerüzenetek) kapcsold ki, különben dupla lesz az üdvözlés.
+A játék-rangokat (🎯 🧟 🌸 🎲) a **Közösség** bekapcsolása után a **Bevezetés** (Onboarding) kérdéseivel lehet választhatóvá tenni.
+
 ## ⚙️ Telepítés
 
 ### 1. Bot létrehozása a Discordon
