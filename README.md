@@ -124,6 +124,12 @@ Helyben is kipróbálhatod: `cd web && python -m http.server`, majd nyisd meg a 
 
 Asztali program (`desktop/epub-fordito/`): **EPUB → TXT**, **TXT → EPUB**, és **angol → magyar fordítás DeepL-lel** úgy, hogy az EPUB szerkezete (fejezetek, kiemelések, képek, tartalomjegyzék) megmarad. A fordítás magyar idézőjeleket használ, a kész részeket menti, így megszakítás vagy elfogyott keret után folytatható. A kész `EpubFordito.exe` a GitHub **Releases** oldalán van (a `.github/workflows/epub-fordito.yml` építi Windowson). Részletek: [desktop/epub-fordito/README.md](desktop/epub-fordito/README.md).
 
+## 🤖 Szerverbot
+
+Saját bot a baráti szerverhez (`szerverbot/`): `/raid` szervező jelentkező gombokkal és emlékeztetővel, ideiglenes hangszobák,
+💀 MIA kilépő-üzenet, gombos rangválasztó, szülinapok, sorsolás és csapatosztás. Leírás és beállítás:
+[szerverbot/README.md](szerverbot/README.md).
+
 ## 🏰 Discord szerver felállítása (egy gombnyomásra)
 
 A `discord_szerver/` mappa egy egyszer lefutó script, ami egy baráti Tarkov / DayZ / anime szervert rak össze:
