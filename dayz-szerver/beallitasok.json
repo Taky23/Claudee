@@ -27,6 +27,8 @@
     { "nev": "EscapeFromTarkov", "minta": "escapefromtarkov", "loot": true, "workshop": "" },
     { "nev": "SNAFUWeapons", "minta": "snafu", "loot": true, "workshop": "" },
     { "nev": "MortysWeapons", "minta": "mortysweapons", "opcionalis": true, "loot": true, "workshop": "" },
+    { "nev": "HelicopterPack", "minta": "helicopterpack", "opcionalis": true, "workshop": "" },
+    { "nev": "SibnicServerSide", "minta": "sibnic", "opcionalis": true, "csak_szerver": true, "helyi_mappa": "szerver_modok" },
     { "nev": "BanditsNissanGTR", "minta": "nissangtr", "opcionalis": true, "workshop": "" },
     { "nev": "NissanSkylineR34", "minta": "skyline", "opcionalis": true, "workshop": "" },
     { "nev": "AudiRSQ8Mansory", "minta": "rsq8", "opcionalis": true, "workshop": "" },
@@ -56,7 +58,10 @@
       { "nev": "Gyrocopter", "osztaly": "ExpansionGyrocopter", "ar": [500000, 1000000] },
       { "nev": "MH-6", "osztaly": "ExpansionMh6", "ar": [1500000, 3000000] },
       { "nev": "UH-1H", "osztaly": "ExpansionUh1h", "ar": [1700000, 3400000] },
-      { "nev": "Merlin", "osztaly": "ExpansionMerlin", "ar": [2000000, 4000000] }
+      { "nev": "Merlin", "osztaly": "ExpansionMerlin", "ar": [2000000, 4000000] },
+      { "nev": "Helicopter pack: 1. heli", "osztaly": "", "ar": [1500000, 3000000] },
+      { "nev": "Helicopter pack: 2. heli", "osztaly": "", "ar": [1500000, 3000000] },
+      { "nev": "Helicopter pack: 3. heli", "osztaly": "", "ar": [1500000, 3000000] }
     ],
     "autok": [
       { "nev": "Bandits Nissan GTR", "osztaly": "", "ar": [300000, 600000] },

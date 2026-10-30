@@ -7,7 +7,7 @@ A saját gépedről futó, modolt DayZ szerver telepítője és beállítója.
 | | |
 |---|---|
 | 🏪 **Green Mountain kereskedőzóna** | Az Expansion kész kereskedőhelye (fegyver, ruha, kaja, alkatrész, építőanyag, ATM-ek), kivilágítva, biztonsági zónával és térképjelölővel. Az autókereskedőnél: **Ada 4x4, Olga 24, Gunter 2, Sarka 120, M3S, M1025**. |
-| 🕵️ **Titkos Black Market** | Északon, a Tisy–Sinystok közti erdőben. **Nem látszik a térképen**, csak készpénzzel lehet fizetni. Kínálat: **Gyrocopter, MH-6, UH-1H, Merlin**, valamint a különleges autók (Nissan GTR, Skyline R34, Audi RSQ8, m3gtr). |
+| 🕵️ **Titkos Black Market** | Északon, a Tisy–Sinystok közti erdőben. **Nem látszik a térképen**, csak készpénzzel lehet fizetni. Kínálat: **Gyrocopter, MH-6, UH-1H, Merlin**, a **Helicopter pack** helijei, valamint a különleges autók (Nissan GTR, Skyline R34, Audi RSQ8, m3gtr). |
 | 🔑 **Járműkulcsok** | A megvett jármű zárva kerül ki a lerakóhelyre, és a vevő kulcsot kap hozzá. Csak a saját kulcsa nyitja, zárja és indítja, feltörni nem lehet. Egy **üres (párosítatlan) kulcs** hozzápárosítható egy gazdátlan, még kulcs nélküli járműhöz. |
 | 🏧 **ATM** | Pénz feltöltése és levétele. A bankszámla újraindítás után is megmarad. Vásárolni csak a nálad lévő készpénzzel lehet. |
 | 🤖 **AI katonák** | **Csak katonai helyeken** és **reptereken**. Délen kevesebb (1–2), északon több (2–4), a reptereken +2. Jól látható piros ruhát és láthatósági mellényt viselnek. Közepes célzás, kicsit gyengített sebzés. |
@@ -40,12 +40,16 @@ A telepítő ellenőrzi, hogy a link tényleg ahhoz a modhoz tartozik-e. Ha nem,
 | **SNAFU Weapons** | fegyverek (modern katonai fegyverek, mesterlövészpuskák) |
 | **Mortys Weapons** | nem kötelező: .50-es Barrett M82A1 |
 | **Bandits Nissan GTR Limit**, **Nissan Skyline GT-R R34**, **Audi RSQ8 Mansory**, **m3gtr** | nem kötelező: a BM különleges autói |
+| **Helicopter pack** (KillSwitch / SIBNIC) | nem kötelező: további helik a BM-be. **Kell hozzá a szerveroldali része is**, lásd lent. |
 
 Amelyik modnál üresen hagyod a `workshop` mezőt, azt a telepítő a DayZ `!Workshop` mappájában keresi, vagyis ott is működik, ha előtte kézzel feliratkoztál rá.
 
 > ⚠️ Az Escape From Tarkov mod utoljára 2022-ben frissült, ezért előfordulhat, hogy a mostani DayZ-vel már nem működik. Ha a szerver miatta nem indul, vedd ki a `beallitasok.json` → `modok` listából.
 
 **A haveroknak nem kell semmit előre letölteniük:** amikor a DayZ launcherben csatlakoznak a szerverhez, a launcher felajánlja a hiányzó modok letöltését.
+
+### A Helicopter pack szerveroldali része
+A Helicopter pack leírása szerint a szerverre kell egy **[Server_Side]** mod is, amit a készítő oldaláról ([sibnic.info](https://sibnic.info)) lehet letölteni, a Workshopon nincs fent. Töltsd le, csomagold ki, és a benne lévő `@…` mappát tedd ide: `dayz-szerver/szerver_modok/`. A telepítő megtalálja, és szerveroldali modként (`-serverMod`) tölti be. A játékosoknak ezt nem kell letölteniük. Ha a mappa nevében nincs benne, hogy „sibnic”, nevezd át pl. `@SibnicServer`-re.
 
 ## 2. Beállítások
 Nyisd meg a `beallitasok.json` fájlt (pl. Jegyzettömbbel):
@@ -107,8 +111,9 @@ python goblin.py keres GTR
 python goblin.py keres Skyline
 python goblin.py keres RSQ8
 python goblin.py keres m3gtr
+python goblin.py keres heli
 ```
-A listában általában a legrövidebb, a mod nevével kezdődő név a jármű. Írd be a `beallitasok.json` → `black_market` → `autok` → `osztaly` mezőbe, majd `testreszab`. Ugyanígy működik a VPP tárgy-lehívó keresője is: ha ott lehív egy autót, látszik a neve.
+A listában általában a legrövidebb, a mod nevével kezdődő név a jármű. Írd be a `beallitasok.json` → `black_market` → `autok` (a helikopter-csomag helijeinél: `helik`) → `osztaly` mezőbe, majd `testreszab`. A helikopter-csomagból annyi helit veszel fel, ahányat akarsz: a listában 3 hely van, de bővíthető vagy törölhető. Ugyanígy működik a VPP tárgy-lehívó keresője is: ha ott lehív egy autót, látszik a neve.
 
 Bármilyen fegyvert vagy tárgyat (pl. SNAFU-s mesterlövészpuskát) a BM-be az `egyeb` listában adhatsz meg: `{ "nev": "Barrett", "osztaly": "…", "ar": [100000, 200000] }`.
 

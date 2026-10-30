@@ -304,3 +304,19 @@ def test_server_is_installed_when_missing(tmp_path, monkeypatch):
     szerver = g.modok_letoltese(cfg, None, mindet=False)
     assert szerver == tmp_path / "DayZServer" and (szerver / "DayZServer_x64.exe").exists()
     assert hivas[0][:2] == ["+force_install_dir", str(tmp_path / "DayZServer")] and "223350" in hivas[0]
+
+
+def test_server_side_mods_go_to_servermod():
+    bat = g.inditas_bat({"szerver": {"port": 2302}}, [{"nev": "CF"}, {"nev": "HelicopterPack"}, {"nev": "SibnicServerSide", "csak_szerver": True}])
+    assert '"-mod=@CF;@HelicopterPack" "-serverMod=@SibnicServerSide"' in bat
+    assert "-serverMod" not in g.inditas_bat({"szerver": {}}, [{"nev": "CF"}])
+
+
+def test_local_server_mod_is_found(tmp_path, monkeypatch):
+    monkeypatch.setattr(g, "ITT", tmp_path)
+    (tmp_path / "szerver_modok" / "@Sibnic_Server_Side" / "addons").mkdir(parents=True)
+    srv = tmp_path / "srv"
+    srv.mkdir()
+    cfg = {"modok": [{"nev": "SibnicServerSide", "minta": "sibnic", "csak_szerver": True, "helyi_mappa": "szerver_modok"}]}
+    modok = g.modok_masolasa(cfg, None, srv)
+    assert modok[0]["nev"] == "SibnicServerSide" and (srv / "@SibnicServerSide" / "addons").is_dir()

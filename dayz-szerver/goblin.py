@@ -314,6 +314,9 @@ def modok_masolasa(cfg: dict, dayz: Path | None, szerver: Path) -> list[dict]:
             meta_nev = mod_nev_metabol(forras)
             if meta_nev and not illik(mod, meta_nev):
                 raise Hiba(f"A(z) {mod['nev']} helyén letöltött mod valójában: „{meta_nev}”. Ellenőrizd a Workshop linkjét.")
+        elif mod.get("helyi_mappa"):
+            helyi = ITT / mod["helyi_mappa"]
+            forras = mod_keres(helyi, mod) if helyi.is_dir() else None
         elif workshop and workshop.is_dir():
             forras = mod_keres(workshop, mod)
         if not forras:
@@ -505,14 +508,16 @@ class Missions
 
 
 def inditas_bat(cfg: dict, modok: list[dict]) -> str:
-    modlista = ";".join(f"@{m['nev']}" for m in modok)
+    modlista = ";".join(f"@{m['nev']}" for m in modok if not m.get("csak_szerver"))
+    szerver_modok = ";".join(f"@{m['nev']}" for m in modok if m.get("csak_szerver"))
+    szerver_param = f' "-serverMod={szerver_modok}"' if szerver_modok else ""
     return f"""@echo off
 chcp 65001 >nul
 title Loot Goblinok DayZ szerver
 cd /d "%~dp0"
 :start
 echo [%date% %time%] Szerver indul...
-DayZServer_x64.exe -config=serverDZ.cfg -port={cfg['szerver'].get('port', 2302)} -profiles=profiles -dologs -adminlog -netlog -freezecheck "-mod={modlista}"
+DayZServer_x64.exe -config=serverDZ.cfg -port={cfg['szerver'].get('port', 2302)} -profiles=profiles -dologs -adminlog -netlog -freezecheck "-mod={modlista}"{szerver_param}
 echo [%date% %time%] A szerver leallt. Ujrainditas 10 masodperc mulva (bezarashoz: Ctrl+C, majd I).
 timeout /t 10
 goto start
@@ -761,7 +766,10 @@ def testreszab() -> None:
     autok = [piaci_targy(index, minta_targy, a["osztaly"], a.get("ar")) for a in cfg["green_mountain"]["autok"]]
     ir_json(market / "GOBLIN_Autok.json", kategoria(minta_kat, "Goblin autók", autok))
     kategoriak_bm = []
-    helik = [piaci_targy(index, minta_targy, h["osztaly"], h.get("ar")) for h in bm["helik"]]
+    for h in bm["helik"]:
+        if not h.get("osztaly"):
+            print(f"  ⚠️ BM heli kihagyva, nincs megadva az osztályneve: {h['nev']} (python goblin.py keres …)")
+    helik = [piaci_targy(index, minta_targy, h["osztaly"], h.get("ar")) for h in bm["helik"] if h.get("osztaly")]
     ir_json(market / "GOBLIN_BM_Legi.json", kategoria(minta_kat, "Helikopterek", helik, "1A1A1AFF"))
     kategoriak_bm.append("GOBLIN_BM_Legi")
     bm_autok = [a for a in bm["autok"] if a.get("osztaly")]

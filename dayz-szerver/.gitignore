@@ -1,1 +1,3 @@
 _letoltes/
+szerver_modok/*
+!szerver_modok/.gitkeep
