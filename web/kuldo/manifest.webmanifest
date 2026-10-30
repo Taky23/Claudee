@@ -1,6 +1,6 @@
 {
-  "name": "Haveri Küldő",
-  "short_name": "Küldő",
+  "name": "Kép to Link",
+  "short_name": "Kép to Link",
   "description": "Fájlküldés közvetlenül gépről gépre, méretkorlát nélkül.",
   "start_url": ".",
   "scope": ".",
