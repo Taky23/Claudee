@@ -334,3 +334,20 @@ def test_broken_config_gives_readable_error(tmp_path, monkeypatch):
     # a Jegyzettömb BOM-mal mentett fájlja is működik
     (tmp_path / "beallitasok.json").write_text('﻿{"a": 1}', encoding="utf-8")
     assert g.beallitasok() == {"a": 1}
+
+
+def test_steam_nelkul_skips_steamcmd(tmp_path, monkeypatch):
+    srv = tmp_path / "srv"
+    srv.mkdir()
+    (srv / "DayZServer_x64.exe").write_bytes(b"")
+    dayz = tmp_path / "DayZ"
+    (dayz / "!Workshop" / "@CF").mkdir(parents=True)
+    cfg = {"utvonalak": {"dayz": str(dayz), "dayz_szerver": str(srv)},
+           "modok": [{"nev": "CF", "minta": "cf", "pontos": True, "workshop": "1559212036"}]}
+    monkeypatch.setattr(g, "beallitasok", lambda: cfg)
+    monkeypatch.setattr(g, "steamcmd_futtat", lambda args: pytest.fail("nem szabad SteamCMD-t futtatni"))
+    seen = {}
+    monkeypatch.setattr(g, "modok_masolasa", lambda c, d, s: seen.setdefault("mods", [m["workshop"] for m in c["modok"]]) and (_ for _ in ()).throw(g.Hiba("stop")))
+    with pytest.raises(g.Hiba, match="stop"):
+        g.telepit(steam_nelkul=True)
+    assert seen["mods"] == [""]

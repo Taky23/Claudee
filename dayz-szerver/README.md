@@ -73,6 +73,8 @@ Ez megcsinálja:
 
 Ha a DayZ Server a Steamben már telepítve van, azt használja. Ha nincs, a `dayz-szerver/DayZServer` mappába kerül.
 
+**Ha nem szeretnéd megadni a Steam jelszavad a SteamCMD-nek:** iratkozz fel a modokra a Workshopon, és indítsd el egyszer a DayZ-t, hogy letöltse őket. Telepítsd a DayZ Servert a Steamből (Könyvtár → Eszközök → DayZ Server), majd futtasd: `python goblin.py telepit --steam-nelkul`.
+
 **Frissítés** (ha frissül a DayZ vagy egy mod): `python goblin.py frissit`. Ez mindent újratölt, és újra összerak. Teljesen tiszta küldetéshez: `python goblin.py telepit --ujra`.
 
 ## 4. Router: port nyitás (hogy a haverok is be tudjanak lépni)

@@ -3,6 +3,7 @@
 Használat (Windowson, a dayz-szerver mappában):
   python goblin.py telepit      – DayZ Server és modok letöltése (SteamCMD), küldetés (mission), serverDZ.cfg, inditas.bat
   python goblin.py frissit      – a DayZ Server és az összes mod frissítése, utána telepít
+  python goblin.py telepit --steam-nelkul – SteamCMD nélkül: a Steamből telepített szerver és a feliratkozott modok
   python goblin.py testreszab   – az első indítás UTÁN: kereskedők, Black Market, AI, járműkulcsok
   python goblin.py keres GTR    – osztálynevek (classname) keresése a modokban, pl. az autókhoz
 
@@ -536,10 +537,19 @@ goto start
 """
 
 
-def telepit(ujra: bool = False, frissit: bool = False) -> None:
+def telepit(ujra: bool = False, frissit: bool = False, steam_nelkul: bool = False) -> None:
     cfg = beallitasok()
     dayz, szerver = utvonalak(cfg, kell_szerver=False)
-    szerver = modok_letoltese(cfg, szerver, mindet=frissit)
+    if steam_nelkul:
+        # Nincs SteamCMD-s letöltés: a szerver a Steamből telepítve, a modok a DayZ !Workshop mappájából jönnek.
+        if not szerver:
+            raise Hiba("Nem találom a DayZ Servert. Telepítsd a Steamből: Könyvtár → Eszközök → DayZ Server.")
+        if not dayz:
+            raise Hiba("Nem találom a DayZ mappáját. Írd be a beallitasok.json → utvonalak → dayz mezőbe.")
+        for mod in cfg["modok"]:
+            mod["workshop"] = ""
+    else:
+        szerver = modok_letoltese(cfg, szerver, mindet=frissit)
     print(f"\nDayZ szerver: {szerver}\n\nModok:")
     modok = modok_masolasa(cfg, dayz, szerver)
     print("\nKüldetés:")
@@ -948,7 +958,7 @@ def main(argv: list[str]) -> int:
         return 1
     try:
         if argv[1] == "telepit":
-            telepit(ujra="--ujra" in argv)
+            telepit(ujra="--ujra" in argv, steam_nelkul="--steam-nelkul" in argv)
         elif argv[1] == "frissit":
             telepit(frissit=True)
         elif argv[1] == "testreszab":
