@@ -1,0 +1,10 @@
+{
+  "appId": "hu.taky.rajzfilm",
+  "appName": "Rajzfilm Retró",
+  "webDir": "www",
+  "backgroundColor": "#141414ff",
+  "android": {
+    "backgroundColor": "#141414ff",
+    "allowMixedContent": false
+  }
+}

@@ -111,6 +111,8 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **📦 Kép to Link** (`web/kuldo/`) – fájlküldés közvetlenül gépről gépre, méretkorlát nélkül. Behúzod a fájlokat, és kapsz egy linket; aki megnyitja, közvetlenül tőled tölti le (WebRTC, titkosított kapcsolaton, tárhelyre semmi nem kerül fel). Gépen Chrome-ban és Edge-ben a letöltés egyenesen a lemezre íródik, így több GB-os fájl is mehet. A küldő oldalt nyitva kell hagyni, amíg a letöltés tart. A kapcsolat felépítéséhez a [PeerJS](https://peerjs.com) ingyenes szerverét használja (ezen csak a kapcsolódási adatok mennek át, a fájl nem), és ha a hálózat nem enged közvetlen kapcsolatot, a PeerJS nyilvános továbbító szerverén megy át, továbbra is titkosítva.
 
+- **📺 Rajzfilm Retró** (`rajzfilm-apk/`, **Android APK**, nem PWA) – a régi Cartoon Network sorozatok (Ed, Edd és Eddy, Dexter laboratóriuma, Johnny Test, Bátor, a gyáva kutya, Fosterék háza képzeletbeli barátoknak, Billy és Mandy kalandjai a Kaszással) epizódlistája évadonként a [TVmaze](https://www.tvmaze.com) nyilvános adatbázisából (angol címekkel), megnézett részek pipálása, „Folytasd” sor, véletlen rész, főcímdal-kereső, és egy „Hol nézhetem?” gomb, ami a JustWatch-on megmutatja a legális magyar szolgáltatókat. Maguk a mesék nincsenek az appban. Az epizódlisták a telefonra mentődnek, így később net nélkül is megnyílnak. Az APK-t a `.github/workflows/rajzfilm-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
