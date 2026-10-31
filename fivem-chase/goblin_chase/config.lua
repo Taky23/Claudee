@@ -72,15 +72,29 @@ Config.HandlingProfiles = {
     tapados   = { label = 'Tapadós',    fTractionCurveMax = 1.10, fTractionCurveMin = 1.10, fInitialDriveForce = 0.92 },
     nehez     = { label = 'Nehéz',      fMass = 1.35, fInitialDriveForce = 0.95, fBrakeForce = 0.92 },
     forgekony = { label = 'Fordulékony', fSteeringLock = 1.15, fBrakeForce = 1.08, fMass = 0.90, fTractionCurveMax = 0.97 },
+
+    -- Az üldözős autók saját beállításai. Mindegyik jobb valamiben, és fizet érte valamivel.
+    -- Bugatti Bolide: pályaautó. Nagyon tapad és jól fékez, de könnyű, így ütközésnél könnyen ellökik.
+    bolide = { label = 'Bugatti Bolide', fTractionCurveMax = 1.10, fTractionCurveMin = 1.08, fBrakeForce = 1.10,
+               fMass = 0.80, fInitialDriveForce = 1.00, fSteeringLock = 0.95 },
+    -- Koenigsegg Jesko: ő gyorsul a legjobban, de kanyarban könnyebben megcsúszik.
+    jesko  = { label = 'Koenigsegg Jesko', fInitialDriveForce = 1.15, fTractionCurveMax = 0.94, fTractionCurveMin = 0.92,
+               fMass = 0.92, fBrakeForce = 1.00 },
+    -- BMW M3 Competition: fordulékony, jól irányítható, kicsit „driftes”; gyorsulásban átlagos.
+    m3comp = { label = 'BMW M3 Competition', fSteeringLock = 1.12, fTractionCurveMax = 1.00, fTractionCurveMin = 0.92,
+               fBrakeForce = 1.05, fInitialDriveForce = 0.98 },
+    -- Audi RS Q3: nehéz SUV. Ütközésben ő tol a legjobban, de lomhább, és hosszabb a fékútja.
+    rsq3   = { label = 'Audi RS Q3', fMass = 1.35, fInitialDriveForce = 0.95, fBrakeForce = 0.92,
+               fSteeringLock = 0.92, fTractionCurveMax = 1.02, fTractionCurveMin = 1.02 },
 }
 
 -- Melyik kocsi melyik profilt kapja (a modell neve kisbetűvel). Ami nincs itt, az „alap”.
 -- Saját (mod) autónál ide írd be a modell nevét és a profilt, pl.: ['skyline'] = 'gyorsulo',
 Config.CarProfiles = {
-    bolide  = 'gyorsulo',
-    jesko   = 'forgekony',
-    m3comp  = 'tapados',
-    rsq3    = 'nehez',
+    bolide  = 'bolide',
+    jesko   = 'jesko',
+    m3comp  = 'm3comp',
+    rsq3    = 'rsq3',
     sultan  = 'alap',
 }
 

@@ -78,12 +78,12 @@ A játékmód minden üldözős kocsira **indításkor ráteszi a saját handlin
 ## 🚗 Az autók: ugyanazok mindenkinek, más színben
 Nincs külön rendőrautó: **mindenki ugyanabból a listából kap kocsit**. A menekülőé **fekete** (rendszám: GOBLIN), a rendőröké **sötétkék** (rendszám: RENDOR).
 
-| Autó | Modellnév (ellenőrizendő) | Profil |
-|---|---|---|
-| 2020 Bugatti Bolide | `bolide` | Gyorsuló |
-| 2021 Audi RS Q3 (Prior Design) | `rsq3` | Nehéz |
-| BMW M3 Competition | `m3comp` | Tapadós |
-| Koenigsegg Jesko | `jesko` | Fordulékony |
+| Autó | Modellnév (ellenőrizendő) | Miben jó | Mivel fizet érte |
+|---|---|---|---|
+| 2020 Bugatti Bolide | `bolide` | tapadás, fék | könnyű: ütközésnél könnyen ellökik |
+| Koenigsegg Jesko | `jesko` | ő gyorsul a legjobban | kanyarban hamarabb megcsúszik |
+| BMW M3 Competition | `m3comp` | fordulékony, jól irányítható | kicsit „driftes”, gyorsulásban átlagos |
+| 2021 Audi RS Q3 (Prior Design) | `rsq3` | nehéz: ütközésben ő tol a legjobban | lomhább, hosszabb fékút |
 
 A fix 180 km/h végsebesség mindegyikre vonatkozik, így egyik sem húz el a többi elől, csak máshogy viselkedik.
 

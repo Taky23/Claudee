@@ -215,10 +215,10 @@ def test_cop_never_reports():
 
 def test_handling_profiles_and_fixed_top_speed():
     lua = client()
-    lua.execute("start('runner', 'm3comp')")  # BMW M3 → tapadós
+    lua.execute("start('runner', 'm3comp')")  # BMW M3: saját profil
     assert abs(lua.eval("MAXSPEED") - 180 / 3.6) < 1e-6
-    assert abs(lua.eval("HANDLING.fTractionCurveMax") - 2.45 * 1.10) < 1e-6
-    assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32 * 0.92) < 1e-6
+    assert abs(lua.eval("HANDLING.fSteeringLock") - 40.0 * 1.12) < 1e-6
+    assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32 * 0.98) < 1e-6
     assert lua.eval("HANDLING.fEngineDamageMult") == 1.0  # a kár mindenkinél egyforma
     assert lua.eval("HANDLING.fInitialDriveMaxFlatVel") > 180
 
@@ -236,14 +236,14 @@ def test_profiles_are_balanced():
         p = profiles[name]
         for k in list(p.keys()):
             if k != "label":
-                assert 0.85 <= p[k] <= 1.35, (name, k)  # csak kis eltérések
+                assert 0.80 <= p[k] <= 1.35, (name, k)  # csak kis eltérések
 
 
 def test_bolide_runner_and_fallback():
     lua = client()
     lua.execute("start('runner', 'bolide')")
     assert lua.eval("SPAWNED") == "bolide"
-    assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32 * 1.15) < 1e-6  # gyorsuló profil
+    assert abs(lua.eval("HANDLING.fMass") - 1500 * 0.80) < 1e-6  # Bolide: könnyű pályaautó
     lua2 = client()
     lua2.execute("MISSING['bolide'] = true; start('runner', 'bolide')")
     assert lua2.eval("SPAWNED") == "sultan"  # nincs telepítve → tartalék kocsi
@@ -257,4 +257,14 @@ def test_same_cars_cop_is_dark_blue():
     lua.execute("start('cop', 'jesko')")
     assert lua.eval("SPAWNED") == "jesko" and list(lua.eval("COLOR").values()) == [10, 25, 80]
     assert lua.eval("PLATE") == "RENDOR"
-    assert abs(lua.eval("HANDLING.fSteeringLock") - 40.0 * 1.15) < 1e-6  # forgékony profil
+    assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32 * 1.15) < 1e-6  # Jesko gyorsul a legjobban
+
+
+def test_every_car_has_its_own_balanced_profile():
+    lua = client()
+    for car in list(lua.eval("Config.Cars").values()):
+        prof = lua.eval(f"Config.HandlingProfiles[Config.CarProfiles['{car}']]")
+        assert prof is not None, car
+        jobb = [k for k in prof.keys() if k != "label" and prof[k] > 1.0]
+        rosszabb = [k for k in prof.keys() if k != "label" and prof[k] < 1.0]
+        assert jobb and rosszabb, car  # mindegyik jobb valamiben, és fizet is érte
