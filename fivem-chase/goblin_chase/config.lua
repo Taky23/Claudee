@@ -25,8 +25,12 @@ Config.PingRadius = 120.0
 Config.Traffic = 0.5
 
 -- Kocsik: a listából véletlenszerűen kap egyet mindenki.
-Config.RunnerCars = { 'sultan', 'elegy2', 'kuruma', 'jester', 'comet2' }
+Config.RunnerCars = { 'bolide' }   -- 2020 Bugatti Bolide (add-on autó, lásd README)
 Config.CopCars = { 'police', 'police2', 'police3' }
+
+-- Ha egy kocsi nincs telepítve (vagy elírtuk a nevét), ezt kapja helyette, hogy az üldözés ne akadjon el.
+Config.FallbackRunnerCar = 'sultan'
+Config.FallbackCopCar = 'police'
 
 -- ---------------------------------------------------------------- HANDLING
 -- Fix végsebesség: ennél egyik kocsi sem megy gyorsabban (km/h), és mindegyik el is éri.
@@ -59,6 +63,7 @@ Config.HandlingProfiles = {
 -- Melyik kocsi melyik profilt kapja (a modell neve kisbetűvel). Ami nincs itt, az „alap”.
 -- Saját (mod) autónál ide írd be a modell nevét és a profilt, pl.: ['skyline'] = 'gyorsulo',
 Config.CarProfiles = {
+    bolide  = 'gyorsulo',
     sultan  = 'tapados',
     elegy2  = 'forgekony',
     kuruma  = 'nehez',

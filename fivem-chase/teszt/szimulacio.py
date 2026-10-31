@@ -106,11 +106,12 @@ function GetGameTimer() return T end
 function PlayerPedId() return 5 end
 function PlayerId() return 0 end
 function GetHashKey(s) return s end
-function IsModelInCdimage() return true end
+MISSING = {}
+function IsModelInCdimage(h) return not MISSING[h] end
 function RequestModel() end
 function HasModelLoaded() return true end
 function SetEntityCoords() end
-function CreateVehicle() return 77 end
+function CreateVehicle(h) SPAWNED = h; return 77 end
 function SetModelAsNoLongerNeeded() end
 function SetVehicleOnGroundProperly() end
 function SetVehicleFixed() end
@@ -166,7 +167,7 @@ end
 function setEngine(v) ENGINE = v end
 function setInCar(b) PEDVEH = b and 77 or 0 end
 function caught() return serverEvents[1] end
-function start(role) netEvents['goblin_chase:start']({ role = role, spawn = { x = 0, y = 0, z = 0, h = 0 }, model = 'sultan', countdown = 5, roundTime = 600 }) end
+function start(role, model) netEvents['goblin_chase:start']({ role = role, spawn = { x = 0, y = 0, z = 0, h = 0 }, model = model or 'sultan', countdown = 5, roundTime = 600 }) end
 function finish() netEvents['goblin_chase:finish']({ winner = 'cops', text = 'vege' }) end
 """
 
@@ -233,3 +234,14 @@ def test_profiles_are_balanced():
         for k in list(p.keys()):
             if k != "label":
                 assert 0.85 <= p[k] <= 1.35, (name, k)  # csak kis eltérések
+
+
+def test_bolide_runner_and_fallback():
+    lua = client()
+    lua.execute("start('runner', 'bolide')")
+    assert lua.eval("SPAWNED") == "bolide"
+    assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32 * 1.15) < 1e-6  # gyorsuló profil
+    lua2 = client()
+    lua2.execute("MISSING['bolide'] = true; start('runner', 'bolide')")
+    assert lua2.eval("SPAWNED") == "sultan"  # nincs telepítve → tartalék kocsi
+    assert abs(lua2.eval("MAXSPEED") - 180 / 3.6) < 1e-6

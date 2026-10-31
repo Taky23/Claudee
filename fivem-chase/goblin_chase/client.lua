@@ -50,9 +50,13 @@ local function applyHandling(veh, model)
     return profile.label or profileName
 end
 
-local function spawnVehicle(model, s)
+local function spawnVehicle(model, s, fallback)
     local hash = GetHashKey(model)
     if not IsModelInCdimage(hash) then
+        if fallback and fallback ~= model then
+            notify(('A(z) ~y~%s~s~ nincs telepítve, helyette: %s'):format(model, fallback))
+            return spawnVehicle(fallback, s, nil)
+        end
         notify('Nincs ilyen kocsi: ' .. model)
         return nil
     end
@@ -143,7 +147,8 @@ RegisterNetEvent('goblin_chase:start', function(data)
     cleanup()
     local myActive = { role = data.role, blips = {} }
     active = myActive
-    local veh, profileLabel = spawnVehicle(data.model, data.spawn)
+    local fallback = data.role == 'runner' and Config.FallbackRunnerCar or Config.FallbackCopCar
+    local veh, profileLabel = spawnVehicle(data.model, data.spawn, fallback)
     if not veh then return end
     myActive.veh = veh
     myActive.profile = profileLabel

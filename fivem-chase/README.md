@@ -74,6 +74,13 @@ A játékmód minden üldözős kocsira **indításkor ráteszi a saját handlin
 - **Melyik kocsi melyik profil:** `Config.CarProfiles`, pl. `sultan = 'tapados'`. Ami nincs a listában, az a kiegyensúlyozottat kapja.
 - **A motor sérülése mindenkinél egyforma** (`fEngineDamageMult`), így a „füst” szabály igazságos: egyik kocsi sem bírja jobban az ütést.
 
+## 🏎️ A menekülő autója: 2020 Bugatti Bolide
+A menekülő alapból a **Bugatti Bolide**-ot kapja (a fix 180 km/h végsebesség rá is vonatkozik, „gyorsuló” profillal):
+1. Töltsd le: https://www.gta5-mods.com/vehicles/2020-bugatti-bolide-addon-sp-fivem. A letöltésben külön **FiveM** mappa szokott lenni.
+2. A FiveM-es mappát másold a szerver `resources` mappájába, pl. `resources\bolide`, és a `server.cfg`-be: `ensure bolide`.
+3. Nézd meg a `vehicles.meta`-ban a `<modelName>` sort. Ha nem `bolide`, írd át a `config.lua`-ban a `RunnerCars` és a `CarProfiles` sorban.
+Ha a kocsi nincs telepítve, vagy más a neve, a menekülő egy **Sultant** kap helyette (`FallbackRunnerCar`), és a képernyőn szól erről.
+
 ## Saját autók (modok) berakása
 1. **Tölts le egy FiveM-hez készült autót** (pl. a [gta5-mods.com](https://www.gta5-mods.com)-ról, „FiveM ready” / „Add-On”). Csak olyat használj, amit a készítője engedélyez szerveren. A fizetős autók „leakelt” változata tilos.
 2. Az autó általában egy kész mappa: benne egy `fxmanifest.lua`, egy `stream` mappa (a modell) és `.meta` fájlok. Másold a szerver **`resources`** mappájába, pl. `resources\[autok]\skyline`.
