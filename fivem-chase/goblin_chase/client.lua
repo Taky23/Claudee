@@ -74,7 +74,7 @@ local function spawnVehicle(model, s, fallback)
     SetVehicleOnGroundProperly(veh)
     SetVehicleFixed(veh)
     SetVehicleEngineHealth(veh, 1000.0)
-    SetVehicleNumberPlateText(veh, 'GOBLIN')
+
     SetPedIntoVehicle(ped, veh, -1)
     return veh, applyHandling(veh, model)
 end
@@ -147,9 +147,16 @@ RegisterNetEvent('goblin_chase:start', function(data)
     cleanup()
     local myActive = { role = data.role, blips = {} }
     active = myActive
-    local fallback = data.role == 'runner' and Config.FallbackRunnerCar or Config.FallbackCopCar
+    local runner = data.role == 'runner'
+    local fallback = runner and Config.FallbackRunnerCar or Config.FallbackCopCar
     local veh, profileLabel = spawnVehicle(data.model, data.spawn, fallback)
     if not veh then return end
+    -- Ugyanazok a kocsik: a szín és a rendszám mutatja, ki kicsoda.
+    local c = runner and Config.RunnerColor or Config.CopColor
+    SetVehicleModKit(veh, 0)
+    SetVehicleCustomPrimaryColour(veh, c[1], c[2], c[3])
+    SetVehicleCustomSecondaryColour(veh, c[1], c[2], c[3])
+    SetVehicleNumberPlateText(veh, runner and Config.RunnerPlate or Config.CopPlate)
     myActive.veh = veh
     myActive.profile = profileLabel
     myActive.startAt = GetGameTimer() + data.countdown * 1000

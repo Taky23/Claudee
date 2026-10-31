@@ -50,7 +50,8 @@ Mindenkinek kell **saját, legális GTA V** és a **FiveM** kliens ([fivem.net](
 | `OutOfCarSeconds` | ennyi ideig lehet kint a kocsiból |
 | `PingInterval` | ilyen gyakran látják a rendőrök a menekülő környékét (0 = soha) |
 | `Traffic` | forgalom sűrűsége (0 = üres utak) |
-| `RunnerCars`, `CopCars` | a kocsik listája (GTA V jármű-nevek, pl. `sultan`, `police3`) |
+| `Cars` | a kocsik listája (ugyanaz a menekülőknek és a rendőröknek) |
+| `RunnerColor`, `CopColor` | a színek (RGB): fekete és sötétkék |
 | `MaxSpeedKmh` | fix végsebesség minden kocsinak (km/h) |
 | `Scenarios` | helyszínek: a menekülő és a rendőrök kezdőpontja |
 
@@ -74,12 +75,24 @@ A játékmód minden üldözős kocsira **indításkor ráteszi a saját handlin
 - **Melyik kocsi melyik profil:** `Config.CarProfiles`, pl. `sultan = 'tapados'`. Ami nincs a listában, az a kiegyensúlyozottat kapja.
 - **A motor sérülése mindenkinél egyforma** (`fEngineDamageMult`), így a „füst” szabály igazságos: egyik kocsi sem bírja jobban az ütést.
 
-## 🏎️ A menekülő autója: 2020 Bugatti Bolide
-A menekülő alapból a **Bugatti Bolide**-ot kapja (a fix 180 km/h végsebesség rá is vonatkozik, „gyorsuló” profillal):
-1. Töltsd le: https://www.gta5-mods.com/vehicles/2020-bugatti-bolide-addon-sp-fivem. A letöltésben külön **FiveM** mappa szokott lenni.
-2. A FiveM-es mappát másold a szerver `resources` mappájába, pl. `resources\bolide`, és a `server.cfg`-be: `ensure bolide`.
-3. Nézd meg a `vehicles.meta`-ban a `<modelName>` sort. Ha nem `bolide`, írd át a `config.lua`-ban a `RunnerCars` és a `CarProfiles` sorban.
-Ha a kocsi nincs telepítve, vagy más a neve, a menekülő egy **Sultant** kap helyette (`FallbackRunnerCar`), és a képernyőn szól erről.
+## 🚗 Az autók: ugyanazok mindenkinek, más színben
+Nincs külön rendőrautó: **mindenki ugyanabból a listából kap kocsit**. A menekülőé **fekete** (rendszám: GOBLIN), a rendőröké **sötétkék** (rendszám: RENDOR).
+
+| Autó | Modellnév (ellenőrizendő) | Profil |
+|---|---|---|
+| 2020 Bugatti Bolide | `bolide` | Gyorsuló |
+| 2021 Audi RS Q3 (Prior Design) | `rsq3` | Nehéz |
+| BMW M3 Competition | `m3comp` | Tapadós |
+| Koenigsegg Jesko | `jesko` | Fordulékony |
+
+A fix 180 km/h végsebesség mindegyikre vonatkozik, így egyik sem húz el a többi elől, csak máshogy viselkedik.
+
+**Telepítés kocsinként:**
+1. Töltsd le a GTA V-s **FiveM / Add-On** változatát, és a mappáját másold a szerver `resources` mappájába (pl. `resources\[autok]\jesko`).
+2. A `server.cfg`-be (txAdmin → CFG Editor): `ensure jesko` (a mappa nevével).
+3. A kocsi mappájában lévő `vehicles.meta`-ban nézd meg a `<modelName>` sort. Ha más, mint a táblázatban, írd át a `config.lua`-ban a `Config.Cars` és a `Config.CarProfiles` sorban (vagy küldd el, és átírom).
+
+Ha egy kocsi nincs telepítve, vagy más a neve, a játékos helyette egy **Sultant** kap a szerepének megfelelő színben, és a képernyőn szól erről. Az üldözés így nem akad el.
 
 ## Saját autók (modok) berakása
 1. **Tölts le egy FiveM-hez készült autót** (pl. a [gta5-mods.com](https://www.gta5-mods.com)-ról, „FiveM ready” / „Add-On”). Csak olyat használj, amit a készítője engedélyez szerveren. A fizetős autók „leakelt” változata tilos.

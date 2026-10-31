@@ -25,12 +25,26 @@ Config.PingRadius = 120.0
 Config.Traffic = 0.5
 
 -- Kocsik: a listából véletlenszerűen kap egyet mindenki.
-Config.RunnerCars = { 'bolide' }   -- 2020 Bugatti Bolide (add-on autó, lásd README)
-Config.CopCars = { 'police', 'police2', 'police3' }
+-- Az autók (add-on modok, lásd README). Ugyanezeket kapják a menekülők ÉS a rendőrök is, csak más színben.
+-- A neveket a kocsik vehicles.meta fájljában lévő <modelName> alapján kell ellenőrizni!
+Config.Cars = {
+    'bolide',   -- 2020 Bugatti Bolide
+    'rsq3',     -- 2021 Audi RS Q3 (Prior Design)
+    'm3comp',   -- BMW M3 Competition
+    'jesko',    -- Koenigsegg Jesko
+}
+Config.RunnerCars = Config.Cars
+Config.CopCars = Config.Cars
+
+-- Színek (RGB): a menekülő fekete, a rendőrök sötétkékek.
+Config.RunnerColor = { 8, 8, 8 }
+Config.CopColor = { 10, 25, 80 }
+Config.RunnerPlate = 'GOBLIN'
+Config.CopPlate = 'RENDOR'
 
 -- Ha egy kocsi nincs telepítve (vagy elírtuk a nevét), ezt kapja helyette, hogy az üldözés ne akadjon el.
 Config.FallbackRunnerCar = 'sultan'
-Config.FallbackCopCar = 'police'
+Config.FallbackCopCar = 'sultan'
 
 -- ---------------------------------------------------------------- HANDLING
 -- Fix végsebesség: ennél egyik kocsi sem megy gyorsabban (km/h), és mindegyik el is éri.
@@ -64,14 +78,10 @@ Config.HandlingProfiles = {
 -- Saját (mod) autónál ide írd be a modell nevét és a profilt, pl.: ['skyline'] = 'gyorsulo',
 Config.CarProfiles = {
     bolide  = 'gyorsulo',
-    sultan  = 'tapados',
-    elegy2  = 'forgekony',
-    kuruma  = 'nehez',
-    jester  = 'gyorsulo',
-    comet2  = 'alap',
-    police  = 'nehez',
-    police2 = 'alap',
-    police3 = 'tapados',
+    jesko   = 'forgekony',
+    m3comp  = 'tapados',
+    rsq3    = 'nehez',
+    sultan  = 'alap',
 }
 
 -- Helyszínek. Saját helyszínhez állj oda a kocsival, írd be a chatbe: /chasepos

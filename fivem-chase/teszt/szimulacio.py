@@ -116,7 +116,10 @@ function SetModelAsNoLongerNeeded() end
 function SetVehicleOnGroundProperly() end
 function SetVehicleFixed() end
 function SetVehicleEngineHealth() end
-function SetVehicleNumberPlateText() end
+function SetVehicleNumberPlateText(v, t) PLATE = t end
+function SetVehicleModKit() end
+function SetVehicleCustomPrimaryColour(v, r, g, b) COLOR = { r, g, b } end
+function SetVehicleCustomSecondaryColour() end
 function SetPedIntoVehicle() end
 HANDLING = {}
 function SetVehicleHandlingFloat(v, cls, field, value) HANDLING[field] = value end
@@ -212,7 +215,7 @@ def test_cop_never_reports():
 
 def test_handling_profiles_and_fixed_top_speed():
     lua = client()
-    lua.execute("start('runner')")  # sultan → tapados
+    lua.execute("start('runner', 'm3comp')")  # BMW M3 → tapadós
     assert abs(lua.eval("MAXSPEED") - 180 / 3.6) < 1e-6
     assert abs(lua.eval("HANDLING.fTractionCurveMax") - 2.45 * 1.10) < 1e-6
     assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32 * 0.92) < 1e-6
@@ -244,4 +247,14 @@ def test_bolide_runner_and_fallback():
     lua2 = client()
     lua2.execute("MISSING['bolide'] = true; start('runner', 'bolide')")
     assert lua2.eval("SPAWNED") == "sultan"  # nincs telepítve → tartalék kocsi
+    assert list(lua2.eval("COLOR").values()) == [8, 8, 8] and lua2.eval("PLATE") == "GOBLIN"
     assert abs(lua2.eval("MAXSPEED") - 180 / 3.6) < 1e-6
+
+
+def test_same_cars_cop_is_dark_blue():
+    lua = client()
+    assert list(lua.eval("Config.RunnerCars").values()) == list(lua.eval("Config.CopCars").values())
+    lua.execute("start('cop', 'jesko')")
+    assert lua.eval("SPAWNED") == "jesko" and list(lua.eval("COLOR").values()) == [10, 25, 80]
+    assert lua.eval("PLATE") == "RENDOR"
+    assert abs(lua.eval("HANDLING.fSteeringLock") - 40.0 * 1.15) < 1e-6  # forgékony profil
