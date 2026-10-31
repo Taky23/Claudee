@@ -132,6 +132,11 @@ Saját bot a baráti szerverhez (`szerverbot/`): `/raid` szervező jelentkező g
 💀 MIA kilépő-üzenet, gombos rangválasztó, szülinapok, sorsolás és csapatosztás. Leírás és beállítás:
 [szerverbot/README.md](szerverbot/README.md).
 
+## 🏎️ Goblin Chase (FiveM)
+
+Üldözős FiveM játékmód a `fivem-chase/` mappában: egy menekülő, a többiek rendőrök, és ha a menekülő kocsijának motorja
+füstölni kezd, vége az üldözésnek. Telepítés és beállítás: [fivem-chase/README.md](fivem-chase/README.md).
+
 ## 🧌 Vanilla DayZ szerver
 
 A `dayz-vanilla/` mappában egy egyszerű, mod nélküli Chernarus szerver (`DayZ-Goblin-Szerver.zip`): a `frissites.bat` a Steamből
