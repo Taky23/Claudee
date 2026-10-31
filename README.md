@@ -134,8 +134,9 @@ Saját bot a baráti szerverhez (`szerverbot/`): `/raid` szervező jelentkező g
 
 ## 🧌 Vanilla DayZ szerver
 
-A `dayz-vanilla/` mappában két fájl (`serverDZ.cfg`, `inditas.bat`) egy egyszerű, mod nélküli Chernarus szerverhez, amit
-később modonként lehet bővíteni. Leírás: [dayz-vanilla/README.md](dayz-vanilla/README.md).
+A `dayz-vanilla/` mappában egy egyszerű, mod nélküli Chernarus szerver (`DayZ-Goblin-Szerver.zip`): a `frissites.bat` a Steamből
+telepített DayZ Servert egy külön mappába másolja (és később frissíti, a mentett világ megtartásával), az `inditas.bat` indítja,
+a `serverDZ.cfg` a beállítás. Később modonként bővíthető. Leírás: [dayz-vanilla/README.txt](dayz-vanilla/README.txt).
 
 ## 🧌 DayZ szerver
 
