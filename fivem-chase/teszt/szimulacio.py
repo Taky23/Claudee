@@ -117,6 +117,10 @@ function SetVehicleFixed() end
 function SetVehicleEngineHealth() end
 function SetVehicleNumberPlateText() end
 function SetPedIntoVehicle() end
+HANDLING = {}
+function SetVehicleHandlingFloat(v, cls, field, value) HANDLING[field] = value end
+function ModifyVehicleTopSpeed() end
+function SetVehicleMaxSpeed(v, ms) MAXSPEED = ms end
 function FreezeEntityPosition(e, f) FROZEN = f end
 function SetVehicleSiren() end
 function DoesEntityExist(e) return e == 77 end
@@ -203,3 +207,29 @@ def test_cop_never_reports():
     lua = client()
     lua.execute("start('cop'); step(6000); setEngine(100.0); step(2000)")
     assert lua.eval("caught()") is None
+
+
+def test_handling_profiles_and_fixed_top_speed():
+    lua = client()
+    lua.execute("start('runner')")  # sultan → tapados
+    assert abs(lua.eval("MAXSPEED") - 180 / 3.6) < 1e-6
+    assert abs(lua.eval("HANDLING.fTractionCurveMax") - 2.45 * 1.10) < 1e-6
+    assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32 * 0.92) < 1e-6
+    assert lua.eval("HANDLING.fEngineDamageMult") == 1.0  # a kár mindenkinél egyforma
+    assert lua.eval("HANDLING.fInitialDriveMaxFlatVel") > 180
+
+
+def test_unknown_car_gets_base_profile():
+    lua = client()
+    lua.execute("Config.CarProfiles = {}; start('runner')")
+    assert abs(lua.eval("HANDLING.fInitialDriveForce") - 0.32) < 1e-6
+
+
+def test_profiles_are_balanced():
+    lua = client()
+    profiles = lua.eval("Config.HandlingProfiles")
+    for name in list(profiles.keys()):
+        p = profiles[name]
+        for k in list(p.keys()):
+            if k != "label":
+                assert 0.85 <= p[k] <= 1.35, (name, k)  # csak kis eltérések

@@ -28,6 +28,47 @@ Config.Traffic = 0.5
 Config.RunnerCars = { 'sultan', 'elegy2', 'kuruma', 'jester', 'comet2' }
 Config.CopCars = { 'police', 'police2', 'police3' }
 
+-- ---------------------------------------------------------------- HANDLING
+-- Fix végsebesség: ennél egyik kocsi sem megy gyorsabban (km/h), és mindegyik el is éri.
+Config.MaxSpeedKmh = 180
+
+-- Közös alap: minden üldözős kocsi ebből indul, így hasonlóak maradnak.
+-- A kár-értékek mindenkinél azonosak, hogy a „füst” szabály igazságos legyen.
+Config.HandlingBase = {
+    fMass = 1500.0,                 -- tömeg (kg): nehezebb = erősebb ütközésnél, lomhább
+    fInitialDriveForce = 0.32,      -- gyorsulás
+    fTractionCurveMax = 2.45,       -- tapadás kanyarban (max)
+    fTractionCurveMin = 2.20,       -- tapadás csúszásnál (min)
+    fBrakeForce = 0.95,             -- fék
+    fSteeringLock = 40.0,           -- kormány kitérés (fok)
+    fEngineDamageMult = 1.0,        -- mennyire sérül a motor ütközéstől (mindenkinél ugyanannyi!)
+    fCollisionDamageMult = 1.0,
+    fDeformationDamageMult = 0.8,
+}
+
+-- Profilok: kis eltérések (szorzók) az alaphoz képest, hogy mindegyik kocsi más legyen, de egyik se legyen sokkal jobb.
+-- Ami nincs felsorolva, az az alap szerint marad.
+Config.HandlingProfiles = {
+    alap      = { label = 'Kiegyensúlyozott' },
+    gyorsulo  = { label = 'Gyorsuló',   fInitialDriveForce = 1.15, fTractionCurveMax = 0.93, fTractionCurveMin = 0.93 },
+    tapados   = { label = 'Tapadós',    fTractionCurveMax = 1.10, fTractionCurveMin = 1.10, fInitialDriveForce = 0.92 },
+    nehez     = { label = 'Nehéz',      fMass = 1.35, fInitialDriveForce = 0.95, fBrakeForce = 0.92 },
+    forgekony = { label = 'Fordulékony', fSteeringLock = 1.15, fBrakeForce = 1.08, fMass = 0.90, fTractionCurveMax = 0.97 },
+}
+
+-- Melyik kocsi melyik profilt kapja (a modell neve kisbetűvel). Ami nincs itt, az „alap”.
+-- Saját (mod) autónál ide írd be a modell nevét és a profilt, pl.: ['skyline'] = 'gyorsulo',
+Config.CarProfiles = {
+    sultan  = 'tapados',
+    elegy2  = 'forgekony',
+    kuruma  = 'nehez',
+    jester  = 'gyorsulo',
+    comet2  = 'alap',
+    police  = 'nehez',
+    police2 = 'alap',
+    police3 = 'tapados',
+}
+
 -- Helyszínek. Saját helyszínhez állj oda a kocsival, írd be a chatbe: /chasepos
 -- és a kiírt koordinátát másold ide. A /chase parancs véletlenszerűen választ, vagy név szerint: /chase 0 sivatag
 Config.Scenarios = {

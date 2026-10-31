@@ -51,13 +51,39 @@ Mindenkinek kell **saját, legális GTA V** és a **FiveM** kliens ([fivem.net](
 | `PingInterval` | ilyen gyakran látják a rendőrök a menekülő környékét (0 = soha) |
 | `Traffic` | forgalom sűrűsége (0 = üres utak) |
 | `RunnerCars`, `CopCars` | a kocsik listája (GTA V jármű-nevek, pl. `sultan`, `police3`) |
+| `MaxSpeedKmh` | fix végsebesség minden kocsinak (km/h) |
 | `Scenarios` | helyszínek: a menekülő és a rendőrök kezdőpontja |
 
 **Saját helyszín:** állj oda kocsival, írd be: `/chasepos`, és a kiírt `{ x = …, y = …, z = …, h = … }` sort másold a `Scenarios` listába, egy új bejegyzésbe.
 A beépített két helyszín (belváros, Sandy Shores) koordinátái közelítőek. Ha valamelyiknél rossz helyre spawnol a kocsi, a `/chasepos` paranccsal pontosítsd.
 
-## Saját autók (modok)
-Bármilyen add-on autó-resource mehet a `resources` mappába (`ensure` sorral a `server.cfg`-ben). Utána a kocsi nevét írd be a `RunnerCars` vagy a `CopCars` listába. A handlingjét a kocsi saját `handling.meta` fájljában lehet állítani. Ebben is segítek, ha kell.
+## 🏎️ Handling: más-más kocsik, fix végsebesség
+A játékmód minden üldözős kocsira **indításkor ráteszi a saját handlingjét**, így nem kell a kocsik fájljaihoz nyúlni.
+- **Fix végsebesség:** `Config.MaxSpeedKmh` (alap: **180 km/h**). Ennél egyik kocsi sem megy gyorsabban, és mindegyik el is éri.
+- **Közös alap** (`Config.HandlingBase`): tömeg, gyorsulás, tapadás, fék, kormány. Ettől lesznek a kocsik hasonlóak.
+- **Profilok** (`Config.HandlingProfiles`): kis eltérések az alaphoz képest (legfeljebb kb. ±15%, a „nehéz” tömege +35%):
+
+| Profil | Milyen |
+|---|---|
+| Kiegyensúlyozott | az alap |
+| Gyorsuló | jobban gyorsul, kicsit csúszósabb |
+| Tapadós | jobban fog a kanyarban, kicsit lassabban gyorsul |
+| Nehéz | nehezebb, jobban tol ütközésnél, kicsit lomhább |
+| Fordulékony | élesebben fordul, jobban fékez, könnyebb |
+
+- **Melyik kocsi melyik profil:** `Config.CarProfiles`, pl. `sultan = 'tapados'`. Ami nincs a listában, az a kiegyensúlyozottat kapja.
+- **A motor sérülése mindenkinél egyforma** (`fEngineDamageMult`), így a „füst” szabály igazságos: egyik kocsi sem bírja jobban az ütést.
+
+## Saját autók (modok) berakása
+1. **Tölts le egy FiveM-hez készült autót** (pl. a [gta5-mods.com](https://www.gta5-mods.com)-ról, „FiveM ready” / „Add-On”). Csak olyat használj, amit a készítője engedélyez szerveren. A fizetős autók „leakelt” változata tilos.
+2. Az autó általában egy kész mappa: benne egy `fxmanifest.lua`, egy `stream` mappa (a modell) és `.meta` fájlok. Másold a szerver **`resources`** mappájába, pl. `resources\[autok]\skyline`.
+   Ha nincs benne `fxmanifest.lua`, szólj, és megírom hozzá.
+3. A txAdmin **CFG Editor**-ában adj hozzá egy sort: `ensure skyline` (a mappa nevével) → Save → Restart.
+4. Keresd meg a **modell nevét**: a `vehicles.meta` fájlban a `<modelName>` sorban (pl. `<modelName>r34</modelName>`).
+5. A `goblin_chase/config.lua`-ban:
+   - írd be a nevét a `RunnerCars` (vagy `CopCars`) listába: `Config.RunnerCars = { 'sultan', 'r34', ... }`
+   - és adj neki profilt: `r34 = 'gyorsulo',` a `Config.CarProfiles` listában.
+6. Restart, és jöhet a `/chase`.
 
 ## Tesztelés
 A játéklogikát (füst, kiszállás, időlimit, kilépés, rendőr-jelzések) kamu FiveM-környezetben szimulálja a `teszt/szimulacio.py`:

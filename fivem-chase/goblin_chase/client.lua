@@ -35,6 +35,21 @@ local function cleanup()
     active = nil
 end
 
+-- A kocsira ráteszi a közös alap-handlinget, a profilja szerinti eltérést és a fix végsebességet.
+local function applyHandling(veh, model)
+    local profileName = Config.CarProfiles[string.lower(model)] or 'alap'
+    local profile = Config.HandlingProfiles[profileName] or Config.HandlingProfiles.alap
+    for field, base in pairs(Config.HandlingBase) do
+        SetVehicleHandlingFloat(veh, 'CHandlingData', field, base * (profile[field] or 1.0))
+    end
+    local maxMs = Config.MaxSpeedKmh / 3.6
+    -- A „papíron” elérhető végsebesség legyen kicsit a fix határ fölött, hogy minden kocsi elérje azt.
+    SetVehicleHandlingFloat(veh, 'CHandlingData', 'fInitialDriveMaxFlatVel', Config.MaxSpeedKmh * 1.15)
+    ModifyVehicleTopSpeed(veh, 1.0)
+    SetVehicleMaxSpeed(veh, maxMs)
+    return profile.label or profileName
+end
+
 local function spawnVehicle(model, s)
     local hash = GetHashKey(model)
     if not IsModelInCdimage(hash) then
@@ -57,7 +72,7 @@ local function spawnVehicle(model, s)
     SetVehicleEngineHealth(veh, 1000.0)
     SetVehicleNumberPlateText(veh, 'GOBLIN')
     SetPedIntoVehicle(ped, veh, -1)
-    return veh
+    return veh, applyHandling(veh, model)
 end
 
 -- A menekülő kliense figyeli a saját kocsiját; ha füstöl, szól a szervernek.
@@ -100,6 +115,9 @@ local function hud(myActive)
             local now = GetGameTimer()
             local role = myActive.role == 'runner' and '~r~MENEKÜLŐ' or '~b~RENDŐR'
             drawText(role, 0.5, 0.03, 0.6)
+            if myActive.profile then
+                drawText(('%s · max %d km/h'):format(myActive.profile, Config.MaxSpeedKmh), 0.5, 0.95, 0.4)
+            end
             if myActive.finished then
                 drawText(myActive.finishedText, 0.5, 0.45, 0.7)
             elseif now < myActive.startAt then
@@ -125,9 +143,10 @@ RegisterNetEvent('goblin_chase:start', function(data)
     cleanup()
     local myActive = { role = data.role, blips = {} }
     active = myActive
-    local veh = spawnVehicle(data.model, data.spawn)
+    local veh, profileLabel = spawnVehicle(data.model, data.spawn)
     if not veh then return end
     myActive.veh = veh
+    myActive.profile = profileLabel
     myActive.startAt = GetGameTimer() + data.countdown * 1000
     myActive.endsAt = myActive.startAt + data.roundTime * 1000
     FreezeEntityPosition(veh, true)
