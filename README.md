@@ -132,6 +132,11 @@ Saját bot a baráti szerverhez (`szerverbot/`): `/raid` szervező jelentkező g
 💀 MIA kilépő-üzenet, gombos rangválasztó, szülinapok, sorsolás és csapatosztás. Leírás és beállítás:
 [szerverbot/README.md](szerverbot/README.md).
 
+## 🧌 Vanilla DayZ szerver
+
+A `dayz-vanilla/` mappában két fájl (`serverDZ.cfg`, `inditas.bat`) egy egyszerű, mod nélküli Chernarus szerverhez, amit
+később modonként lehet bővíteni. Leírás: [dayz-vanilla/README.md](dayz-vanilla/README.md).
+
 ## 🧌 DayZ szerver
 
 Saját gépről futó, modolt DayZ szerver (Chernarus, max. 5 fő) a `dayz-szerver/` mappában: Green Mountain kereskedőzóna autókkal,
