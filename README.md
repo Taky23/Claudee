@@ -111,6 +111,8 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **📦 Kép to Link** (`web/kuldo/`) – fájlküldés közvetlenül gépről gépre, méretkorlát nélkül. Behúzod a fájlokat, és kapsz egy linket; aki megnyitja, közvetlenül tőled tölti le (WebRTC, titkosított kapcsolaton, tárhelyre semmi nem kerül fel). Gépen Chrome-ban és Edge-ben a letöltés egyenesen a lemezre íródik, így több GB-os fájl is mehet. A küldő oldalt nyitva kell hagyni, amíg a letöltés tart. A kapcsolat felépítéséhez a [PeerJS](https://peerjs.com) ingyenes szerverét használja (ezen csak a kapcsolódási adatok mennek át, a fájl nem), és ha a hálózat nem enged közvetlen kapcsolatot, a PeerJS nyilvános továbbító szerverén megy át, továbbra is titkosítva.
 
+- **📺 Rajzfilm Retró** (`rajzfilm-apk/`, **Android APK**, nem PWA) – a régi Cartoon Network sorozatok (Ed, Edd és Eddy, Dexter laboratóriuma, Johnny Test, Bátor, a gyáva kutya, Fosterék háza képzeletbeli barátoknak, Billy és Mandy kalandjai a Kaszással) epizódlistája évadonként a [TVmaze](https://www.tvmaze.com) nyilvános adatbázisából (angol címekkel), megnézett részek pipálása, „Folytasd” sor, véletlen rész, főcímdal-kereső, és egy „Hol nézhetem?” gomb, ami a JustWatch-on megmutatja a legális magyar szolgáltatókat. Maguk a mesék nincsenek az appban. Az epizódlisták a telefonra mentődnek, így később net nélkül is megnyílnak. Az APK-t a `.github/workflows/rajzfilm-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
@@ -131,6 +133,23 @@ Asztali program (`desktop/epub-fordito/`): **EPUB → TXT**, **TXT → EPUB**, �
 Saját bot a baráti szerverhez (`szerverbot/`): `/raid` szervező jelentkező gombokkal és emlékeztetővel, ideiglenes hangszobák,
 💀 MIA kilépő-üzenet, gombos rangválasztó, szülinapok, sorsolás és csapatosztás. Leírás és beállítás:
 [szerverbot/README.md](szerverbot/README.md).
+
+## 🏎️ Goblin Chase (FiveM)
+
+Üldözős FiveM játékmód a `fivem-chase/` mappában: egy menekülő, a többiek rendőrök, és ha a menekülő kocsijának motorja
+füstölni kezd, vége az üldözésnek. Telepítés és beállítás: [fivem-chase/README.md](fivem-chase/README.md).
+
+## 🧌 Vanilla DayZ szerver
+
+A `dayz-vanilla/` mappában egy egyszerű, mod nélküli Chernarus szerver (`DayZ-Goblin-Szerver.zip`): a `frissites.bat` a Steamből
+telepített DayZ Servert egy külön mappába másolja (és később frissíti, a mentett világ megtartásával), az `inditas.bat` indítja,
+a `serverDZ.cfg` a beállítás. Később modonként bővíthető. Leírás: [dayz-vanilla/README.txt](dayz-vanilla/README.txt).
+
+## 🧌 DayZ szerver
+
+Saját gépről futó, modolt DayZ szerver (Chernarus, max. 5 fő) a `dayz-szerver/` mappában: Green Mountain kereskedőzóna autókkal,
+titkos Black Market helikopterekkel és különleges autókkal, járműkulcsok, ATM, csak katonai helyeken lévő, jól látható AI.
+Telepítés és beállítás: [dayz-szerver/README.md](dayz-szerver/README.md).
 
 ## 🏰 Discord szerver felállítása (egy gombnyomásra)
 

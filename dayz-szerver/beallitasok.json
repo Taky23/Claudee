@@ -1,0 +1,87 @@
+{
+  "szerver": {
+    "nev": "🧌🎒 Loot Goblinok Gyülekezete 💰🧌",
+    "jelszo": "goblin",
+    "admin_jelszo": "",
+    "max_jatekos": 5,
+    "port": 2302,
+    "kuldetes": "goblin.chernarusplus"
+  },
+
+  "superadminok_steam64": ["76561198382195772"],
+
+  "steam_felhasznalo": "",
+
+  "utvonalak": {
+    "dayz": "",
+    "dayz_szerver": ""
+  },
+
+  "modok": [
+    { "nev": "CF", "minta": "cf", "pontos": true, "mas_nevek": ["communityframework"], "workshop": "1559212036" },
+    { "nev": "DabsFramework", "minta": "dabsframework", "workshop": "2545327648" },
+    { "nev": "VPPAdminTools", "minta": "vppadmintools", "workshop": "3798147467" },
+    { "nev": "DayZ-Expansion-Licensed", "minta": "dayzexpansionlicensed", "workshop": "2116157322" },
+    { "nev": "DayZ-Expansion-Bundle", "minta": "dayzexpansionbundle", "workshop": "2572331007" },
+    { "nev": "DayZ-Expansion-Vehicles", "minta": "dayzexpansionvehicles", "opcionalis": true, "workshop": "2291785437" },
+    { "nev": "EscapeFromTarkov", "minta": "escapefromtarkov", "loot": true, "workshop": "2885380137" },
+    { "nev": "SNAFUWeapons", "minta": "snafu", "loot": true, "workshop": "2443122116" },
+    { "nev": "MortysWeapons", "minta": "mortysweapons", "opcionalis": true, "loot": true, "workshop": "" },
+    { "nev": "HelicopterPack", "minta": "helicopterpack", "opcionalis": true, "workshop": "2601807585" },
+    { "nev": "SibnicServerSide", "minta": "sibnic", "opcionalis": true, "csak_szerver": true, "helyi_mappa": "szerver_modok" },
+    { "nev": "BanditsNissanGTR", "minta": "nissangtr", "opcionalis": true, "workshop": "3214402149" },
+    { "nev": "NissanSkylineR34", "minta": "skyline", "opcionalis": true, "workshop": "3383255252" },
+    { "nev": "AudiRSQ8Mansory", "minta": "rsq8", "opcionalis": true, "workshop": "3383217281" },
+    { "nev": "m3gtr", "minta": "m3gtr", "opcionalis": true, "workshop": "3321136008" }
+  ],
+
+  "green_mountain": {
+    "autok": [
+      { "nev": "Ada 4x4", "osztaly": "OffroadHatchback", "ar": [20000, 34000] },
+      { "nev": "Olga 24", "osztaly": "CivilianSedan", "ar": [23000, 38000] },
+      { "nev": "Gunter 2", "osztaly": "Hatchback_02", "ar": [14000, 24000] },
+      { "nev": "Sarka 120", "osztaly": "Sedan_02", "ar": [18000, 31000] },
+      { "nev": "M3S", "osztaly": "Truck_01_Covered", "ar": [29000, 48000] },
+      { "nev": "M1025", "osztaly": "Offroad_02", "ar": [27000, 44000] }
+    ],
+    "fenyek_sugara": 14
+  },
+
+  "black_market": {
+    "helyzet": "",
+    "irany": 0,
+    "jarmu_lerako": "",
+    "heli_lerako": "",
+    "safezone": true,
+    "safezone_sugar": 60,
+    "helik": [
+      { "nev": "Gyrocopter", "osztaly": "ExpansionGyrocopter", "ar": [500000, 1000000] },
+      { "nev": "MH-6", "osztaly": "ExpansionMh6", "ar": [1500000, 3000000] },
+      { "nev": "UH-1H", "osztaly": "ExpansionUh1h", "ar": [1700000, 3400000] },
+      { "nev": "Merlin", "osztaly": "ExpansionMerlin", "ar": [2000000, 4000000] },
+      { "nev": "Helicopter pack: 1. heli", "osztaly": "", "ar": [1500000, 3000000] },
+      { "nev": "Helicopter pack: 2. heli", "osztaly": "", "ar": [1500000, 3000000] },
+      { "nev": "Helicopter pack: 3. heli", "osztaly": "", "ar": [1500000, 3000000] }
+    ],
+    "autok": [
+      { "nev": "Bandits Nissan GTR", "osztaly": "", "ar": [300000, 600000] },
+      { "nev": "Nissan Skyline GT-R R34", "osztaly": "", "ar": [250000, 500000] },
+      { "nev": "Audi RSQ8 Mansory", "osztaly": "", "ar": [350000, 700000] },
+      { "nev": "m3gtr", "osztaly": "", "ar": [250000, 500000] }
+    ],
+    "egyeb": []
+  },
+
+  "ai": {
+    "eszak_hatar": 7680,
+    "csoport_tavolsag": 250,
+    "min_epulet": 3,
+    "del": [1, 2],
+    "eszak": [2, 4],
+    "repter_plusz": 2,
+    "pontossag": [0.25, 0.5],
+    "sebzes_szorzo": 0.8,
+    "kapott_sebzes_szorzo": 1.0,
+    "ujraeledes_perc": 30
+  }
+}

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://static.tvmaze.com; connect-src https://api.tvmaze.com; object-src 'none'; base-uri 'self'">
+<meta name="theme-color" content="#141414">
+<title>Rajzfilm Retró</title>
+<style>
+:root {
+  --bg: #141414; --card: #1f1f1f; --card2: #2a2a2a; --text: #f5f5f5; --muted: #a8a8a8; --line: #333;
+  --accent: #ffd400; --ok: #4cd964;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 16px/1.45 "Trebuchet MS", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+/* fekete-fehér sakktábla csík, a 2000-es évek hangulatához */
+.checker {
+  height: 18px;
+  background-image: linear-gradient(45deg, #fff 25%, transparent 25%), linear-gradient(-45deg, #fff 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #fff 75%), linear-gradient(-45deg, transparent 75%, #fff 75%);
+  background-size: 18px 18px; background-position: 0 0, 0 9px, 9px -9px, -9px 0; background-color: #000;
+}
+header.top { padding: calc(14px + env(safe-area-inset-top)) 16px 12px; background: #000; }
+header.top h1 { margin: 0; font-size: 28px; letter-spacing: 1px; text-transform: uppercase; font-weight: 900; }
+header.top h1 span { background: var(--accent); color: #000; padding: 0 6px; border-radius: 4px; }
+header.top p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+main { max-width: 760px; margin: 0 auto; padding: 16px; }
+h2 { font-size: 18px; margin: 18px 0 10px; text-transform: uppercase; letter-spacing: .5px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.show {
+  position: relative; border-radius: 16px; overflow: hidden; background: var(--card); cursor: pointer;
+  border: 3px solid var(--c); box-shadow: 4px 4px 0 #000;
+}
+.show .pic { aspect-ratio: 3 / 4; background: var(--c) center/cover no-repeat; display: grid; place-items: center; font-size: 56px; }
+.show .name { padding: 8px 10px 4px; font-weight: 800; font-size: 15px; line-height: 1.2; }
+.show .sub { padding: 0 10px 10px; color: var(--muted); font-size: 12px; }
+.bar { height: 6px; background: var(--card2); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--c, var(--accent)); }
+.show .bar { margin: 0 10px 10px; }
+.btn {
+  font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 10px 14px; cursor: pointer;
+  background: var(--accent); color: #000; box-shadow: 3px 3px 0 #000; text-decoration: none; display: inline-block;
+}
+.btn.ghost { background: var(--card2); color: var(--text); box-shadow: none; border: 1px solid var(--line); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cont { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.cont .item { flex: 0 0 230px; background: var(--card); border-radius: 14px; padding: 12px; border-left: 6px solid var(--c); cursor: pointer; }
+.cont .item b { display: block; font-size: 14px; }
+.cont .item span { color: var(--muted); font-size: 13px; }
+.hero { border-radius: 18px; overflow: hidden; background: var(--card); border: 3px solid var(--c); box-shadow: 5px 5px 0 #000; }
+.hero .banner { height: 160px; background: var(--c) center/cover no-repeat; display: grid; place-items: center; font-size: 72px; }
+.hero .body { padding: 14px; }
+.hero h2 { margin: 0 0 6px; font-size: 22px; text-transform: none; }
+.hero p { margin: 0 0 12px; color: #ddd; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; margin: 16px 0 10px; scrollbar-width: none; }
+.tab { flex: none; padding: 8px 14px; border-radius: 99px; background: var(--card2); border: 1px solid var(--line); cursor: pointer; font-weight: 700; }
+.tab.on { background: var(--c); color: #000; border-color: var(--c); }
+.ep { display: flex; gap: 10px; align-items: flex-start; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.ep .chk {
+  flex: none; width: 30px; height: 30px; border-radius: 9px; border: 2px solid var(--muted); background: transparent;
+  color: #000; font-weight: 900; cursor: pointer; display: grid; place-items: center; font-size: 17px;
+}
+.ep.done .chk { background: var(--ok); border-color: var(--ok); }
+.ep .meta { flex: 1; min-width: 0; cursor: pointer; }
+.ep .code { color: var(--muted); font-size: 12px; font-weight: 700; }
+.ep .title { font-weight: 700; }
+.ep.done .title { color: var(--muted); }
+.ep.next { background: rgba(255, 212, 0, .08); border-radius: 10px; }
+.ep .sum { display: none; color: #ccc; font-size: 14px; margin-top: 6px; }
+.ep.open .sum { display: block; }
+.ep.flash { animation: flash 1.6s ease 2; }
+@keyframes flash { 50% { background: rgba(255, 212, 0, .25); } }
+.muted { color: var(--muted); font-size: 14px; }
+.note { background: var(--card); border: 1px dashed var(--line); border-radius: 14px; padding: 12px 14px; color: var(--muted); font-size: 14px; margin-top: 18px; }
+.back { background: none; border: 0; color: var(--text); font: inherit; font-weight: 800; padding: 0 0 10px; cursor: pointer; }
+.spin { text-align: center; padding: 30px; color: var(--muted); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #000; border: 2px solid var(--accent); padding: 10px 16px; border-radius: 12px; font-weight: 700; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 9; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1><span>Rajzfilm</span> Retró</h1>
+  <p>A régi Cartoon Network-os kedvencek, epizódról epizódra</p>
+</header>
+<div class="checker"></div>
+<main id="app"></main>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+// A sorozatok. Az epizódokat a TVmaze nyilvános adatbázisából töltjük le (angol címekkel).
+const SHOWS = [
+  { id: 'ed', title: 'Ed, Edd és Eddy', en: "Ed, Edd n Eddy", year: 1999, color: '#f4c430', emoji: '🍬',
+    desc: 'Három Ed nevű srác a zsákutcában, akik folyton újabb trükkökkel próbálnak pénzt szerezni, hogy cukrot vehessenek. A trükk persze mindig balul sül el.' },
+  { id: 'dexter', title: 'Dexter laboratóriuma', en: "Dexter's Laboratory", year: 1996, color: '#4fa3ff', emoji: '🧪',
+    desc: 'A kis zseni titkos laboratóriumot épített a szobája mögé. Már csak az kellene, hogy a nővére, DeeDee ne rontson be folyton.' },
+  { id: 'johnny', title: 'Johnny Test', en: 'Johnny Test', year: 2005, color: '#ff6b2d', emoji: '🔥',
+    desc: 'Johnny és beszélő kutyája, Dukey kalandjai. Johnny zseni ikernővérei mindig rajta próbálják ki a legújabb találmányukat.' },
+  { id: 'bator', title: 'Bátor, a gyáva kutya', en: 'Courage the Cowardly Dog', year: 1999, color: '#e05aa8', emoji: '🐶',
+    desc: 'A rózsaszín kutya a „Semmi közepén” él a gazdáival. Mindentől fél, mégis mindig ő menti meg őket a hátborzongató veszélyektől.' },
+  { id: 'foster', title: 'Fosterék háza képzeletbeli barátoknak', en: "Foster's Home for Imaginary Friends", year: 2004, color: '#7bc96f', emoji: '🏠',
+    desc: 'Mac és képzeletbeli barátja, Bloo kalandjai abban a házban, ahová a gazdáik által kinőtt képzeletbeli barátok költöznek.' },
+  { id: 'billy', title: 'Billy és Mandy kalandjai a Kaszással', en: 'The Grim Adventures of Billy & Mandy', year: 2001, color: '#9b6bd6', emoji: '💀',
+    desc: 'Billy és Mandy legyőzte a Kaszást egy limbóversenyen, aki azóta kénytelen a legjobb barátjuk lenni. Örökre.' },
+];
+const API = 'https://api.tvmaze.com';
+const CACHE_DAYS = 7;
+const $ = s => document.querySelector(s);
+const app = $('#app');
+
+// ---------- tárolás ----------
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* tele van, vagy tiltva */ }
+}
+const watched = load('rr_watched', {}); // { showId: { epId: true } }
+function isWatched(sid, eid) { return !!(watched[sid] && watched[sid][eid]); }
+function setWatched(sid, eid, on) {
+  watched[sid] = watched[sid] || {};
+  if (on) watched[sid][eid] = true; else delete watched[sid][eid];
+  save('rr_watched', watched);
+}
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.h);
+  toast.h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function stripHtml(s) {
+  const d = document.createElement('div');
+  d.innerHTML = s || '';
+  return d.textContent.trim();
+}
+function code(ep) { return `${ep.season}. évad ${ep.number ?? '–'}. rész`; }
+function norm(s) { return s.toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+// ---------- TVmaze ----------
+async function getJson(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+// A keresés több találatot ad (pl. Johnny Testből 2021-es új változat is van): az év és a cím alapján választunk.
+function pickShow(results, show) {
+  const want = norm(show.en);
+  let best = null;
+  for (const { show: s } of results) {
+    const year = s.premiered ? +s.premiered.slice(0, 4) : 0;
+    if (!year || Math.abs(year - show.year) > 3) continue;
+    const n = norm(s.name);
+    const score = (n === want ? 3 : n.includes(want) || want.includes(n) ? 2 : 0) - Math.abs(year - show.year) * 0.1;
+    if (score > 0 && (!best || score > best.score)) best = { score, s };
+  }
+  return best && best.s;
+}
+async function fetchShow(show) {
+  const results = await getJson(`${API}/search/shows?q=${encodeURIComponent(show.en)}`);
+  const s = pickShow(results, show);
+  if (!s) throw new Error('nincs találat');
+  const eps = await getJson(`${API}/shows/${s.id}/episodes`);
+  return {
+    at: Date.now(),
+    image: s.image ? (s.image.original || s.image.medium) : null,
+    premiered: s.premiered, ended: s.ended,
+    episodes: eps.filter(e => e.season > 0).map(e => ({
+      id: e.id, season: e.season, number: e.number, name: e.name, airdate: e.airdate,
+      summary: stripHtml(e.summary), image: e.image ? e.image.medium : null,
+    })),
+  };
+}
+const inflight = {};
+async function getData(show, force = false) {
+  const key = 'rr_data_' + show.id;
+  const cached = load(key, null);
+  const fresh = cached && Date.now() - cached.at < CACHE_DAYS * 864e5;
+  if (cached && fresh && !force) return cached;
+  try {
+    inflight[show.id] = inflight[show.id] || fetchShow(show);
+    const data = await inflight[show.id];
+    save(key, data);
+    return data;
+  } catch (e) {
+    if (cached) return cached; // net nélkül a régi mentés is jó
+    throw e;
+  } finally {
+    delete inflight[show.id];
+  }
+}
+function cachedData(show) { return load('rr_data_' + show.id, null); }
+
+function progress(show) {
+  const d = cachedData(show);
+  if (!d) return null;
+  const total = d.episodes.length;
+  const done = d.episodes.filter(e => isWatched(show.id, e.id)).length;
+  return { total, done, next: d.episodes.find(e => !isWatched(show.id, e.id)) || null };
+}
+
+// ---------- linkek (legális források) ----------
+function justwatch(show) { return `https://www.justwatch.com/hu/kereses?q=${encodeURIComponent(show.en)}`; }
+function intro(show) { return `https://www.youtube.com/results?search_query=${encodeURIComponent(show.en + ' intro theme song')}`; }
+
+// ---------- nézetek ----------
+function renderHome() {
+  document.title = 'Rajzfilm Retró';
+  const cont = SHOWS.map(s => ({ s, p: progress(s) })).filter(x => x.p && x.p.done > 0 && x.p.next);
+  app.innerHTML = `
+    ${cont.length ? `<h2>▶️ Folytasd</h2><div class="cont">${cont.map(({ s, p }) => `
+      <div class="item" style="--c:${s.color}" data-go="#/s/${s.id}/${p.next.id}">
+        <b>${esc(s.title)}</b><span>${esc(code(p.next))} · ${esc(p.next.name)}</span>
+      </div>`).join('')}</div>` : ''}
+    <h2>📺 Sorozatok</h2>
+    <div class="grid">${SHOWS.map(s => {
+      const d = cachedData(s), p = progress(s);
+      const img = d && d.image ? `style="background-image:url('${esc(d.image)}')"` : '';
+      return `<div class="show" style="--c:${s.color}" data-go="#/s/${s.id}">
+        <div class="pic" ${img}>${d && d.image ? '' : s.emoji}</div>
+        <div class="name">${esc(s.title)}</div>
+        <div class="sub">${p ? `${p.done} / ${p.total} rész megnézve` : s.year + '–'}</div>
+        <div class="bar"><i style="width:${p && p.total ? p.done / p.total * 100 : 0}%"></i></div>
+      </div>`;
+    }).join('')}</div>
+    <div class="row" style="margin-top:18px"><button class="btn" id="randAll">🎲 Mit nézzek? (véletlen rész)</button></div>
+    <div class="note">Az epizódlisták a <b>TVmaze</b> nyilvános adatbázisából jönnek, ezért a címek angolul vannak.
+      A meséket az app nem játssza le: a <b>„Hol nézhetem?”</b> gomb megmutatja, melyik legális szolgáltatónál érhetők el.</div>`;
+  $('#randAll').onclick = randomAll;
+  // A borítóképekhez a háttérben letöltjük az adatokat (egyszer, utána mentve vannak).
+  SHOWS.forEach(s => { if (!cachedData(s)) getData(s).then(() => { if (route().page === 'home') renderHome(); }).catch(() => {}); });
+}
+
+async function renderShow(sid, focusEp) {
+  const show = SHOWS.find(s => s.id === sid);
+  if (!show) return go('#/');
+  document.title = show.title;
+  const head = d => `
+    <button class="back" data-back>‹ Vissza</button>
+    <div class="hero" style="--c:${show.color}">
+      <div class="banner" ${d && d.image ? `style="background-image:url('${esc(d.image)}')"` : ''}>${d && d.image ? '' : show.emoji}</div>
+      <div class="body">
+        <h2>${esc(show.title)}</h2>
+        <div class="muted" style="margin-bottom:8px">${esc(show.en)} · ${d && d.premiered ? d.premiered.slice(0, 4) : show.year}–${d && d.ended ? d.ended.slice(0, 4) : ''}</div>
+        <p>${esc(show.desc)}</p>
+        <div class="row">
+          <a class="btn" href="${justwatch(show)}">📺 Hol nézhetem?</a>
+          <a class="btn ghost" href="${intro(show)}">🎵 Főcímdal</a>
+          <button class="btn ghost" id="rand">🎲 Véletlen rész</button>
+        </div>
+      </div>
+    </div>`;
+  let data = cachedData(show);
+  app.innerHTML = head(data) + (data ? '' : '<div class="spin">Epizódok betöltése…</div>');
+  bindShowButtons(show);
+  if (!data) {
+    try {
+      data = await getData(show);
+    } catch {
+      app.innerHTML = head(null) + `<div class="note">Nem sikerült letölteni az epizódokat. Van internet? <button class="btn ghost" id="retry">Újra</button></div>`;
+      bindShowButtons(show);
+      $('#retry').onclick = () => renderShow(sid, focusEp);
+      return;
+    }
+    if (route().sid !== sid) return; // közben elnavigált
+  } else {
+    getData(show).catch(() => {}); // háttérfrissítés, ha régi a mentés
+  }
+  const seasons = [...new Set(data.episodes.map(e => e.season))].sort((a, b) => a - b);
+  const p = progress(show);
+  const focus = focusEp && data.episodes.find(e => e.id === focusEp);
+  let season = focus ? focus.season : (p.next ? p.next.season : seasons[0]);
+
+  function list() {
+    const eps = data.episodes.filter(e => e.season === season);
+    const pr = progress(show);
+    return `
+      <div class="muted" style="margin-top:14px">${pr.done} / ${pr.total} rész megnézve</div>
+      <div class="bar" style="--c:${show.color};margin:6px 0 4px"><i style="width:${pr.total ? pr.done / pr.total * 100 : 0}%"></i></div>
+      <div class="tabs">${seasons.map(s => `<div class="tab ${s === season ? 'on' : ''}" style="--c:${show.color}" data-season="${s}">${s}. évad</div>`).join('')}</div>
+      <div class="row" style="justify-content:flex-end;margin-bottom:4px">
+        <button class="btn ghost" id="markSeason" style="padding:6px 10px;font-size:13px">${eps.every(e => isWatched(sid, e.id)) ? 'Évad visszaállítása' : 'Egész évad megnézve'}</button>
+      </div>
+      ${eps.map(e => `
+        <div class="ep ${isWatched(sid, e.id) ? 'done' : ''} ${pr.next && pr.next.id === e.id ? 'next' : ''}" data-ep="${e.id}">
+          <button class="chk" data-chk="${e.id}" aria-label="Megnéztem">${isWatched(sid, e.id) ? '✓' : ''}</button>
+          <div class="meta" data-open="${e.id}">
+            <div class="code">${esc(code(e))}${e.airdate ? ' · ' + esc(e.airdate) : ''}${pr.next && pr.next.id === e.id ? ' · <span style="color:var(--accent)">KÖVETKEZŐ</span>' : ''}</div>
+            <div class="title">${esc(e.name)}</div>
+            <div class="sum">${e.summary ? esc(e.summary) + ' <span class="muted">(angol leírás)</span>' : '<span class="muted">Nincs leírás.</span>'}</div>
+          </div>
+        </div>`).join('')}`;
+  }
+  const box = document.createElement('div');
+  app.appendChild(box);
+  function draw() {
+    box.innerHTML = list();
+    box.querySelectorAll('[data-season]').forEach(t => t.onclick = () => { season = +t.dataset.season; draw(); });
+    box.querySelectorAll('[data-chk]').forEach(b => b.onclick = () => {
+      const id = +b.dataset.chk;
+      setWatched(sid, id, !isWatched(sid, id));
+      draw();
+    });
+    box.querySelectorAll('[data-open]').forEach(m => m.onclick = () => m.parentElement.classList.toggle('open'));
+    $('#markSeason').onclick = () => {
+      const eps = data.episodes.filter(e => e.season === season);
+      const all = eps.every(e => isWatched(sid, e.id));
+      eps.forEach(e => setWatched(sid, e.id, !all));
+      draw();
+      toast(all ? 'Évad visszaállítva' : 'Évad megnézettnek jelölve ✓');
+    };
+  }
+  draw();
+  if (focus) {
+    const el = box.querySelector(`[data-ep="${focus.id}"]`);
+    if (el) {
+      el.classList.add('open', 'flash');
+      el.scrollIntoView({ block: 'center' });
+    }
+  }
+}
+
+function bindShowButtons(show) {
+  const r = $('#rand');
+  if (r) r.onclick = () => randomFrom(show);
+}
+
+async function randomFrom(show) {
+  let d;
+  try { d = await getData(show); } catch { return toast('Nincs internet, és még nincs mentett epizódlista.'); }
+  const unseen = d.episodes.filter(e => !isWatched(show.id, e.id));
+  const pool = unseen.length ? unseen : d.episodes;
+  const e = pool[Math.floor(Math.random() * pool.length)];
+  toast(`🎲 ${show.title}: ${code(e)}`);
+  go(`#/s/${show.id}/${e.id}`);
+}
+function randomAll() {
+  const ready = SHOWS.filter(cachedData);
+  const show = (ready.length ? ready : SHOWS)[Math.floor(Math.random() * (ready.length || SHOWS.length))];
+  randomFrom(show);
+}
+
+// ---------- útvonalak (a telefon vissza gombja az előzményben lép vissza) ----------
+function route() {
+  const m = location.hash.match(/^#\/s\/([a-z]+)(?:\/(\d+))?/);
+  return m ? { page: 'show', sid: m[1], ep: m[2] ? +m[2] : null } : { page: 'home' };
+}
+function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
+function render() {
+  const r = route();
+  window.scrollTo(0, 0);
+  if (r.page === 'show') renderShow(r.sid, r.ep); else renderHome();
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-go],[data-back]');
+  if (!t) return;
+  if (t.dataset.back !== undefined) { if (history.length > 1) history.back(); else go('#/'); }
+  else go(t.dataset.go);
+});
+window.addEventListener('hashchange', render);
+render();
+</script>
+</body>
+</html>
