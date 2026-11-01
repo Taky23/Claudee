@@ -113,6 +113,8 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **📺 Rajzfilm Retró** (`rajzfilm-apk/`, **Android APK**, nem PWA) – a régi Cartoon Network sorozatok (Ed, Edd és Eddy, Dexter laboratóriuma, Johnny Test, Bátor, a gyáva kutya, Fosterék háza képzeletbeli barátoknak, Billy és Mandy kalandjai a Kaszással) epizódlistája évadonként a [TVmaze](https://www.tvmaze.com) nyilvános adatbázisából (angol címekkel), megnézett részek pipálása, „Folytasd” sor, véletlen rész, főcímdal-kereső, és egy „Hol nézhetem?” gomb, ami a JustWatch-on megmutatja a legális magyar szolgáltatókat. Maguk a mesék nincsenek az appban. Az epizódlisták a telefonra mentődnek, így később net nélkül is megnyílnak. Az APK-t a `.github/workflows/rajzfilm-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
 
+- **🎯 Tarkov Kihívás** (`tarkov-kihivas/`, **Android APK**) – Escape from Tarkov kihívás-generátor 4 nehézségi szinten (🟢 Könnyű, 🟡 Nehéz, 🟠 HC, 🔴 Insane). Minden kihíváshoz pálya, fő cél, fegyver- és páncélmegkötés, és a szinthez igazodó számú extra szabály tartozik; bekapcsolható a transit (átjárós) küldetés és a secure/stash feltétel is. Seed alapján visszahozható egy kihívás, van másolás és teljesített/bukott statisztika. Teljesen offline. Az APK-t a `.github/workflows/tarkov-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
