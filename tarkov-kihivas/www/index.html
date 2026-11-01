@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+<meta name="theme-color" content="#15170f">
+<title>Tarkov Kihívás</title>
+<style>
+:root {
+  --bg: #15170f; --card: #20231699; --card2: #2b2f1e; --panel: #1c1f13; --text: #e9ead9; --muted: #9a9c84;
+  --line: #3a3f28; --accent: #c7a04a; --accent2: #9ea86a;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body {
+  background:
+    radial-gradient(1200px 400px at 50% -10%, #2a2e1c 0, transparent 70%),
+    repeating-linear-gradient(135deg, #15170f 0 14px, #171910 14px 28px);
+  color: var(--text);
+  font: 16px/1.45 "Consolas", ui-monospace, "Segoe UI", system-ui, sans-serif;
+  min-height: 100vh;
+  padding-bottom: calc(26px + env(safe-area-inset-bottom));
+}
+header {
+  padding: calc(16px + env(safe-area-inset-top)) 16px 14px; text-align: center;
+  border-bottom: 2px solid var(--line); background: #11130c;
+}
+header h1 { margin: 0; font-size: 24px; letter-spacing: 3px; text-transform: uppercase; font-weight: 800; }
+header h1 b { color: var(--accent); }
+header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; letter-spacing: 1px; }
+main { max-width: 680px; margin: 0 auto; padding: 16px; }
+.levels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.lv {
+  border: 2px solid var(--c); border-radius: 12px; padding: 12px; background: #1b1e12; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px; transition: transform .05s;
+}
+.lv:active { transform: scale(.98); }
+.lv.on { background: var(--c); color: #11130c; }
+.lv b { font-size: 17px; }
+.lv span { font-size: 12px; opacity: .85; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+.opt { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+.opt input { accent-color: var(--accent); width: 18px; height: 18px; }
+.gen {
+  width: 100%; margin-top: 14px; font: inherit; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+  border: 0; border-radius: 14px; padding: 16px; cursor: pointer; font-size: 18px;
+  background: linear-gradient(180deg, var(--accent), #a8863a); color: #11130c; box-shadow: 0 4px 0 #6b5623;
+}
+.gen:active { transform: translateY(2px); box-shadow: 0 2px 0 #6b5623; }
+.card {
+  margin-top: 18px; border: 2px solid var(--c, var(--line)); border-radius: 16px; overflow: hidden;
+  background: linear-gradient(180deg, #1e2114, #191c10); box-shadow: 0 8px 30px rgba(0,0,0,.4);
+}
+.card .top { background: var(--c, var(--accent)); color: #11130c; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; letter-spacing: 1px; }
+.card .top .seed { font-size: 12px; opacity: .8; font-weight: 600; }
+.card .body { padding: 6px 16px 16px; }
+.line { display: flex; gap: 10px; padding: 11px 0; border-bottom: 1px dashed var(--line); }
+.line:last-child { border-bottom: 0; }
+.line .ic { flex: none; width: 30px; text-align: center; font-size: 20px; }
+.line .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.line .v { font-size: 16px; }
+.line.rule .v::before { content: '▸ '; color: var(--accent2); }
+.actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.btn { flex: 1; min-width: 130px; font: inherit; font-weight: 700; border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; background: var(--card2); color: var(--text); }
+.btn.p { background: var(--accent2); color: #11130c; border-color: var(--accent2); }
+.empty { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 14px; }
+.stat { display: flex; justify-content: space-around; margin-top: 18px; color: var(--muted); font-size: 13px; text-align: center; }
+.stat b { display: block; color: var(--text); font-size: 20px; }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #11130c; border: 1px solid var(--accent); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.flash { animation: fl .5s ease; }
+@keyframes fl { from { transform: translateY(8px); opacity: .3 } to { transform: none; opacity: 1 } }
+.hint { color: var(--muted); font-size: 12px; margin: 8px 2px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tarkov <b>Kihívás</b></h1>
+  <p>Generátor · 4 szint · offline</p>
+</header>
+<main>
+  <div class="levels" id="levels"></div>
+
+  <div class="opts" id="opts">
+    <label class="opt"><input type="checkbox" id="optTransit"> 🚌 Transit kihívás is</label>
+    <label class="opt"><input type="checkbox" id="optSecure" checked> 🎒 Secure/Stash szabály</label>
+    <label class="opt"><input type="checkbox" id="optIz" checked> ✨ Ízesítő</label>
+  </div>
+  <div class="hint">A felsőbb szintek a könnyebb elemeket is tartalmazzák, csak több és keményebb szabállyal.</div>
+
+  <button class="gen" id="gen">🎲 Kihívás!</button>
+
+  <div id="out"></div>
+
+  <div class="stat">
+    <div><b id="stGen">0</b>generált</div>
+    <div><b id="stDone">0</b>teljesített</div>
+    <div><b id="stFail">0</b>bukott</div>
+  </div>
+</main>
+<div id="toast" class="toast"></div>
+
+<script src="data.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const T = window.TARKOV;
+let level = +(localStorage.getItem('tk_level') || 2);
+let current = null;
+const stats = load('tk_stats', { gen: 0, done: 0, fail: 0 });
+
+function load(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 1800); }
+
+// Egyszerű, seedelhető véletlen (hogy a "seed" alapján vissza lehessen hozni egy kihívást).
+function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function pick(arr, rnd) { return arr[Math.floor(rnd() * arr.length)]; }
+function upto(arr, lvl) { return arr.filter(x => x.d <= lvl); }
+// A nehézség tetején lévő elemeket gyakrabban húzza, hogy ne legyen túl lagymatag egy magas szinten.
+function weightedPick(arr, lvl, rnd) {
+  const pool = upto(arr, lvl);
+  const weighted = [];
+  for (const x of pool) weighted.push(x, ...(x.d >= lvl - 1 ? [x] : []));
+  return pick(weighted.length ? weighted : pool, rnd);
+}
+
+function renderLevels() {
+  $('#levels').innerHTML = T.szintek.map(s => `
+    <div class="lv ${s.id === level ? 'on' : ''}" style="--c:${s.szin}" data-lv="${s.id}">
+      <b>${s.emoji} ${s.nev}</b><span>${esc(s.leiras)}</span>
+    </div>`).join('');
+  $('#levels').querySelectorAll('[data-lv]').forEach(e => e.onclick = () => {
+    level = +e.dataset.lv; save('tk_level', level); renderLevels();
+  });
+}
+
+function generate(seed) {
+  const lv = T.szintek.find(s => s.id === level);
+  seed = seed || (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
+  const rnd = rng(seed);
+  const transit = $('#optTransit').checked;
+  const lines = [];
+
+  if (transit) {
+    lines.push({ ic: '🚌', k: 'Transit küldetés', v: weightedPick(T.transit, level, rnd).t });
+  } else {
+    lines.push({ ic: '🗺️', k: 'Pálya', v: weightedPick(T.palyak, level, rnd).nev });
+    lines.push({ ic: '🎯', k: 'Fő cél', v: weightedPick(T.celok, level, rnd).t });
+  }
+  lines.push({ ic: '🔫', k: 'Fegyver', v: weightedPick(T.fegyverek, level, rnd).t, rule: true });
+  lines.push({ ic: '🦺', k: 'Páncél', v: weightedPick(T.pancelok, level, rnd).t, rule: true });
+
+  // Extra szabályok: a szinthez tartozó darabszám, ismétlés nélkül.
+  const [emin, emax] = lv.extra;
+  const n = emin + Math.floor(rnd() * (emax - emin + 1));
+  const pool = upto(T.extrak, level).slice();
+  for (let i = 0; i < n && pool.length; i++) {
+    const idx = Math.floor(rnd() * pool.length);
+    lines.push({ ic: '⚠️', k: 'Szabály', v: pool.splice(idx, 1)[0].t, rule: true });
+  }
+  if ($('#optSecure').checked) lines.push({ ic: '🎒', k: 'Secure/Stash', v: weightedPick(T.secure, level, rnd).t, rule: true });
+  if ($('#optIz').checked) lines.push({ ic: '✨', k: 'Extra', v: pick(T.izek, rnd) });
+
+  current = { seed, level, lines, done: false };
+  stats.gen++; save('tk_stats', stats);
+  renderOut();
+  renderStats();
+}
+
+function renderOut() {
+  if (!current) { $('#out').innerHTML = `<div class="empty">Válassz szintet, és nyomd meg a <b>Kihívás!</b> gombot.</div>`; return; }
+  const lv = T.szintek.find(s => s.id === current.level);
+  $('#out').innerHTML = `
+    <div class="card flash" style="--c:${lv.szin}">
+      <div class="top"><span>${lv.emoji} ${lv.nev.toUpperCase()} KIHÍVÁS</span><span class="seed">#${current.seed.toString(36).toUpperCase()}</span></div>
+      <div class="body">
+        ${current.lines.map(l => `
+          <div class="line ${l.rule ? 'rule' : ''}">
+            <div class="ic">${l.ic}</div>
+            <div><div class="k">${esc(l.k)}</div><div class="v">${esc(l.v)}</div></div>
+          </div>`).join('')}
+        <div class="actions">
+          <button class="btn" id="reroll">🎲 Újat</button>
+          <button class="btn" id="share">📋 Másolás</button>
+          <button class="btn p" id="done">✅ Teljesítve</button>
+          <button class="btn" id="fail">💀 Buktam</button>
+        </div>
+      </div>
+    </div>`;
+  $('#reroll').onclick = () => generate();
+  $('#share').onclick = share;
+  $('#done').onclick = () => { stats.done++; save('tk_stats', stats); renderStats(); toast('✅ Szép volt, operator!'); generate(); };
+  $('#fail').onclick = () => { stats.fail++; save('tk_stats', stats); renderStats(); toast('💀 Missing in Action...'); generate(); };
+}
+
+function share() {
+  const lv = T.szintek.find(s => s.id === current.level);
+  const txt = `🎯 TARKOV KIHÍVÁS – ${lv.nev} (#${current.seed.toString(36).toUpperCase()})\n`
+    + current.lines.map(l => `${l.ic} ${l.v}`).join('\n');
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject())
+    .then(() => toast('📋 Kimásolva'))
+    .catch(() => toast('Nem sikerült a másolás'));
+}
+
+function renderStats() {
+  $('#stGen').textContent = stats.gen;
+  $('#stDone').textContent = stats.done;
+  $('#stFail').textContent = stats.fail;
+}
+
+renderLevels();
+renderOut();
+renderStats();
+$('#gen').onclick = () => generate();
+</script>
+</body>
+</html>

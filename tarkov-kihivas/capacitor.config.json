@@ -1,0 +1,10 @@
+{
+  "appId": "hu.taky.tarkovkihivas",
+  "appName": "Tarkov Kihívás",
+  "webDir": "www",
+  "backgroundColor": "#15170fff",
+  "android": {
+    "backgroundColor": "#15170fff",
+    "allowMixedContent": false
+  }
+}
