@@ -115,6 +115,8 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **🎯 Tarkov Kihívás** (`tarkov-kihivas/`, **Android APK**) – Escape from Tarkov kihívás-generátor 4 nehézségi szinten (🟢 Könnyű, 🟡 Nehéz, 🟠 HC, 🔴 Insane). Minden kihíváshoz pálya, fő cél, fegyver- és páncélmegkötés, és a szinthez igazodó számú extra szabály tartozik; bekapcsolható a transit (átjárós) küldetés és a secure/stash feltétel is. Seed alapján visszahozható egy kihívás, van másolás és teljesített/bukott statisztika. Teljesen offline. Az APK-t a `.github/workflows/tarkov-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
 
+- **📡 Patch Pulse** (`patch-pulse/`, **Android APK**) – Steam-játékok frissítés- és patch note-figyelője. Megkeresed a játékot a nevével (Escape from Tarkov, Arena Breakout, DayZ, bármi), és követed; az app a Steam hivatalos (kulcs nélküli) hír-API-jából hozza a patch note-okat, karbantartásokat és eventeket, időrendben, „ÚJ” jelzéssel. Megnyitáskor frissít, és **helyi értesítést** küld, ha új patch jött (a háttér-ellenőrzés legjobb igyekezet szerint, az Android alvó módja miatt nem percre pontos). A hálózati kéréseket a Capacitor natív rétege intézi (ezért kell APK, böngészőből a Steam nem engedné – CORS). Az APK-t a `.github/workflows/patch-pulse-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.

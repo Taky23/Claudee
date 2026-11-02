@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; connect-src 'self' https: http:; object-src 'none'; base-uri 'self'">
+<meta name="theme-color" content="#0b0f14">
+<title>Patch Pulse</title>
+<style>
+:root {
+  --bg: #0b0f14; --card: #141b24; --card2: #1c2531; --text: #e6edf3; --muted: #8a97a6; --line: #26303c;
+  --accent: #38bdf8; --new: #f0b429; --ok: #34d399; --bad: #f05252;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+header { padding: calc(14px + env(safe-area-inset-top)) 16px 12px; background: #0e141b; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 5; }
+header .logo { font-size: 24px; }
+header h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: .5px; flex: 1; }
+header h1 b { color: var(--accent); }
+header button { background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; width: 40px; height: 40px; font-size: 18px; cursor: pointer; }
+main { max-width: 720px; margin: 0 auto; padding: 14px 16px; }
+.btn { font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 11px 16px; cursor: pointer; background: var(--accent); color: #04121c; }
+.btn.ghost { background: var(--card2); color: var(--text); border: 1px solid var(--line); }
+.btn.block { width: 100%; }
+.game { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; cursor: pointer; }
+.game img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--card2); flex: none; }
+.game .mid { flex: 1; min-width: 0; }
+.game .nm { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.game .last { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.game .when { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.badge { background: var(--new); color: #1a1205; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 99px; }
+.news { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.news.unread { border-left: 4px solid var(--new); }
+.news .h { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.news .t { font-weight: 700; font-size: 16px; }
+.news .d { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.news .tag { display: inline-block; background: var(--card2); color: var(--muted); font-size: 11px; padding: 1px 8px; border-radius: 99px; margin: 6px 0; }
+.news .body { color: #cdd7e1; font-size: 14px; white-space: pre-wrap; max-height: 5.4em; overflow: hidden; position: relative; }
+.news .body.open { max-height: none; }
+.news.has-more .body:not(.open)::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.2em; background: linear-gradient(transparent, var(--card)); }
+.news a.more { color: var(--accent); font-size: 13px; font-weight: 700; display: inline-block; margin-top: 8px; text-decoration: none; }
+.row { display: flex; gap: 10px; align-items: center; }
+.empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+.empty .big { font-size: 46px; margin-bottom: 8px; }
+.search input { width: 100%; background: var(--card); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 12px 14px; font: inherit; }
+.result { display: flex; gap: 10px; align-items: center; padding: 10px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.result img { width: 60px; height: 28px; border-radius: 5px; object-fit: cover; background: var(--card2); flex: none; }
+.result .nm { flex: 1; font-size: 15px; }
+.result .add { color: var(--accent); font-weight: 800; }
+.back { background: none; border: 0; color: var(--text); font: inherit; font-weight: 700; padding: 0 0 12px; cursor: pointer; }
+.spin { text-align: center; color: var(--muted); padding: 24px; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #0e141b; border: 1px solid var(--accent); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
+.toast.show { opacity: 1; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+.ghead { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.ghead img { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; }
+.ghead h2 { margin: 0; font-size: 20px; flex: 1; }
+.del { color: var(--bad); background: none; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; cursor: pointer; }
+.offline { background: #3a2a0e; border: 1px solid #6b5120; color: #f0d090; border-radius: 10px; padding: 8px 12px; font-size: 13px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo" id="homeBtn" style="cursor:pointer">📡</span>
+  <h1 id="homeTitle" style="cursor:pointer">Patch <b>Pulse</b></h1>
+  <button id="refreshBtn" title="Frissítés">⟳</button>
+  <button id="addBtn" title="Játék hozzáadása">＋</button>
+</header>
+<main id="app"></main>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const NEWS = 'https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/';
+const SEARCH = 'https://store.steampowered.com/api/storesearch/';
+const CACHE_MIN = 20;
+
+// ---------- tárolás ----------
+function load(k, def) { try { const v = localStorage.getItem(k); return v == null ? def : JSON.parse(v); } catch { return def; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+let followed = load('pp_followed', []);          // [{appid, name, image}]
+let seen = load('pp_seen', {});                   // { appid: lastSeenUnix }
+let cache = load('pp_cache', {});                 // { appid: {at, items:[...]} }
+
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200); }
+function esc(s) { return String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
+// Steam-hír szövegének tisztítása: BBCode és HTML eltávolítása, hogy olvasható legyen.
+function clean(raw) {
+  let s = String(raw || '');
+  s = s.replace(/\[img\][^\[]*\[\/img\]/gi, '').replace(/\[\/?[a-z0-9=*#"'. :\/_-]+\]/gi, '');
+  s = s.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, '');
+  s = s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  return s.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
+}
+function when(unix) {
+  const d = unix * 1000, diff = Date.now() - d;
+  const nap = Math.floor(diff / 86400000);
+  if (nap <= 0) return 'ma';
+  if (nap === 1) return 'tegnap';
+  if (nap < 7) return nap + ' napja';
+  if (nap < 30) return Math.floor(nap / 7) + ' hete';
+  return new Date(d).toLocaleDateString('hu-HU');
+}
+
+// ---------- hálózat (APK-ban a natív réteg kéri le, így nincs CORS gond) ----------
+async function getJson(url, params) {
+  const u = url + '?' + new URLSearchParams(params).toString();
+  const Cap = window.Capacitor;
+  if (Cap && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
+    const r = await Cap.Plugins.CapacitorHttp.get({ url: u, readTimeout: 15000, connectTimeout: 15000 });
+    if (r.status >= 400) throw new Error('HTTP ' + r.status);
+    return typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+  }
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(u, { signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  } finally { clearTimeout(to); }
+}
+
+async function fetchNews(appid) {
+  const data = await getJson(NEWS, { appid, count: 20, maxlength: 1200, format: 'json' });
+  const items = ((data.appnews && data.appnews.newsitems) || []).map(n => ({
+    gid: n.gid, title: n.title, url: n.url, date: n.date, label: n.feedlabel || '', body: clean(n.contents),
+  })).sort((a, b) => b.date - a.date);
+  cache[appid] = { at: Date.now(), items };
+  save('pp_cache', cache);
+  return items;
+}
+function cachedItems(appid) { return (cache[appid] && cache[appid].items) || []; }
+function isFresh(appid) { return cache[appid] && Date.now() - cache[appid].at < CACHE_MIN * 60000; }
+function latest(appid) { const it = cachedItems(appid); return it[0] || null; }
+function unreadCount(appid) { const s = seen[appid] || 0; return cachedItems(appid).filter(n => n.date > s).length; }
+
+async function refreshAll(force) {
+  const jobs = followed.filter(g => force || !isFresh(g.appid));
+  if (!jobs.length) return { ok: 0, fail: 0, newGames: [] };
+  let ok = 0, fail = 0;
+  const newGames = [];
+  for (const g of jobs) {
+    try {
+      const before = latest(g.appid);
+      await fetchNews(g.appid);
+      const after = latest(g.appid);
+      if (after && (!before || after.date > before.date) && (seen[g.appid] || 0) < after.date) newGames.push(g);
+      ok++;
+    } catch { fail++; }
+  }
+  return { ok, fail, newGames };
+}
+
+// ---------- értesítés (best effort, csak APK-ban) ----------
+async function notify(newGames) {
+  const LN = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
+  if (!LN || !newGames.length) return;
+  try {
+    const perm = await LN.checkPermissions();
+    if (perm.display !== 'granted') { const r = await LN.requestPermissions(); if (r.display !== 'granted') return; }
+    await LN.schedule({ notifications: [{
+      id: Math.floor(Math.random() * 1e6),
+      title: '📡 Új patch!',
+      body: newGames.length === 1 ? `${newGames[0].name}: friss hír érkezett.` : `${newGames.length} játékhoz jött frissítés.`,
+    }] });
+  } catch {}
+}
+
+// ---------- nézetek ----------
+function route() {
+  const m = location.hash.match(/^#\/(game)\/(\d+)/);
+  if (m) return { page: 'game', appid: +m[2] };
+  if (location.hash === '#/add') return { page: 'add' };
+  return { page: 'home' };
+}
+function go(h) { if (location.hash === h) render(); else location.hash = h; }
+function goReplace(h) { history.replaceState(null, "", h); render(); }
+
+function renderHome() {
+  document.title = 'Patch Pulse';
+  if (!followed.length) {
+    app.innerHTML = `<div class="empty"><div class="big">📡</div>
+      <p>Még nem követsz egy játékot sem.</p>
+      <button class="btn" id="addFirst">＋ Játék hozzáadása</button>
+      <div class="hint">Steam-játékokat tudsz követni (Tarkov, Arena Breakout, DayZ, bármi). Keresd meg a nevét, és hozzáadod.</div></div>`;
+    $('#addFirst').onclick = () => go('#/add');
+    return;
+  }
+  const order = followed.slice().sort((a, b) => (latest(b.appid)?.date || 0) - (latest(a.appid)?.date || 0));
+  app.innerHTML = (navigator.onLine ? '' : '<div class="offline">⚠️ Nincs internet – a legutóbb letöltött hírek látszanak.</div>')
+    + order.map(g => {
+    const l = latest(g.appid), u = unreadCount(g.appid);
+    return `<div class="game" data-go="#/game/${g.appid}">
+      <img src="${esc(g.image || '')}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="mid">
+        <div class="nm">${esc(g.name)} ${u ? `<span class="badge">${u} ÚJ</span>` : ''}</div>
+        <div class="last">${l ? esc(l.title) : 'Még nincs letöltött hír – húzd le / ⟳'}</div>
+        ${l ? `<div class="when">${when(l.date)}${l.label ? ' · ' + esc(l.label) : ''}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renderGame(appid) {
+  const g = followed.find(x => x.appid === appid);
+  if (!g) return go('#/');
+  document.title = g.name;
+  const head = `
+    <button class="back" data-back>‹ Vissza</button>
+    <div class="ghead">
+      <img src="${esc(g.image || '')}" alt="" onerror="this.style.visibility='hidden'">
+      <h2>${esc(g.name)}</h2>
+      <button class="del" id="del">🗑️</button>
+    </div>`;
+  function list(items) {
+    const s = seen[appid] || 0;
+    if (!items.length) return '<div class="empty">Nincs letöltött hír ehhez a játékhoz.<br>Nyomd meg a ⟳ gombot fent.</div>';
+    return items.map((n, i) => {
+      const long = n.body.length > 240;
+      return `<div class="news ${n.date > s ? 'unread' : ''} ${long ? 'has-more' : ''}" data-i="${i}">
+        <div class="h"><div class="t">${esc(n.title)}</div><div class="d">${when(n.date)}</div></div>
+        ${n.label ? `<span class="tag">${esc(n.label)}</span>` : ''}
+        <div class="body">${esc(n.body) || '<i>Nincs szöveges tartalom – nyisd meg a Steamen.</i>'}</div>
+        ${long ? '<a class="more" data-more>Tovább ▾</a>' : ''}
+      </div>`;
+    }).join('');
+  }
+  app.innerHTML = head + '<div id="newsBox">' + (cachedItems(appid).length ? list(cachedItems(appid)) : '<div class="spin">Betöltés…</div>') + '</div>';
+  bindGame(appid);
+  // elolvasottnak jelöljük (a kiemelés marad a nézet végéig, de a kezdőlapon eltűnik a badge)
+  const newest = latest(appid);
+  if (newest) { seen[appid] = Math.max(seen[appid] || 0, newest.date); save('pp_seen', seen); }
+
+  if (!isFresh(appid)) {
+    try { await fetchNews(appid); } catch { if (!cachedItems(appid).length) { $('#newsBox').innerHTML = '<div class="empty">Nem sikerült letölteni. Van internet?<br><button class="btn ghost" id="retry">Újra</button></div>'; $('#retry').onclick = () => renderGame(appid); return; } }
+    if (route().appid !== appid) return;
+    $('#newsBox').innerHTML = list(cachedItems(appid));
+    bindGame(appid);
+    const nw = latest(appid); if (nw) { seen[appid] = Math.max(seen[appid] || 0, nw.date); save('pp_seen', seen); }
+  }
+}
+function bindGame(appid) {
+  const del = $('#del');
+  if (del) del.onclick = () => {
+    if (!confirm('Töröljük ezt a játékot a követettek közül?')) return;
+    followed = followed.filter(x => x.appid !== appid); save('pp_followed', followed);
+    delete cache[appid]; save('pp_cache', cache);
+    toast('Törölve'); go('#/');
+  };
+  app.querySelectorAll('[data-more]').forEach(a => a.onclick = e => {
+    e.stopPropagation();
+    const body = a.closest('.news').querySelector('.body');
+    const open = body.classList.toggle('open');
+    a.textContent = open ? 'Kevesebb ▴' : 'Tovább ▾';
+  });
+}
+
+let searchTimer = null;
+function renderAdd() {
+  document.title = 'Játék hozzáadása';
+  app.innerHTML = `
+    <button class="back" data-back>‹ Vissza</button>
+    <div class="search"><input id="q" placeholder="Játék neve (pl. Tarkov, Arena Breakout, DayZ)" autocomplete="off"></div>
+    <div class="hint">A Steam adatbázisában keres. Koppints egy találatra a követéshez.</div>
+    <div id="results"></div>`;
+  const q = $('#q');
+  q.focus();
+  q.oninput = () => {
+    clearTimeout(searchTimer);
+    const term = q.value.trim();
+    if (term.length < 2) { $('#results').innerHTML = ''; return; }
+    searchTimer = setTimeout(() => doSearch(term), 350);
+  };
+}
+async function doSearch(term) {
+  $('#results').innerHTML = '<div class="spin">Keresés…</div>';
+  let data;
+  try { data = await getJson(SEARCH, { term, cc: 'HU', l: 'english' }); }
+  catch { $('#results').innerHTML = '<div class="empty">Nem sikerült a keresés. Van internet?</div>'; return; }
+  const items = (data.items || []).filter(x => x.type !== 'bundle');
+  if (!items.length) { $('#results').innerHTML = '<div class="empty">Nincs találat.</div>'; return; }
+  $('#results').innerHTML = items.map(x => {
+    const has = followed.some(g => g.appid === x.id);
+    return `<div class="result" data-add="${x.id}" data-name="${esc(x.name)}" data-img="${esc(x.tiny_image || '')}">
+      <img src="${esc(x.tiny_image || '')}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="nm">${esc(x.name)}</div>
+      <div class="add">${has ? '✓' : '＋'}</div>
+    </div>`;
+  }).join('');
+  $('#results').querySelectorAll('[data-add]').forEach(r => r.onclick = async () => {
+    const appid = +r.dataset.add;
+    if (followed.some(g => g.appid === appid)) { go('#/game/' + appid); return; }
+    followed.push({ appid, name: r.dataset.name, image: r.dataset.img });
+    save('pp_followed', followed);
+    toast('➕ ' + r.dataset.name + ' követve');
+    fetchNews(appid).catch(() => {});
+    goReplace('#/game/' + appid);  // a keresőt lecseréljük, így a Vissza a főoldalra visz
+  });
+}
+
+function render() {
+  const r = route();
+  window.scrollTo(0, 0);
+  if (r.page === 'game') renderGame(r.appid);
+  else if (r.page === 'add') renderAdd();
+  else renderHome();
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-go],[data-back]');
+  if (!t) return;
+  if (t.dataset.back !== undefined) { if (history.length > 1) history.back(); else go('#/'); }
+  else go(t.dataset.go);
+});
+$('#homeBtn').onclick = $('#homeTitle').onclick = () => go('#/');
+$('#addBtn').onclick = () => go('#/add');
+$('#refreshBtn').onclick = async () => {
+  if (!followed.length) return go('#/add');
+  const b = $('#refreshBtn'); b.textContent = '…'; b.disabled = true;
+  const res = await refreshAll(true);
+  b.textContent = '⟳'; b.disabled = false;
+  if (route().page === 'home') renderHome(); else render();
+  toast(res.fail ? `Frissítve (${res.fail} nem sikerült)` : 'Frissítve ✓');
+  if (res.newGames.length) notify(res.newGames);
+};
+window.addEventListener('hashchange', render);
+render();
+
+// Indításkor csendes frissítés + értesítés, ha van új.
+if (followed.length) {
+  refreshAll(false).then(res => {
+    if (route().page === 'home') renderHome();
+    if (res.newGames.length) { notify(res.newGames); toast(`📡 ${res.newGames.length} játékhoz új hír!`); }
+  }).catch(() => {});
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
