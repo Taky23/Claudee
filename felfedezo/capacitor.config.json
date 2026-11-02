@@ -1,0 +1,8 @@
+{
+  "appId": "hu.taky.felfedezo",
+  "appName": "Világ Rejtélyei",
+  "webDir": "www",
+  "backgroundColor": "#0a0f1aff",
+  "android": { "backgroundColor": "#0a0f1aff", "allowMixedContent": false },
+  "plugins": { "CapacitorHttp": { "enabled": true } }
+}

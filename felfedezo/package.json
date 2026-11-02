@@ -1,0 +1,13 @@
+{
+  "name": "felfedezo-apk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Világ Rejtélyei – interaktív térképes felfedező app (Android, Capacitor).",
+  "devDependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/app": "6.0.2",
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "6.1.2",
+    "@capacitor/core": "6.1.2"
+  }
+}
