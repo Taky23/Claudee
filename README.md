@@ -117,6 +117,8 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **📡 Patch Pulse** (`patch-pulse/`, **Android APK**) – Steam-játékok frissítés- és patch note-figyelője. Megkeresed a játékot a nevével (Escape from Tarkov, Arena Breakout, DayZ, bármi), és követed; az app a Steam hivatalos (kulcs nélküli) hír-API-jából hozza a patch note-okat, karbantartásokat és eventeket, időrendben, „ÚJ” jelzéssel. Megnyitáskor frissít, és **helyi értesítést** küld, ha új patch jött (a háttér-ellenőrzés legjobb igyekezet szerint, az Android alvó módja miatt nem percre pontos). A hálózati kéréseket a Capacitor natív rétege intézi (ezért kell APK, böngészőből a Steam nem engedné – CORS). Az APK-t a `.github/workflows/patch-pulse-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
 
+- **🌍 Világ Rejtélyei** (`felfedezo/`, **Android APK**) – interaktív térképes felfedező a világ rejtélyes és különleges helyeiről: elhagyatott városok, ősi romok, megmagyarázhatatlan jelenségek, hátborzongató helyek (~67 válogatott helyszín, kategóriákba sorolva). A térkép Leaflet + OpenStreetMap, a leírásokat és fotókat élőben a magyar (vagy tartalékként az angol) Wikipédiából tölti. Véletlen felfedezés (🎲), „hasonló” ugrás egyik helyről a másikra, kedvencek és előzmények, kategória-szűrő. Magyar nyelvű felület. Az APK-t a `.github/workflows/felfedezo-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.
