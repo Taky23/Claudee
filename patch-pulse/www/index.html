@@ -171,11 +171,25 @@ async function getJson(url, params) {
   } finally { clearTimeout(to); }
 }
 
+// Mennyire angol (latin betűs) a szöveg – az orosz/egyéb nyelvű híreket ez alapján szűrjük ki.
+function latinRatio(s) {
+  const letters = (s.match(/\p{L}/gu) || []).length;
+  if (!letters) return 1;
+  const latin = (s.match(/[A-Za-z]/g) || []).length;
+  return latin / letters;
+}
+// A harmadik féltől jövő (gyakran orosz) hírcsatornák, amiket nem akarunk.
+const SPAM_FEED = /playground|stratege|gamehag|xpgamesaves|indiedb|moddb|curator/i;
 async function fetchNews(appid) {
-  const data = await getJson(NEWS, { appid, count: 20, maxlength: 1200, format: 'json' });
-  const items = ((data.appnews && data.appnews.newsitems) || []).map(n => ({
-    gid: n.gid, title: n.title, url: n.url, date: n.date, label: n.feedlabel || '', body: clean(n.contents),
+  const data = await getJson(NEWS, { appid, count: 40, maxlength: 1500, format: 'json' });
+  let items = ((data.appnews && data.appnews.newsitems) || []).map(n => ({
+    gid: n.gid, title: n.title, url: n.url, date: n.date, label: n.feedlabel || '',
+    feed: n.feedname || '', body: clean(n.contents),
   })).sort((a, b) => b.date - a.date);
+  // Csak angol nyelvű, hivatalos (nem harmadik fél) hírek. Ha így semmi nem marad, meghagyjuk az angolokat szűrés nélkül.
+  const english = items.filter(n => latinRatio(n.title + ' ' + n.body) >= 0.6);
+  const clean2 = english.filter(n => !SPAM_FEED.test(n.feed));
+  items = (clean2.length ? clean2 : english).slice(0, 25);
   cache[appid] = { at: Date.now(), items };
   save('pp_cache', cache);
   return items;
@@ -265,7 +279,7 @@ async function renderGame(appid) {
     </div>`;
   function list(items) {
     const s = seen[appid] || 0;
-    if (!items.length) return '<div class="empty">Nincs letöltött hír ehhez a játékhoz.<br>Nyomd meg a ⟳ gombot fent.</div>';
+    if (!items.length) return '<div class="empty">Nincs angol nyelvű hír ehhez a játékhoz.<br>(Az app a nem angol nyelvű híreket kiszűri.)</div>';
     return items.map((n, i) => {
       const long = n.body.length > 240;
       const shown = n.showHu && n.hu ? n.hu : n.body;
