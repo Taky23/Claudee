@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://upload.wikimedia.org https://*.tile.openstreetmap.org https://tile.openstreetmap.org; connect-src 'self' https://hu.wikipedia.org https://en.wikipedia.org; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://hu.wikipedia.org https://en.wikipedia.org https://upload.wikimedia.org; object-src 'none'; base-uri 'self'">
 <meta name="theme-color" content="#0a0f1a">
 <title>Világ Rejtélyei</title>
 <link rel="stylesheet" href="lib/leaflet.css">
@@ -156,7 +156,39 @@ async function getJson(url) {
 async function summary(lang, title) {
   const d = await getJson(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
   if (!d || d.type === 'https://mediawiki.org/wiki/HyperSwitch/errors/not_found' || !d.extract) throw new Error('nincs');
-  return { extract: d.extract, img: (d.thumbnail && d.thumbnail.source) || (d.originalimage && d.originalimage.source) || '', url: d.content_urls && d.content_urls.desktop && d.content_urls.desktop.page, lang };
+  return {
+    extract: d.extract,
+    img: (d.originalimage && d.originalimage.source) || (d.thumbnail && d.thumbnail.source) || '',
+    title: (d.titles && d.titles.canonical) || title,
+    url: d.content_urls && d.content_urls.desktop && d.content_urls.desktop.page, lang,
+  };
+}
+// Tartalék képforrás: a klasszikus API biztos vezető képet ad (ha a REST nem adott).
+async function pageImage(lang, title) {
+  try {
+    const d = await getJson(`https://${lang}.wikipedia.org/w/api.php?action=query&prop=pageimages&piprop=original|thumbnail&pithumbsize=800&format=json&formatversion=2&titles=${encodeURIComponent(title)}`);
+    const pg = d && d.query && d.query.pages && d.query.pages[0];
+    return pg ? ((pg.original && pg.original.source) || (pg.thumbnail && pg.thumbnail.source) || '') : '';
+  } catch { return ''; }
+}
+// A képet a natív rétegen keresztül töltjük le és data: URL-ként ágyazzuk be, hogy biztosan megjelenjen.
+const imgMem = {};
+async function loadImgData(url) {
+  if (!url) return '';
+  if (imgMem[url]) return imgMem[url];
+  const Cap = window.Capacitor;
+  if (Cap && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
+    try {
+      const r = await Cap.Plugins.CapacitorHttp.get({ url, responseType: 'blob', readTimeout: 15000, connectTimeout: 15000 });
+      if (r.status < 400 && r.data) {
+        const ct = (r.headers && (r.headers['Content-Type'] || r.headers['content-type'])) || 'image/jpeg';
+        const data = 'data:' + ct.split(';')[0] + ';base64,' + r.data;
+        imgMem[url] = data;
+        return data;
+      }
+    } catch {}
+  }
+  return url; // böngészőben a sima URL megy
 }
 async function fetchWiki(h) {
   if (wikicache[h.id] && Date.now() - wikicache[h.id].at < 30 * 864e5) return wikicache[h.id];
@@ -164,7 +196,8 @@ async function fetchWiki(h) {
   if (h.wiki.hu) { try { res = await summary('hu', h.wiki.hu); } catch {} }
   if (!res && h.wiki.en) { try { res = await summary('en', h.wiki.en); } catch {} }
   if (!res) throw new Error('A Wikipédián nem találom ezt a cikket.');
-  wikicache[h.id] = { ...res, at: Date.now() };
+  if (!res.img) res.img = await pageImage(res.lang, res.title || (res.lang === 'hu' ? h.wiki.hu : h.wiki.en) || '');
+  wikicache[h.id] = { extract: res.extract, img: res.img, url: res.url, lang: res.lang, at: Date.now() };
   save('vf_wiki', wikicache);
   return wikicache[h.id];
 }
@@ -206,7 +239,11 @@ async function openPlace(id, fly = true) {
   try {
     const w = await fetchWiki(h);
     if (current !== h) return;
-    $('#heroWrap').innerHTML = w.img ? `<img class="hero" src="${esc(w.img)}" alt="" onerror="this.remove()">` : '';
+    if (w.img) {
+      loadImgData(w.img).then(src => {
+        if (current === h && src) { const wrap = $('#heroWrap'); if (wrap) wrap.innerHTML = `<img class="hero" src="${esc(src)}" alt="" onerror="this.remove()">`; }
+      }).catch(() => {});
+    }
     $('#descBox').outerHTML = `<div class="desc">${esc(w.extract)}</div>
       ${w.lang === 'en' ? '<div class="note">(A magyar szócikk nem elérhető, ezért angolul.)</div>' : ''}
       ${w.url ? `<a class="wlink" href="${esc(w.url)}" target="_blank" rel="noopener">Tovább a Wikipédián ↗</a>` : ''}`;
