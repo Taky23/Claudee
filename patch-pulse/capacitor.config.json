@@ -1,0 +1,13 @@
+{
+  "appId": "hu.taky.patchpulse",
+  "appName": "Patch Pulse",
+  "webDir": "www",
+  "backgroundColor": "#0b0f14ff",
+  "android": {
+    "backgroundColor": "#0b0f14ff",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
