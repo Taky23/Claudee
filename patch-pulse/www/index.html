@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; connect-src 'self' https: http:; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; connect-src 'self' https: http: https://api.mymemory.translated.net; object-src 'none'; base-uri 'self'">
 <meta name="theme-color" content="#0b0f14">
 <title>Patch Pulse</title>
 <style>
@@ -39,7 +39,9 @@ main { max-width: 720px; margin: 0 auto; padding: 14px 16px; }
 .news .body { color: #cdd7e1; font-size: 14px; white-space: pre-wrap; max-height: 5.4em; overflow: hidden; position: relative; }
 .news .body.open { max-height: none; }
 .news.has-more .body:not(.open)::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2.2em; background: linear-gradient(transparent, var(--card)); }
-.news a.more { color: var(--accent); font-size: 13px; font-weight: 700; display: inline-block; margin-top: 8px; text-decoration: none; }
+.news a.more { color: var(--accent); font-size: 13px; font-weight: 700; display: inline-block; text-decoration: none; cursor: pointer; }
+.newsfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 10px; }
+.news a.hu { color: var(--ok); }
 .row { display: flex; gap: 10px; align-items: center; }
 .empty { text-align: center; color: var(--muted); padding: 40px 16px; }
 .empty .big { font-size: 46px; margin-bottom: 8px; }
@@ -104,6 +106,51 @@ function when(unix) {
   if (nap < 7) return nap + ' napja';
   if (nap < 30) return Math.floor(nap / 7) + ' hete';
   return new Date(d).toLocaleDateString('hu-HU');
+}
+
+// ---------- magyarítás (mint az Anime Hubban: Chrome beépített fordító, vagy MyMemory) ----------
+function chunks(text, max = 480) {
+  const out = [];
+  for (const part of text.split(/(?<=[.!?])\s+/)) {
+    if (part.length > max) { for (let i = 0; i < part.length; i += max) out.push(part.slice(i, i + max)); }
+    else out.push(part);
+  }
+  return out.filter(Boolean);
+}
+async function mymemory(q) {
+  const data = await getJson('https://api.mymemory.translated.net/get', { langpair: 'en|hu', q });
+  const t = data && data.responseData && data.responseData.translatedText;
+  if (!t || data.quotaFinished || /MYMEMORY WARNING/i.test(t)) throw new Error('A mai ingyenes fordítási keret elfogyott.');
+  return t;
+}
+async function translateHu(text) {
+  if (!text || !text.trim()) return text;
+  // 1) Chrome beépített, telefonon futó fordítója, ha a nyelvi csomag már megvan.
+  if ('Translator' in self) {
+    try {
+      const race = Promise.race([
+        (async () => {
+          const av = await Translator.availability({ sourceLanguage: 'en', targetLanguage: 'hu' });
+          if (av !== 'available') return null;
+          const tr = await Translator.create({ sourceLanguage: 'en', targetLanguage: 'hu' });
+          const parts = [];
+          for (const para of text.split(/\n+/)) parts.push(para.trim() ? await tr.translate(para) : '');
+          return parts.join('\n');
+        })(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000)),
+      ]);
+      const res = await race;
+      if (res) return res;
+    } catch {}
+  }
+  // 2) MyMemory ingyenes fordító, bekezdésenként és darabonként.
+  const outParas = [];
+  for (const para of text.split(/\n{2,}/).filter(x => x.trim())) {
+    const parts = [];
+    for (const c of chunks(para)) parts.push(await mymemory(c));
+    outParas.push(parts.join(' '));
+  }
+  return outParas.join('\n\n');
 }
 
 // ---------- hálózat (APK-ban a natív réteg kéri le, így nincs CORS gond) ----------
@@ -221,11 +268,15 @@ async function renderGame(appid) {
     if (!items.length) return '<div class="empty">Nincs letöltött hír ehhez a játékhoz.<br>Nyomd meg a ⟳ gombot fent.</div>';
     return items.map((n, i) => {
       const long = n.body.length > 240;
+      const shown = n.showHu && n.hu ? n.hu : n.body;
       return `<div class="news ${n.date > s ? 'unread' : ''} ${long ? 'has-more' : ''}" data-i="${i}">
         <div class="h"><div class="t">${esc(n.title)}</div><div class="d">${when(n.date)}</div></div>
         ${n.label ? `<span class="tag">${esc(n.label)}</span>` : ''}
-        <div class="body">${esc(n.body) || '<i>Nincs szöveges tartalom – nyisd meg a Steamen.</i>'}</div>
-        ${long ? '<a class="more" data-more>Tovább ▾</a>' : ''}
+        <div class="body">${esc(shown) || '<i>Nincs szöveges tartalom – nyisd meg a Steamen.</i>'}</div>
+        <div class="newsfoot">
+          ${long ? '<a class="more" data-more>Tovább ▾</a>' : '<span></span>'}
+          ${n.body ? `<a class="more hu" data-hu="${i}">${n.showHu ? '🇬🇧 Eredeti' : '🇭🇺 Magyarítás'}</a>` : ''}
+        </div>
       </div>`;
     }).join('');
   }
@@ -257,6 +308,27 @@ function bindGame(appid) {
     const open = body.classList.toggle('open');
     a.textContent = open ? 'Kevesebb ▴' : 'Tovább ▾';
   });
+  app.querySelectorAll('[data-hu]').forEach(a => a.onclick = async e => {
+    e.stopPropagation();
+    const items = cachedItems(appid), n = items[+a.dataset.hu];
+    if (!n) return;
+    if (n.hu) { n.showHu = !n.showHu; save('pp_cache', cache); refreshNews(appid); return; }
+    const old = a.textContent; a.textContent = '⏳ Fordítás…';
+    try {
+      n.hu = await translateHu(n.body);
+      n.showHu = true;
+      save('pp_cache', cache);
+      refreshNews(appid);
+    } catch (err) {
+      a.textContent = old;
+      toast(err.message || 'Nem sikerült a fordítás.');
+    }
+  });
+}
+// A nyitott hírlista újrarajzolása a fordítás után (a görgetés nagyjából megmarad).
+function refreshNews(appid) {
+  const r = route();
+  if (r.page === 'game' && r.appid === appid) renderGame(appid);
 }
 
 let searchTimer = null;
