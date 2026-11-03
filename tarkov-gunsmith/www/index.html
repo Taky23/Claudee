@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.tarkov.dev; object-src 'none'; base-uri 'self'">
+<meta name="theme-color" content="#14160f">
+<title>Tarkov Gunsmith</title>
+<style>
+:root { --bg: #14160f; --card: #1e2116; --card2: #2a2e1e; --text: #e7e8d8; --muted: #9a9c82; --line: #343927; --accent: #c7a04a; --ergo: #6bbf59; --rec: #e0603a; --good: #6bbf59; --bad: #e0603a; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.4 "Segoe UI", system-ui, Roboto, sans-serif; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+header { position: sticky; top: 0; z-index: 10; background: #10120b; border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 12px 10px; display: flex; align-items: center; gap: 8px; }
+header .logo { font-size: 20px; }
+header h1 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: .5px; flex: 1; }
+header h1 b { color: var(--accent); }
+main { max-width: 760px; margin: 0 auto; padding: 12px; }
+.search input { width: 100%; background: var(--card); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 11px 13px; font: inherit; }
+.fils { display: flex; gap: 6px; overflow-x: auto; margin: 10px 0 6px; scrollbar-width: none; }
+.fils::-webkit-scrollbar { display: none; }
+.fils .f { flex: none; background: var(--card); border: 1px solid var(--line); color: var(--text); border-radius: 99px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.fils .f.on { background: var(--accent); color: #14160f; border-color: var(--accent); font-weight: 700; }
+.gun { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+.gun .nm { flex: 1; min-width: 0; }
+.gun .nm b { display: block; }
+.gun .nm span { color: var(--muted); font-size: 12px; }
+.gun .st { text-align: right; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.gun .st b { color: var(--text); }
+.spin { text-align: center; color: var(--muted); padding: 40px 10px; }
+.err { background: #3a1d12; border: 1px solid #6b3520; color: #f0b090; border-radius: 10px; padding: 12px; }
+.btn { font: inherit; font-weight: 700; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; background: var(--card2); color: var(--text); }
+.btn.p { background: var(--accent); color: #14160f; border-color: var(--accent); }
+.back { background: none; border: 0; color: var(--text); font: inherit; font-weight: 700; padding: 0 0 10px; cursor: pointer; }
+/* build fejléc */
+.stats { position: sticky; top: calc(46px + env(safe-area-inset-top)); z-index: 8; background: #10120b; border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.stats .nm { font-weight: 800; margin-bottom: 8px; }
+.stats .grid { display: flex; gap: 8px; text-align: center; }
+.stats .box { flex: 1; background: var(--card); border-radius: 10px; padding: 8px 4px; }
+.stats .box .v { font-size: 22px; font-weight: 800; }
+.stats .box .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stats .v.ergo { color: var(--ergo); } .stats .v.rec { color: var(--rec); }
+.stats .acts { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.stats .acts .btn { flex: 1; min-width: 80px; font-size: 13px; padding: 9px 6px; }
+/* slotok */
+.slot { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; cursor: pointer; }
+.slot.req { border-left: 3px solid var(--accent); }
+.slot .top { display: flex; align-items: center; gap: 8px; }
+.slot .sn { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; flex: 1; }
+.slot .sn .req { color: var(--accent); }
+.slot .cur { font-weight: 600; }
+.slot .cur.empty { color: var(--muted); font-weight: 400; font-style: italic; }
+.slot .chg { color: var(--accent); font-size: 12px; }
+.children { margin: 6px 0 0 14px; border-left: 2px dotted var(--line); padding-left: 10px; }
+.delta { font-size: 12px; margin-left: 6px; }
+.up { color: var(--good); } .down { color: var(--bad); }
+/* modal */
+.modal { position: fixed; inset: 0; z-index: 50; background: #0008; display: none; align-items: flex-end; }
+.modal.open { display: flex; }
+.modal .box { background: var(--bg); width: 100%; max-height: 82%; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.modal .mh { padding: 12px 14px 8px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+.modal .mh h3 { margin: 0; font-size: 15px; flex: 1; }
+.modal .ml { overflow-y: auto; padding: 8px 10px calc(16px + env(safe-area-inset-bottom)); }
+.opt { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.opt .on { flex: 1; min-width: 0; }
+.opt .on b { display: block; font-size: 14px; }
+.opt .on span { color: var(--muted); font-size: 12px; }
+.opt .d { text-align: right; font-size: 12px; white-space: nowrap; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #10120b; border: 1px solid var(--accent); padding: 9px 15px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60; }
+.toast.show { opacity: 1; }
+.note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+.tabbar { display: flex; gap: 6px; margin-bottom: 10px; }
+.tabbar button { flex: 1; background: var(--card); border: 1px solid var(--line); color: var(--muted); font: inherit; font-weight: 700; padding: 9px; border-radius: 10px; cursor: pointer; }
+.tabbar button.on { background: var(--accent); color: #14160f; border-color: var(--accent); }
+</style>
+</head>
+<body>
+<header><span class="logo">🔧</span><h1>Tarkov <b>Gunsmith</b></h1><button class="btn" id="refreshBtn" title="Adatok frissítése" style="padding:8px 10px">⟳</button></header>
+<main id="app"><div class="spin">Betöltés…</div></main>
+<div class="modal" id="modal"><div class="box"><div class="mh"><h3 id="modalTitle"></h3><button class="btn" id="modalClose" style="padding:6px 10px">✕</button></div><div class="ml" id="modalList"></div></div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const API = 'https://api.tarkov.dev/graphql';
+let DATA = null;           // { items: {id:item}, guns: [item] }
+let view = { page: 'list', gunId: null, tab: 'build' };
+let build = null;          // { gunId, installed: {path:itemId} }
+let saved = load('tg_saved', []);
+let filterCal = 'mind', q = '';
+
+function load(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2000); }
+function esc(s) { return String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+function round(n) { return Math.round(n * 10) / 10; }
+
+// ---------- IndexedDB (nagy adat gyorsítótára) ----------
+function idb(mode, fn) {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('tg', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onerror = () => rej(r.error);
+    r.onsuccess = () => { const db = r.result; const tx = db.transaction('kv', mode); const st = tx.objectStore('kv'); fn(st, res, rej); };
+  });
+}
+const cacheGet = k => idb('readonly', (st, res) => { const g = st.get(k); g.onsuccess = () => res(g.result); g.onerror = () => res(null); }).catch(() => null);
+const cacheSet = (k, v) => idb('readwrite', (st, res) => { st.put(v, k); res(); }).catch(() => {});
+
+// ---------- hálózat ----------
+async function gql(query) {
+  const body = JSON.stringify({ query });
+  const Cap = window.Capacitor;
+  if (Cap && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
+    const r = await Cap.Plugins.CapacitorHttp.post({ url: API, headers: { 'Content-Type': 'application/json' }, data: body, readTimeout: 30000, connectTimeout: 30000 });
+    if (r.status >= 400) throw new Error('A tarkov.dev hibát jelzett (' + r.status + ').');
+    const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+    if (d.errors) throw new Error(d.errors[0].message);
+    return d.data;
+  }
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  if (!r.ok) throw new Error('A tarkov.dev hibát jelzett (' + r.status + ').');
+  const d = await r.json();
+  if (d.errors) throw new Error(d.errors[0].message);
+  return d.data;
+}
+
+const SLOT_FRAG = 'slots { id name required filters { allowedItems { id } } }';
+const GUN_Q = `{ items(type: gun) { id name shortName properties { __typename ... on ItemPropertiesWeapon { ergonomics recoilVertical recoilHorizontal caliber ${SLOT_FRAG} } } } }`;
+const MOD_Q = `{ items(type: mods) { id name shortName properties { __typename
+  ... on ItemPropertiesWeaponMod { ergonomics recoilModifier accuracyModifier ${SLOT_FRAG} }
+  ... on ItemPropertiesBarrel { ergonomics recoilModifier ${SLOT_FRAG} }
+  ... on ItemPropertiesScope { ergonomics ${SLOT_FRAG} }
+  ... on ItemPropertiesMagazine { ergonomics }
+} } }`;
+
+function normSlots(props) {
+  return (props && props.slots || []).map(s => ({
+    id: s.id, name: s.name, required: !!s.required,
+    allowed: ((s.filters && s.filters.allowedItems) || []).map(a => a.id),
+  }));
+}
+function normalize(guns, mods) {
+  const items = {};
+  for (const g of guns) {
+    const p = g.properties || {};
+    items[g.id] = { id: g.id, name: g.name, short: g.shortName, gun: true,
+      ergo: p.ergonomics || 0, recoilV: p.recoilVertical || 0, recoilH: p.recoilHorizontal || 0,
+      caliber: (p.caliber || '').replace(/^Caliber/, ''), slots: normSlots(p) };
+  }
+  for (const m of mods) {
+    const p = m.properties || {};
+    items[m.id] = { id: m.id, name: m.name, short: m.shortName, gun: false,
+      ergo: p.ergonomics || 0, recoilMod: typeof p.recoilModifier === 'number' ? p.recoilModifier : 0,
+      slots: normSlots(p) };
+  }
+  const gunList = guns.map(g => items[g.id]).filter(x => x.slots !== undefined).sort((a, b) => a.name.localeCompare(b.name));
+  return { items, guns: gunList };
+}
+
+async function loadData(force) {
+  if (!force) {
+    const cached = await cacheGet('data');
+    if (cached && Date.now() - cached.at < 7 * 864e5) { DATA = cached.data; return; }
+    if (cached) DATA = cached.data; // van régi – mutatjuk, közben frissítünk
+  }
+  const [g, m] = await Promise.all([gql(GUN_Q), gql(MOD_Q)]);
+  DATA = normalize(g.items, m.items);
+  cacheSet('data', { at: Date.now(), data: DATA });
+}
+
+// ---------- build logika ----------
+function newBuild(gunId) { return { gunId, installed: {} }; }
+function childPath(parent, slotId) { return parent ? parent + '/' + slotId : slotId; }
+function walk(slots, parent, cb) {
+  for (const s of slots || []) {
+    const path = childPath(parent, s.id);
+    const modId = build.installed[path];
+    const mod = modId ? DATA.items[modId] : null;
+    cb(s, path, mod);
+    if (mod) walk(mod.slots, path, cb);
+  }
+}
+function totals() {
+  const gun = DATA.items[build.gunId];
+  let ergo = gun.ergo, rmod = 0;
+  walk(gun.slots, '', (s, path, mod) => { if (mod) { ergo += mod.ergo || 0; rmod += mod.recoilMod || 0; } });
+  const f = 1 + rmod;
+  return { ergo: Math.round(ergo), recoilV: Math.round(gun.recoilV * f), recoilH: Math.round(gun.recoilH * f) };
+}
+function allowedMods(slot) {
+  return slot.allowed.map(id => DATA.items[id]).filter(Boolean);
+}
+// mod nettó értéke egy slotban (az almodokat nem számolja – gyors becslés az optimalizáláshoz)
+function install(path, modId) {
+  // a mod cseréjekor a benne lévő almodokat (mélyebb utak) töröljük
+  for (const k of Object.keys(build.installed)) if (k.startsWith(path + '/')) delete build.installed[k];
+  if (modId) build.installed[path] = modId; else delete build.installed[path];
+}
+function optimize(kind) {
+  const gun = DATA.items[build.gunId];
+  build.installed = {};
+  // Többször végigmegyünk, mert egy mod új slotokat nyithat.
+  for (let pass = 0; pass < 6; pass++) {
+    let changed = false;
+    const slotsNow = [];
+    walk(gun.slots, '', (s, path, mod) => slotsNow.push({ s, path, has: !!mod }));
+    for (const { s, path, has } of slotsNow) {
+      if (has) continue;
+      const opts = allowedMods(s);
+      if (!opts.length) continue;
+      let best = null, bestScore = kind === 'ergo' ? 0 : 0;
+      for (const m of opts) {
+        const score = kind === 'ergo' ? (m.ergo || 0) : -(m.recoilMod || 0); // recoilnál a negatív a jó
+        if (score > bestScore) { bestScore = score; best = m; }
+      }
+      // required slotnál akkor is teszünk valamit, ha nem javít (hogy működő legyen)
+      if (!best && s.required && opts.length) best = opts[0];
+      if (best) { install(path, best.id); changed = true; }
+    }
+    if (!changed) break;
+  }
+  render();
+  const t = totals();
+  toast(kind === 'ergo' ? `Ergo max: ${t.ergo}` : `Recoil min: ${t.recoilV}`);
+}
+
+// ---------- nézetek ----------
+function render() {
+  if (!DATA) return;
+  if (view.page === 'build') return renderBuild();
+  renderList();
+}
+function calibers() {
+  const set = new Set();
+  DATA.guns.forEach(g => { if (g.caliber) set.add(g.caliber); });
+  return ['mind', ...[...set].sort()];
+}
+function renderList() {
+  const cals = calibers();
+  let list = DATA.guns;
+  if (filterCal !== 'mind') list = list.filter(g => g.caliber === filterCal);
+  if (q) { const qq = q.toLowerCase(); list = list.filter(g => g.name.toLowerCase().includes(qq) || (g.short || '').toLowerCase().includes(qq)); }
+  $('#app').innerHTML = `
+    <div class="tabbar"><button class="on">🔫 Fegyverek</button><button id="toSaved">💾 Mentett (${saved.length})</button></div>
+    <div class="search"><input id="q" placeholder="Fegyver keresése…" value="${esc(q)}"></div>
+    <div class="fils">${cals.map(c => `<div class="f ${c === filterCal ? 'on' : ''}" data-cal="${esc(c)}">${c === 'mind' ? 'Mind' : esc(c)}</div>`).join('')}</div>
+    ${list.map(g => `<div class="gun" data-gun="${g.id}">
+      <div class="nm"><b>${esc(g.name)}</b><span>${esc(g.caliber || '')}</span></div>
+      <div class="st">ergo <b>${g.ergo}</b> · vert <b>${g.recoilV}</b></div>
+    </div>`).join('') || '<div class="spin">Nincs találat.</div>'}
+    <div class="note">Adatok: tarkov.dev (közösségi). Az ergonómia és a recoil a felrakott modokból számolódik; kisebb eltérés lehet a játéktól.</div>`;
+  const qi = $('#q'); qi.oninput = () => { q = qi.value; const p = qi.selectionStart; renderList(); const n = $('#q'); n.focus(); n.setSelectionRange(p, p); };
+  $('#toSaved').onclick = renderSaved;
+  $('#app').querySelectorAll('[data-cal]').forEach(f => f.onclick = () => { filterCal = f.dataset.cal; renderList(); });
+  $('#app').querySelectorAll('[data-gun]').forEach(g => g.onclick = () => openGun(g.dataset.gun));
+}
+function openGun(id, installed) {
+  view = { page: 'build', gunId: id };
+  build = { gunId: id, installed: installed || {} };
+  window.scrollTo(0, 0);
+  renderBuild();
+}
+function renderBuild() {
+  const gun = DATA.items[build.gunId];
+  const t = totals();
+  let rows = '';
+  const renderSlots = (slots, parent, depth) => {
+    for (const s of slots || []) {
+      const path = childPath(parent, s.id);
+      const mod = build.installed[path] ? DATA.items[build.installed[path]] : null;
+      rows += `<div class="slot ${s.required ? 'req' : ''}" data-slot="${esc(path)}" data-sid="${esc(s.id)}" style="${depth ? 'margin-left:' + depth * 12 + 'px' : ''}">
+        <div class="top">
+          <div class="sn">${esc(s.name)}${s.required ? ' <span class="req">(kötelező)</span>' : ''}</div>
+          <div class="chg">${mod ? 'csere ›' : '＋ hozzáad'}</div>
+        </div>
+        <div class="cur ${mod ? '' : 'empty'}">${mod ? esc(mod.name) : '— üres —'}</div>
+      </div>`;
+      if (mod) renderSlots(mod.slots, path, depth + 1);
+    }
+  };
+  renderSlots(gun.slots, '', 0);
+  const ergoColor = t.ergo >= 55 ? 'var(--ergo)' : t.ergo >= 40 ? 'var(--accent)' : 'var(--rec)';
+  $('#app').innerHTML = `
+    <button class="back" id="back">‹ Vissza a listához</button>
+    <div class="stats">
+      <div class="nm">${esc(gun.name)} <span style="color:var(--muted);font-weight:400">· ${esc(gun.caliber || '')}</span></div>
+      <div class="grid">
+        <div class="box"><div class="v ergo" style="color:${ergoColor}">${t.ergo}</div><div class="k">Ergonómia</div></div>
+        <div class="box"><div class="v rec">${t.recoilV}</div><div class="k">Függ. recoil</div></div>
+        <div class="box"><div class="v rec">${t.recoilH}</div><div class="k">Vízsz. recoil</div></div>
+      </div>
+      <div class="acts">
+        <button class="btn" id="optErgo">⬆️ Ergo max</button>
+        <button class="btn" id="optRec">⬇️ Recoil min</button>
+        <button class="btn" id="clear">🧹 Ürít</button>
+        <button class="btn p" id="save">💾 Mentés</button>
+      </div>
+    </div>
+    ${rows || '<div class="note">Ennek a fegyvernek nincs szerelhető slotja az adatbázisban.</div>'}`;
+  $('#back').onclick = () => { view = { page: 'list' }; render(); };
+  $('#optErgo').onclick = () => optimize('ergo');
+  $('#optRec').onclick = () => optimize('recoil');
+  $('#clear').onclick = () => { build.installed = {}; renderBuild(); };
+  $('#save').onclick = saveBuild;
+  $('#app').querySelectorAll('[data-slot]').forEach(el => el.onclick = () => openPicker(el.dataset.slot, el.dataset.sid));
+}
+function findSlot(sid) {
+  let found = null;
+  const gun = DATA.items[build.gunId];
+  const search = slots => { for (const s of slots || []) { if (s.id === sid) { found = s; return; } const m = build.installed; } };
+  // a slot megkeresése az aktuális build fájában
+  let res = null;
+  walk(gun.slots, '', (s) => { if (s.id === sid && !res) res = s; });
+  // a gyökér slotok is kellenek (walk csak a beépített modok almodjaiba megy be, de a top slotokon végigmegy)
+  if (!res) for (const s of gun.slots) if (s.id === sid) res = s;
+  return res;
+}
+function openPicker(path, sid) {
+  const slot = findSlot(sid);
+  if (!slot) return;
+  const cur = build.installed[path];
+  const opts = allowedMods(slot).slice().sort((a, b) => (b.ergo || 0) - (a.ergo || 0) || (a.recoilMod || 0) - (b.recoilMod || 0));
+  $('#modalTitle').textContent = slot.name;
+  $('#modalList').innerHTML = `
+    <div class="opt" data-pick=""><div class="on"><b>— Üres (leszerel) —</b></div><div class="d">${cur ? '' : '✓'}</div></div>
+    ${opts.map(m => {
+      const e = m.ergo || 0, r = Math.round((m.recoilMod || 0) * 100);
+      return `<div class="opt" data-pick="${m.id}">
+        <div class="on"><b>${esc(m.name)}</b><span>${esc(m.short || '')}</span></div>
+        <div class="d">${e ? `<span class="${e > 0 ? 'up' : 'down'}">ergo ${e > 0 ? '+' : ''}${e}</span>` : ''}
+          ${r ? ` <span class="${r < 0 ? 'up' : 'down'}">recoil ${r > 0 ? '+' : ''}${r}%</span>` : ''}
+          ${m.id === cur ? ' ✓' : ''}</div>
+      </div>`;
+    }).join('') || '<div class="note" style="padding:14px">Nincs ismert kiegészítő ehhez a slothoz.</div>'}`;
+  $('#modalList').querySelectorAll('[data-pick]').forEach(o => o.onclick = () => {
+    install(path, o.dataset.pick || null);
+    closeModal(); renderBuild();
+  });
+  $('#modal').classList.add('open');
+}
+function closeModal() { $('#modal').classList.remove('open'); }
+
+function saveBuild() {
+  const gun = DATA.items[build.gunId];
+  const t = totals();
+  const entry = { id: Date.now(), gunId: build.gunId, name: gun.name, installed: { ...build.installed }, ergo: t.ergo, recoilV: t.recoilV };
+  saved.unshift(entry); saved = saved.slice(0, 50); save('tg_saved', saved);
+  toast('💾 Build elmentve');
+}
+function renderSaved() {
+  $('#app').innerHTML = `
+    <div class="tabbar"><button id="toList">🔫 Fegyverek</button><button class="on">💾 Mentett (${saved.length})</button></div>
+    ${saved.length ? saved.map(b => `<div class="gun" data-open="${b.id}">
+      <div class="nm"><b>${esc(b.name)}</b><span>${Object.keys(b.installed).length} kiegészítő</span></div>
+      <div class="st">ergo <b>${b.ergo}</b> · vert <b>${b.recoilV}</b><br><button class="btn" data-del="${b.id}" style="padding:4px 8px;margin-top:4px;font-size:12px">🗑️</button></div>
+    </div>`).join('') : '<div class="spin">Még nincs mentett buildod. Építs egyet, és nyomd meg a 💾 Mentés gombot.</div>'}`;
+  $('#toList').onclick = renderList;
+  $('#app').querySelectorAll('[data-open]').forEach(el => el.onclick = e => {
+    if (e.target.dataset.del) return;
+    const b = saved.find(x => x.id == el.dataset.open);
+    if (b && DATA.items[b.gunId]) openGun(b.gunId, { ...b.installed });
+  });
+  $('#app').querySelectorAll('[data-del]').forEach(el => el.onclick = e => {
+    e.stopPropagation(); saved = saved.filter(x => x.id != el.dataset.del); save('tg_saved', saved); renderSaved();
+  });
+}
+
+$('#modalClose').onclick = closeModal;
+$('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
+$('#refreshBtn').onclick = async () => { $('#refreshBtn').textContent = '…'; try { await loadData(true); toast('Adatok frissítve'); } catch (e) { toast(e.message); } $('#refreshBtn').textContent = '⟳'; render(); };
+
+(async () => {
+  try {
+    await loadData(false);
+    render();
+  } catch (e) {
+    $('#app').innerHTML = `<div class="err">⚠️ ${esc(e.message)}<br><br>Van internet? A tarkov.dev néha akadozik. <button class="btn" id="retry" style="margin-top:8px">🔄 Újra</button></div>`;
+    $('#retry').onclick = () => location.reload();
+  }
+})();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

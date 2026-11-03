@@ -1,0 +1,8 @@
+{
+  "appId": "hu.taky.tarkovgunsmith",
+  "appName": "Tarkov Gunsmith",
+  "webDir": "www",
+  "backgroundColor": "#14160fff",
+  "android": { "backgroundColor": "#14160fff", "allowMixedContent": false },
+  "plugins": { "CapacitorHttp": { "enabled": true } }
+}
