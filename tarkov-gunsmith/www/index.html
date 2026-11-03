@@ -109,35 +109,39 @@ const cacheGet = k => idb('readonly', (st, res) => { const g = st.get(k); g.onsu
 const cacheSet = (k, v) => idb('readwrite', (st, res) => { st.put(v, k); res(); }).catch(() => {});
 
 // ---------- hálózat ----------
+function parseGql(raw, status) {
+  let d = null;
+  try { d = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch {}
+  if (d && d.errors && d.errors.length) throw new Error(d.errors[0].message);
+  if (d && d.data) return d.data;
+  throw new Error('A tarkov.dev hibát jelzett (' + status + ').');
+}
 async function gql(query) {
   const body = JSON.stringify({ query });
   const Cap = window.Capacitor;
   if (Cap && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
     const r = await Cap.Plugins.CapacitorHttp.post({ url: API, headers: { 'Content-Type': 'application/json' }, data: body, readTimeout: 30000, connectTimeout: 30000 });
-    if (r.status >= 400) throw new Error('A tarkov.dev hibát jelzett (' + r.status + ').');
-    const d = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
-    if (d.errors) throw new Error(d.errors[0].message);
-    return d.data;
+    return parseGql(r.data, r.status);
   }
   const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-  if (!r.ok) throw new Error('A tarkov.dev hibát jelzett (' + r.status + ').');
-  const d = await r.json();
-  if (d.errors) throw new Error(d.errors[0].message);
-  return d.data;
+  return parseGql(await r.text(), r.status);
 }
 
 const SLOT_FRAG = 'slots { id name required filters { allowedItems { id } } }';
 const SLOT_MIN = 'slots { id name filters { allowedItems { id } } }';
 // Több változat: a legbővebbtől a legegyszerűbbig. Amelyik nem 422-zik, azt használjuk.
 // (Az API időnként átnevez/eltávolít mezőket, ezért van a tartalék.)
+const gunBody = slot => `properties { __typename ... on ItemPropertiesWeapon { ergonomics recoilVertical recoilHorizontal caliber ${slot} } }`;
+const modBody = slot => `properties { __typename ... on ItemPropertiesWeaponMod { ergonomics recoilModifier ${slot} } }`;
 const GUN_QUERIES = [
-  `{ items(type: gun) { id name shortName properties { __typename ... on ItemPropertiesWeapon { ergonomics recoilVertical recoilHorizontal caliber ${SLOT_FRAG} } } } }`,
-  `{ items(type: gun) { id name shortName properties { __typename ... on ItemPropertiesWeapon { ergonomics recoilVertical recoilHorizontal caliber ${SLOT_MIN} } } } }`,
+  `{ items(type: gun) { id name shortName ${gunBody(SLOT_FRAG)} } }`,
+  `{ items(types: [gun]) { id name shortName ${gunBody(SLOT_FRAG)} } }`,
+  `{ items(type: gun) { id name shortName ${gunBody(SLOT_MIN)} } }`,
 ];
 const MOD_QUERIES = [
-  `{ items(type: mods) { id name shortName properties { __typename ... on ItemPropertiesWeaponMod { ergonomics recoilModifier ${SLOT_FRAG} } ... on ItemPropertiesBarrel { ergonomics recoilModifier ${SLOT_FRAG} } } } }`,
-  `{ items(type: mods) { id name shortName properties { __typename ... on ItemPropertiesWeaponMod { ergonomics recoilModifier ${SLOT_FRAG} } } } }`,
-  `{ items(type: mods) { id name shortName properties { __typename ... on ItemPropertiesWeaponMod { ergonomics recoilModifier ${SLOT_MIN} } } } }`,
+  `{ items(type: mods) { id name shortName ${modBody(SLOT_FRAG)} } }`,
+  `{ items(types: [mods]) { id name shortName ${modBody(SLOT_FRAG)} } }`,
+  `{ items(type: mods) { id name shortName ${modBody(SLOT_MIN)} } }`,
 ];
 async function gqlFirst(queries) {
   let lastErr = null;
