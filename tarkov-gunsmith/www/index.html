@@ -127,13 +127,25 @@ async function gql(query) {
 }
 
 const SLOT_FRAG = 'slots { id name required filters { allowedItems { id } } }';
-const GUN_Q = `{ items(type: gun) { id name shortName properties { __typename ... on ItemPropertiesWeapon { ergonomics recoilVertical recoilHorizontal caliber ${SLOT_FRAG} } } } }`;
-const MOD_Q = `{ items(type: mods) { id name shortName properties { __typename
-  ... on ItemPropertiesWeaponMod { ergonomics recoilModifier accuracyModifier ${SLOT_FRAG} }
-  ... on ItemPropertiesBarrel { ergonomics recoilModifier ${SLOT_FRAG} }
-  ... on ItemPropertiesScope { ergonomics ${SLOT_FRAG} }
-  ... on ItemPropertiesMagazine { ergonomics }
-} } }`;
+const SLOT_MIN = 'slots { id name filters { allowedItems { id } } }';
+// Több változat: a legbővebbtől a legegyszerűbbig. Amelyik nem 422-zik, azt használjuk.
+// (Az API időnként átnevez/eltávolít mezőket, ezért van a tartalék.)
+const GUN_QUERIES = [
+  `{ items(type: gun) { id name shortName properties { __typename ... on ItemPropertiesWeapon { ergonomics recoilVertical recoilHorizontal caliber ${SLOT_FRAG} } } } }`,
+  `{ items(type: gun) { id name shortName properties { __typename ... on ItemPropertiesWeapon { ergonomics recoilVertical recoilHorizontal caliber ${SLOT_MIN} } } } }`,
+];
+const MOD_QUERIES = [
+  `{ items(type: mods) { id name shortName properties { __typename ... on ItemPropertiesWeaponMod { ergonomics recoilModifier ${SLOT_FRAG} } ... on ItemPropertiesBarrel { ergonomics recoilModifier ${SLOT_FRAG} } } } }`,
+  `{ items(type: mods) { id name shortName properties { __typename ... on ItemPropertiesWeaponMod { ergonomics recoilModifier ${SLOT_FRAG} } } } }`,
+  `{ items(type: mods) { id name shortName properties { __typename ... on ItemPropertiesWeaponMod { ergonomics recoilModifier ${SLOT_MIN} } } } }`,
+];
+async function gqlFirst(queries) {
+  let lastErr = null;
+  for (const q of queries) {
+    try { return await gql(q); } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('Ismeretlen hiba');
+}
 
 function normSlots(props) {
   return (props && props.slots || []).map(s => ({
@@ -165,7 +177,7 @@ async function loadData(force) {
     if (cached && Date.now() - cached.at < 7 * 864e5) { DATA = cached.data; return; }
     if (cached) DATA = cached.data; // van régi – mutatjuk, közben frissítünk
   }
-  const [g, m] = await Promise.all([gql(GUN_Q), gql(MOD_Q)]);
+  const [g, m] = await Promise.all([gqlFirst(GUN_QUERIES), gqlFirst(MOD_QUERIES)]);
   DATA = normalize(g.items, m.items);
   cacheSet('data', { at: Date.now(), data: DATA });
 }
