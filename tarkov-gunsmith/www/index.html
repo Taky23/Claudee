@@ -110,11 +110,15 @@ const cacheSet = (k, v) => idb('readwrite', (st, res) => { st.put(v, k); res(); 
 
 // ---------- hálózat ----------
 function parseGql(raw, status) {
+  const snippet = (typeof raw === 'string' ? raw : JSON.stringify(raw) || '').slice(0, 220);
   let d = null;
   try { d = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch {}
-  if (d && d.errors && d.errors.length) throw new Error(d.errors[0].message);
+  if (d && d.errors && d.errors.length) {
+    const msg = d.errors.map(e => (e && e.message) || '').filter(Boolean).join(' | ');
+    throw new Error(msg || ('GraphQL hiba [' + status + ']: ' + snippet));
+  }
   if (d && d.data) return d.data;
-  throw new Error('A tarkov.dev hibát jelzett (' + status + ').');
+  throw new Error('Válasz [' + status + ']: ' + (snippet || '(üres)'));
 }
 async function gql(query) {
   const body = JSON.stringify({ query });
@@ -392,7 +396,7 @@ $('#refreshBtn').onclick = async () => { $('#refreshBtn').textContent = '…'; t
     await loadData(false);
     render();
   } catch (e) {
-    $('#app').innerHTML = `<div class="err">⚠️ ${esc(e.message)}<br><br>Van internet? A tarkov.dev néha akadozik. <button class="btn" id="retry" style="margin-top:8px">🔄 Újra</button></div>`;
+    $('#app').innerHTML = `<div class="err" style="word-break:break-word">⚠️ ${esc(e.message)}<br><br>Van internet? A tarkov.dev néha akadozik. <button class="btn" id="retry" style="margin-top:8px">🔄 Újra</button></div>`;
     $('#retry').onclick = () => location.reload();
   }
 })();
