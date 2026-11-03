@@ -203,12 +203,29 @@ function normalize(guns, mods) {
   return { items, guns: gunList };
 }
 
+async function loadBundled() {
+  // Build időben beépített adat: azonnali, offline, nem függ a tarkov.dev-től.
+  try {
+    const resp = await fetch('data.json', { cache: 'no-store' });
+    if (!resp.ok) return false;
+    const b = await resp.json();
+    if (b && Array.isArray(b.guns) && b.guns.length) {
+      DATA = normalize(b.guns, b.mods || []);
+      return true;
+    }
+  } catch {}
+  return false;
+}
 async function loadData(force) {
   if (!force) {
+    // 1) Beépített adat – ez a fő forrás, azonnal betölt.
+    if (await loadBundled()) return;
+    // 2) Korábban élőben letöltött gyorsítótár.
     const cached = await cacheGet('data');
     if (cached && Date.now() - cached.at < 7 * 864e5) { DATA = cached.data; return; }
     if (cached) DATA = cached.data; // van régi – mutatjuk, közben frissítünk
   }
+  // 3) Élő tarkov.dev (kézi frissítés vagy ha nincs beépített adat).
   // Sorban (nem párhuzamosan): kisebb egyidejű terhelés a tarkov.dev originen.
   const g = await gqlFirst(GUN_QUERIES);
   const m = await gqlFirst(MOD_QUERIES);
