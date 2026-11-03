@@ -119,6 +119,8 @@ A `web/` mappában nyolc telepíthető webapp (PWA) van. A kezdőképernyőre ki
 
 - **🌍 Világ Rejtélyei** (`felfedezo/`, **Android APK**) – interaktív térképes felfedező a világ rejtélyes és különleges helyeiről: elhagyatott városok, ősi romok, megmagyarázhatatlan jelenségek, hátborzongató helyek (~67 válogatott helyszín, kategóriákba sorolva). A térkép Leaflet + OpenStreetMap, a leírásokat és fotókat élőben a magyar (vagy tartalékként az angol) Wikipédiából tölti. Véletlen felfedezés (🎲), „hasonló” ugrás egyik helyről a másikra, kedvencek és előzmények, kategória-szűrő. Magyar nyelvű felület. Az APK-t a `.github/workflows/felfedezo-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
 
+- **🔧 Tarkov Gunsmith** (`tarkov-gunsmith/`, **Android APK**) – Escape from Tarkov fegyverépítő. Kiválasztod a fegyvert (kaliber szerint szűrve), felrakod a kiegészítőket a slotokba (a beágyazott slotokkal együtt), és az app **élőben számolja az ergonómiát, a függőleges és a vízszintes recoilt**. Egy gombbal **optimalizál ergóra vagy recoilra** (magától felrakja a legjobb modokat). Mentett buildek. Az adatok a [tarkov.dev](https://tarkov.dev) közösségi API-jából jönnek (első indításkor letölti és a telefonra menti, utána offline is nézhető). Az APK-t a `.github/workflows/tarkov-gunsmith-apk.yml` építi, a GitHub **Releases** oldalán lesz letölthető.
+
 ### Kitenni a telefonra
 
 1. A GitHubon: **Settings → Pages → Source: GitHub Actions**.

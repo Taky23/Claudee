@@ -1,0 +1,62 @@
+name: Tarkov Gunsmith APK (Android)
+
+on:
+  push:
+    paths: ['tarkov-gunsmith/**', '.github/workflows/tarkov-gunsmith-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Függőségek telepítése
+        working-directory: tarkov-gunsmith
+        run: npm install --no-audit --no-fund
+      - name: Android projekt létrehozása
+        working-directory: tarkov-gunsmith
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Ikon és indítókép generálása
+        working-directory: tarkov-gunsmith
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#14160f' --iconBackgroundColorDark '#14160f' --splashBackgroundColor '#14160f' --splashBackgroundColorDark '#14160f'
+      - name: Vissza gomb natív kezelő bemásolása
+        working-directory: tarkov-gunsmith
+        run: |
+          base=android/app/src/main
+          mkdir -p "$base/java/hu/taky/tarkovgunsmith"
+          cp native/java/MainActivity.java "$base/java/hu/taky/tarkovgunsmith/MainActivity.java"
+      - name: Állandó aláíró kulcs
+        run: mkdir -p ~/.android && cp tarkov-gunsmith/debug.keystore ~/.android/debug.keystore
+      - name: SDK útvonal
+        working-directory: tarkov-gunsmith/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: APK építése
+        working-directory: tarkov-gunsmith/android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: APK átnevezése
+        run: cp tarkov-gunsmith/android/app/build/outputs/apk/debug/app-debug.apk TarkovGunsmith.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TarkovGunsmith-apk
+          path: TarkovGunsmith.apk
+      - name: Kiadás (csak a main ágon)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete tarkov-gunsmith-apk --yes --cleanup-tag || true
+          gh release create tarkov-gunsmith-apk TarkovGunsmith.apk --target "${{ github.sha }}" \
+            --title "Tarkov Gunsmith – Android (APK)" \
+            --notes "Töltsd le a TarkovGunsmith.apk fájlt, és telepítsd (ismeretlen forrásból telepítést engedélyezni kell). Escape from Tarkov fegyverépítő: kiválasztod a fegyvert, felrakod a kiegészítőket, és élőben számolja az ergonómiát és a recoilt. Egy gombbal optimalizál ergóra vagy recoilra. Az adatok a tarkov.dev közösségi adatbázisából jönnek (internet kell hozzá)."
