@@ -121,13 +121,16 @@ function parseGql(raw, status) {
   throw new Error('Válasz [' + status + ']: ' + (snippet || '(üres)'));
 }
 async function gql(query) {
-  const body = JSON.stringify({ query });
   const Cap = window.Capacitor;
   if (Cap && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
-    const r = await Cap.Plugins.CapacitorHttp.post({ url: API, headers: { 'Content-Type': 'application/json' }, data: body, readTimeout: 30000, connectTimeout: 30000 });
+    // FONTOS: a data egy OBJEKTUM legyen, ne string. A CapacitorHttp az
+    // application/json fejléchez maga sorosítja JSON-ná. Ha már stringet adunk
+    // át, a plugin még egyszer idézőjelbe teszi -> a szerver JSON-stringet kap
+    // objektum helyett -> GraphQL 422. Ezért küldjük nyers objektumként.
+    const r = await Cap.Plugins.CapacitorHttp.post({ url: API, headers: { 'Content-Type': 'application/json' }, data: { query }, readTimeout: 30000, connectTimeout: 30000 });
     return parseGql(r.data, r.status);
   }
-  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
   return parseGql(await r.text(), r.status);
 }
 
