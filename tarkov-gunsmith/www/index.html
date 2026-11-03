@@ -110,20 +110,27 @@ const cacheSet = (k, v) => idb('readwrite', (st, res) => { st.put(v, k); res(); 
 
 // ---------- hálózat ----------
 function parseGql(raw, status) {
+  const snippet = (typeof raw === 'string' ? raw : JSON.stringify(raw) || '').slice(0, 220);
   let d = null;
   try { d = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch {}
-  if (d && d.errors && d.errors.length) throw new Error(d.errors[0].message);
+  if (d && d.errors && d.errors.length) {
+    const msg = d.errors.map(e => (e && e.message) || '').filter(Boolean).join(' | ');
+    throw new Error(msg || ('GraphQL hiba [' + status + ']: ' + snippet));
+  }
   if (d && d.data) return d.data;
-  throw new Error('A tarkov.dev hibát jelzett (' + status + ').');
+  throw new Error('Válasz [' + status + ']: ' + (snippet || '(üres)'));
 }
 async function gql(query) {
-  const body = JSON.stringify({ query });
   const Cap = window.Capacitor;
   if (Cap && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
-    const r = await Cap.Plugins.CapacitorHttp.post({ url: API, headers: { 'Content-Type': 'application/json' }, data: body, readTimeout: 30000, connectTimeout: 30000 });
+    // FONTOS: a data egy OBJEKTUM legyen, ne string. A CapacitorHttp az
+    // application/json fejléchez maga sorosítja JSON-ná. Ha már stringet adunk
+    // át, a plugin még egyszer idézőjelbe teszi -> a szerver JSON-stringet kap
+    // objektum helyett -> GraphQL 422. Ezért küldjük nyers objektumként.
+    const r = await Cap.Plugins.CapacitorHttp.post({ url: API, headers: { 'Content-Type': 'application/json' }, data: { query }, readTimeout: 30000, connectTimeout: 30000 });
     return parseGql(r.data, r.status);
   }
-  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
   return parseGql(await r.text(), r.status);
 }
 
@@ -392,7 +399,7 @@ $('#refreshBtn').onclick = async () => { $('#refreshBtn').textContent = '…'; t
     await loadData(false);
     render();
   } catch (e) {
-    $('#app').innerHTML = `<div class="err">⚠️ ${esc(e.message)}<br><br>Van internet? A tarkov.dev néha akadozik. <button class="btn" id="retry" style="margin-top:8px">🔄 Újra</button></div>`;
+    $('#app').innerHTML = `<div class="err" style="word-break:break-word">⚠️ ${esc(e.message)}<br><br>Van internet? A tarkov.dev néha akadozik. <button class="btn" id="retry" style="margin-top:8px">🔄 Újra</button></div>`;
     $('#retry').onclick = () => location.reload();
   }
 })();
