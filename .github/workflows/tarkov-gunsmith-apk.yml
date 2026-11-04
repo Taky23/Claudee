@@ -23,7 +23,7 @@ jobs:
       - name: Függőségek telepítése
         working-directory: tarkov-gunsmith
         run: npm install --no-audit --no-fund
-      - name: Tarkov adatok beépítése (offline betöltéshez)
+      - name: Tarkov adatok beépítése (EFT játék-adatbázisból, offline)
         working-directory: tarkov-gunsmith
         run: node fetch-data.js
       - name: Android projekt létrehozása
@@ -62,4 +62,4 @@ jobs:
           gh release delete tarkov-gunsmith-apk --yes --cleanup-tag || true
           gh release create tarkov-gunsmith-apk TarkovGunsmith.apk --target "${{ github.sha }}" \
             --title "Tarkov Gunsmith – Android (APK)" \
-            --notes "Töltsd le a TarkovGunsmith.apk fájlt, és telepítsd (ismeretlen forrásból telepítést engedélyezni kell). Escape from Tarkov fegyverépítő: kiválasztod a fegyvert, felrakod a kiegészítőket, és élőben számolja az ergonómiát és a recoilt. Egy gombbal optimalizál ergóra vagy recoilra. Az adatok a tarkov.dev adatbázisából a build során beépülnek, így OFFLINE, azonnal betöltenek; a ⟳ gomb élőben frissíti őket."
+            --notes "Töltsd le a TarkovGunsmith.apk fájlt, és telepítsd (ismeretlen forrásból telepítést engedélyezni kell). Escape from Tarkov fegyverépítő: kiválasztod a fegyvert, felrakod a kiegészítőket, és élőben számolja az ergonómiát és a recoilt. Egy gombbal optimalizál ergóra vagy recoilra. Az adatok az EFT játék saját adatbázisából a build során beépülnek, így OFFLINE, azonnal betöltenek, és nem függnek a tarkov.dev elérhetőségétől; a ⟳ gomb opcionálisan élőben frissít."
