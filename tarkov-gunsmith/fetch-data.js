@@ -13,9 +13,17 @@ const fs = require('fs');
 const path = require('path');
 const OUT = path.join(__dirname, 'www', 'data.json');
 
+// items.json LFS-ben van; a tartalmat csak olyan forrás adja vissza, ami feloldja
+// az LFS-t. A GitHub mirror és a jsDelivr csak a pointert adja, ezért az SPT saját
+// Gitea-ját próbáljuk (a CI-nek nyílt internete van, feloldja az LFS media-t).
+const ITEMS_PATH = 'project/assets/database/templates/items.json';
 const ITEMS_URLS = [
-  'https://cdn.jsdelivr.net/gh/sp-tarkov/server@master/project/assets/database/templates/items.json',
-  'https://media.githubusercontent.com/media/sp-tarkov/server/master/project/assets/database/templates/items.json',
+  `https://dev.sp-tarkov.com/SPT/Server/media/branch/master/${ITEMS_PATH}`,
+  `https://dev.sp-tarkov.com/SPT/Server/raw/branch/master/${ITEMS_PATH}`,
+  `https://dev.sp-tarkov.com/SPT-AKI/Server/media/branch/master/${ITEMS_PATH}`,
+  `https://dev.sp-tarkov.com/SPT-AKI/Server/raw/branch/master/${ITEMS_PATH}`,
+  `https://cdn.jsdelivr.net/gh/sp-tarkov/server@master/${ITEMS_PATH}`,
+  `https://media.githubusercontent.com/media/sp-tarkov/server/master/${ITEMS_PATH}`,
 ];
 const LOCALE_URLS = [
   'https://raw.githubusercontent.com/sp-tarkov/server/master/project/assets/database/locales/global/en.json',
