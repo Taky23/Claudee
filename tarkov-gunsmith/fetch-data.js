@@ -13,13 +13,15 @@ const fs = require('fs');
 const path = require('path');
 const OUT = path.join(__dirname, 'www', 'data.json');
 
+// A teljes EFT item-adatbázis nyers (nem LFS) JSON-ként: carlsmei/tarkovdata – a
+// játék backend API-jából 12 óránként botol frissített dump, raw.githubusercontent
+// kiszolgálja (a CI és a sandbox is eléri). Ebben van minden _props (Ergonomics,
+// RecoilForceUp, Slots.filters). A neveket az SPT en.json lokálból vesszük.
 const ITEMS_URLS = [
-  'https://cdn.jsdelivr.net/gh/sp-tarkov/server@master/project/assets/database/templates/items.json',
-  'https://media.githubusercontent.com/media/sp-tarkov/server/master/project/assets/database/templates/items.json',
+  'https://raw.githubusercontent.com/carlsmei/tarkovdata/master/items.json',
 ];
 const LOCALE_URLS = [
   'https://raw.githubusercontent.com/sp-tarkov/server/master/project/assets/database/locales/global/en.json',
-  'https://cdn.jsdelivr.net/gh/sp-tarkov/server@master/project/assets/database/locales/global/en.json',
 ];
 
 async function getJson(urls, label) {
@@ -44,6 +46,26 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 // Ammó-slotok, amiket NEM járunk be (nem modok): töltény/kamra.
 const AMMO_SLOT = /patron|cartridge|camora/i;
 
+// Slot belső nevek -> magyar címke. A végén levágjuk a _000/_001 sorszámot.
+const SLOT_LABELS = {
+  mod_pistol_grip: 'Pisztolymarkolat', mod_magazine: 'Tár', mod_stock: 'Tus / váll-támasz',
+  mod_muzzle: 'Csőtorkolat', mod_reciever: 'Felső váz', mod_barrel: 'Cső', mod_handguard: 'Kézvédő',
+  mod_sight_rear: 'Hátsó irányzék', mod_sight_front: 'Elülső irányzék', mod_scope: 'Céltávcső',
+  mod_foregrip: 'Elülső markolat', mod_tactical: 'Taktikai (lámpa/lézer)', mod_mount: 'Rögzítő sín',
+  mod_charge: 'Töltőkar', mod_gas_block: 'Gázblokk', mod_bipod: 'Kétlábú állvány',
+  mod_launcher: 'Gránátvető', mod_equipment: 'Kiegészítő', mod_flashlight: 'Lámpa',
+  mod_nvg: 'Éjjellátó', mod_pistolgrip: 'Pisztolymarkolat', mod_stock_akms: 'Tus',
+  mod_stock_000: 'Tus', mod_trigger: 'Elsütőbillentyű', mod_hammer: 'Kakas', mod_catch: 'Tárkioldó',
+};
+function slotLabel(name) {
+  if (!name) return 'Hely';
+  const base = String(name).replace(/_\d+$/, '').toLowerCase();
+  if (SLOT_LABELS[base]) return SLOT_LABELS[base];
+  // tartalék: "mod_front_sight" -> "Front sight"
+  const cleaned = base.replace(/^mod_/, '').replace(/_/g, ' ').trim();
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : 'Hely';
+}
+
 function slotFilterIds(slot) {
   const f = slot && slot._props && slot._props.filters;
   if (!Array.isArray(f)) return [];
@@ -55,8 +77,9 @@ function slotFilterIds(slot) {
 (async () => {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   try {
-    const items = await getJson(ITEMS_URLS, 'items');
-    const en = await getJson(LOCALE_URLS, 'locale');
+    // Helyi teszt: LOCAL_ITEMS / LOCAL_LOCALE env-vel a letöltés kihagyható.
+    const items = process.env.LOCAL_ITEMS ? JSON.parse(fs.readFileSync(process.env.LOCAL_ITEMS, 'utf8')) : await getJson(ITEMS_URLS, 'items');
+    const en = process.env.LOCAL_LOCALE ? JSON.parse(fs.readFileSync(process.env.LOCAL_LOCALE, 'utf8')) : await getJson(LOCALE_URLS, 'locale');
 
     const nameOf = id => en[id + ' Name'] || (items[id] && items[id]._name) || id;
     const shortOf = id => en[id + ' ShortName'] || nameOf(id);
@@ -94,7 +117,7 @@ function slotFilterIds(slot) {
     const mapSlots = (it, keepIds) => (it._props.Slots || [])
       .filter(s => !AMMO_SLOT.test(s._name || ''))
       .map(s => ({
-        id: s._id, name: s._name, required: !!s._required,
+        id: s._id, name: slotLabel(s._name), required: !!s._required,
         filters: { allowedItems: slotFilterIds(s).filter(fid => keepIds.has(fid)).map(fid => ({ id: fid })) },
       }))
       .filter(s => s.filters.allowedItems.length); // üres slotokat kihagyjuk
