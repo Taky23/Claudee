@@ -85,6 +85,7 @@
   .cta{display:block; width:100%; margin:12px 0 4px; padding:13px; border:0; border-radius:14px; cursor:pointer;
     font-size:14px; font-weight:800; color:#fff; background:var(--grad); box-shadow:0 6px 18px rgba(255,45,149,.3)}
   .cta:active{transform:translateY(1px)}
+  .cta.alt{background:rgba(0,229,255,.12); color:var(--cyan); border:1px solid rgba(0,229,255,.4); box-shadow:none; margin-top:9px}
   /* info/tips */
   .kv{display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px}
   .kv:last-child{border-bottom:0}
@@ -173,8 +174,9 @@
         <button id="zin">＋</button><button id="zout">－</button><button id="zres" style="font-size:14px">⟲</button>
       </div>
     </div>
-    <button class="cta" id="openFullMap">🌐 Teljes interaktív térkép megnyitása</button>
-    <div class="note">Fent: gyors offline áttekintő a fő régiókról. A <b>„Teljes interaktív térkép"</b> a <b>State of Leonida</b> rajongói projektet nyitja meg (map.stateofleonida.net) – 1500+ jelölővel, utcaszintű nagyítással. Ez közösségi, trailerekből/leakekből épített rekonstrukció (nem hivatalos), és internet kell hozzá.</div>
+    <button class="cta" data-url="https://www.gtabase.com/gta-6/map/">🗺️ GTABase – interaktív térkép</button>
+    <button class="cta alt" data-url="https://map.stateofleonida.net/">🌐 State of Leonida – térkép</button>
+    <div class="note">Fent: gyors offline áttekintő a fő régiókról. A gombok a böngészőben nyitják meg a <b>teljes, részletes</b> interaktív térképeket (sok száz jelölő, utcaszintű nagyítás). Ezek közösségi, trailerekből/leakekből épített rekonstrukciók (nem hivatalosak), és internet kell hozzájuk.</div>
   </section>
 
   <!-- INFÓ -->
@@ -365,12 +367,12 @@ function openSheet(r){
 function closeSheet(){ $('#sheet').classList.remove('open'); $('#bd').classList.remove('on'); }
 $('#bd').onclick=closeSheet;
 
-// Teljes interaktív térkép a rendszer böngészőjében (rajongói projekt)
-$('#openFullMap').onclick=()=>{
-  const url='https://map.stateofleonida.net/';
+// Teljes interaktív térképek a rendszer böngészőjében (rajongói projektek)
+document.querySelectorAll('.cta[data-url]').forEach(btn=>btn.onclick=()=>{
+  const url=btn.dataset.url;
   const B=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
   if(B&&B.open) B.open({url}); else window.open(url,'_blank');
-};
+});
 
 renderMiles(); tick(); setInterval(tick,1000); setInterval(renderMiles,60000);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
