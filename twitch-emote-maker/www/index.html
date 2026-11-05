@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Twitch Emote Maker</title>
+<style>
+  :root{
+    --bg:#0e0b1a; --bg2:#15112a; --panel:#1b1636; --panel2:#241c4a; --line:#352a63;
+    --purple:#9146ff; --purple2:#a970ff; --text:#f1ecff; --muted:#a99fd0; --good:#00d19a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  header{padding:12px 16px; background:linear-gradient(120deg,#2a1a5e,#15112a); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px}
+  header .logo{font-weight:900; font-size:18px}
+  header .logo b{color:var(--purple2)}
+  header .sub{font-size:11px; color:var(--muted); margin-top:2px}
+  main{flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:14px 16px 28px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+    border-radius:16px; padding:14px; margin:0 0 14px}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; border:0; border-radius:12px;
+    padding:12px 14px; font-size:14px; font-weight:800; cursor:pointer; color:#fff; background:var(--purple)}
+  .btn.block{width:100%}
+  .btn.ghost{background:rgba(145,70,255,.14); color:var(--purple2); border:1px solid var(--line)}
+  .btn:disabled{opacity:.5}
+  label.file{display:block}
+  input[type=file]{display:none}
+  /* editor */
+  .edit-wrap{display:flex; flex-direction:column; align-items:center; gap:10px}
+  .stage{position:relative; width:260px; max-width:78vw; aspect-ratio:1; border-radius:14px; overflow:hidden;
+    border:1px solid var(--line); touch-action:none;
+    background-image:linear-gradient(45deg,#2a2a2a 25%,transparent 25%),linear-gradient(-45deg,#2a2a2a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2a2a 75%),linear-gradient(-45deg,transparent 75%,#2a2a2a 75%);
+    background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0; background-color:#1c1c1c}
+  .stage.dark{background:#18181b}
+  .stage.light{background:#efeff1}
+  .stage canvas{position:absolute; inset:0; width:100%; height:100%; image-rendering:auto}
+  .bgtoggle{display:flex; gap:6px; justify-content:center}
+  .bgtoggle button{border:1px solid var(--line); background:var(--bg2); color:var(--muted); border-radius:999px;
+    padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer}
+  .bgtoggle button.on{color:#fff; border-color:var(--purple); background:rgba(145,70,255,.18)}
+  .hint{font-size:11px; color:var(--muted); text-align:center}
+  /* controls */
+  .row{display:flex; align-items:center; gap:10px; margin:10px 0}
+  .row .lbl{font-size:12.5px; font-weight:700; min-width:92px}
+  .row input[type=range]{flex:1; accent-color:var(--purple)}
+  .row .val{font-size:11px; color:var(--muted); min-width:30px; text-align:right}
+  .switch{display:flex; align-items:center; justify-content:space-between; margin:10px 0}
+  .switch .lbl{font-size:13px; font-weight:700}
+  .tog{width:46px; height:26px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; flex:none; transition:background .15s}
+  .tog.on{background:var(--purple)}
+  .tog i{position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .15s}
+  .tog.on i{left:23px}
+  .colorrow{display:flex; gap:8px; align-items:center; margin:8px 0}
+  .sw{width:28px; height:28px; border-radius:8px; border:2px solid transparent; cursor:pointer}
+  .sw.on{border-color:#fff}
+  .seg{display:flex; gap:6px; margin:6px 0}
+  .seg button{flex:1; border:1px solid var(--line); background:var(--bg2); color:var(--muted); border-radius:10px; padding:8px; font-size:12px; font-weight:700; cursor:pointer}
+  .seg button.on{color:#fff; border-color:var(--purple); background:rgba(145,70,255,.18)}
+  /* previews */
+  h3{margin:0 0 10px; font-size:14px}
+  .prev-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .prev-box{border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; align-items:center; justify-content:space-around}
+  .prev-box.dark{background:#18181b}
+  .prev-box.light{background:#efeff1}
+  .prev-box .t{display:flex; flex-direction:column; align-items:center; gap:4px}
+  .prev-box canvas{image-rendering:auto}
+  .prev-box .cap{font-size:9px; color:#8a8aa0}
+  .prev-box.light .cap{color:#555}
+  .note{font-size:11px; color:var(--muted); background:rgba(0,0,0,.2); border:1px dashed var(--line); border-radius:12px; padding:10px 12px; margin-top:4px; line-height:1.5}
+  .empty{text-align:center; color:var(--muted); font-size:13px; padding:26px 10px}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000d; color:#fff; padding:10px 16px;
+    border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; z-index:50; max-width:86vw; text-align:center}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">Twitch <b>Emote</b> Maker</div>
+    <div class="sub">egyedi emote a pontos méretben · offline</div>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <label class="file">
+      <input type="file" id="file" accept="image/*">
+      <span class="btn block" id="loadBtn">📷 Kép betöltése</span>
+    </label>
+  </div>
+
+  <div id="editor" style="display:none">
+    <div class="card">
+      <div class="edit-wrap">
+        <div class="stage dark" id="stage"><canvas id="cv"></canvas></div>
+        <div class="bgtoggle">
+          <button data-bg="checker">Átlátszó</button>
+          <button data-bg="dark" class="on">Sötét chat</button>
+          <button data-bg="light">Világos chat</button>
+        </div>
+        <div class="hint">Húzd a képet a pozicionáláshoz · a nagyításhoz a csúszka</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row"><span class="lbl">Nagyítás</span><input type="range" id="zoom" min="100" max="400" value="100"><span class="val" id="zoomV">1.0×</span></div>
+      <div class="row"><span class="lbl">Keret (üres)</span><input type="range" id="pad" min="0" max="25" value="6"><span class="val" id="padV">6%</span></div>
+
+      <div class="switch"><span class="lbl">🪄 Háttér eltávolítása</span><div class="tog on" id="bgTog"><i></i></div></div>
+      <div class="row" id="tolRow"><span class="lbl">Erősség</span><input type="range" id="tol" min="0" max="140" value="55"><span class="val" id="tolV">55</span></div>
+
+      <div class="switch"><span class="lbl">⭕ Kör alak</span><div class="tog" id="circTog"><i></i></div></div>
+
+      <div class="switch"><span class="lbl">✏️ Kontúr</span><div class="tog on" id="outTog"><i></i></div></div>
+      <div id="outCtl">
+        <div class="colorrow">
+          <span style="font-size:12px; color:var(--muted)">Szín:</span>
+          <div class="sw on" data-col="#ffffff" style="background:#fff"></div>
+          <div class="sw" data-col="#000000" style="background:#000"></div>
+          <div class="sw" data-col="#9146ff" style="background:#9146ff"></div>
+          <div class="sw" data-col="#00d19a" style="background:#00d19a"></div>
+          <div class="sw" data-col="#ff4d6d" style="background:#ff4d6d"></div>
+        </div>
+        <div class="row"><span class="lbl">Vastagság</span><input type="range" id="outW" min="0" max="16" value="7"><span class="val" id="outWV">7</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>👁️ Előnézet valós méretben</h3>
+      <div class="prev-grid">
+        <div class="prev-box dark" id="prevDark"></div>
+        <div class="prev-box light" id="prevLight"></div>
+      </div>
+      <div class="note">Így néz ki a chatben sötét és világos témán. A <b>28 px</b> a legfontosabb – ha ott felismerhető, jó emote lesz.</div>
+    </div>
+
+    <div class="card">
+      <div class="seg" id="kind">
+        <button data-kind="emote" class="on">Emote (112/56/28)</button>
+        <button data-kind="badge">Sub-badge (72/36/18)</button>
+      </div>
+      <button class="btn block" id="saveBtn" style="margin-top:6px">💾 Mentés / Megosztás (PNG)</button>
+      <div class="note">A kész PNG-ket a Twitch <b>Creator Dashboard → Emotes</b> alatt töltöd fel. Átlátszó háttér, négyzetes méret – pont ahogy a Twitch kéri.</div>
+    </div>
+  </div>
+
+  <div id="empty" class="card empty">Tölts be egy képet a szerkesztéshez 👆</div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const WORK=256;
+const master=document.createElement('canvas'); master.width=master.height=WORK;
+const mctx=master.getContext('2d');
+let srcImg=null;
+const st={zoom:1, ox:0, oy:0, pad:0.06, bg:true, tol:55, circle:false, outline:true, outCol:'#ffffff', outW:7, kind:'emote'};
+
+function toast(m){const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),2600);}
+
+// ---- kép betöltése ----
+$('#file').addEventListener('change', e=>{
+  const f=e.target.files && e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ const im=new Image(); im.onload=()=>{ srcImg=im; st.zoom=1; st.ox=0; st.oy=0;
+    $('#editor').style.display='block'; $('#empty').style.display='none';
+    $('#zoom').value=100; $('#zoomV').textContent='1.0×';
+    renderAll(); }; im.src=r.result; };
+  r.readAsDataURL(f);
+});
+
+// ---- feldolgozás ----
+function drawSource(ctx){
+  // cover-fit a WORK négyzetbe, zoom + pan
+  const iw=srcImg.width, ih=srcImg.height;
+  const cover=Math.max(WORK/iw, WORK/ih)*st.zoom;
+  const dw=iw*cover, dh=ih*cover;
+  let dx=(WORK-dw)/2 + st.ox, dy=(WORK-dh)/2 + st.oy;
+  // ne legyen üres szél: tartsuk a képen belül
+  dx=Math.min(0, Math.max(WORK-dw, dx)); dy=Math.min(0, Math.max(WORK-dh, dy));
+  st.ox=dx-(WORK-dw)/2; st.oy=dy-(WORK-dh)/2;
+  ctx.drawImage(srcImg, dx, dy, dw, dh);
+}
+function removeBg(ctx){
+  const img=ctx.getImageData(0,0,WORK,WORK); const d=img.data;
+  const cs=[[0,0],[WORK-1,0],[0,WORK-1],[WORK-1,WORK-1]]; let r=0,g=0,b=0;
+  cs.forEach(([x,y])=>{const i=(y*WORK+x)*4; r+=d[i];g+=d[i+1];b+=d[i+2];}); r/=4;g/=4;b/=4;
+  const t2=st.tol*st.tol; const vis=new Uint8Array(WORK*WORK); const stk=[];
+  for(let x=0;x<WORK;x++){stk.push(x, (WORK-1)*WORK+x);}
+  for(let y=0;y<WORK;y++){stk.push(y*WORK, y*WORK+WORK-1);}
+  while(stk.length){const p=stk.pop(); if(vis[p])continue; vis[p]=1; const i=p*4;
+    const already=d[i+3]===0;
+    const dr=d[i]-r,dg=d[i+1]-g,db=d[i+2]-b;
+    const isBg=already || (dr*dr+dg*dg+db*db<=t2);
+    if(!isBg) continue;
+    d[i+3]=0;
+    const x=p%WORK, y=(p/WORK)|0;
+    if(x>0)stk.push(p-1); if(x<WORK-1)stk.push(p+1); if(y>0)stk.push(p-WORK); if(y<WORK-1)stk.push(p+WORK);
+  }
+  ctx.putImageData(img,0,0);
+}
+function circleMask(ctx){
+  const img=ctx.getImageData(0,0,WORK,WORK); const d=img.data; const c=WORK/2, rr=(WORK/2)*(WORK/2);
+  for(let y=0;y<WORK;y++)for(let x=0;x<WORK;x++){const dx=x-c,dy=y-c; if(dx*dx+dy*dy>rr){const i=(y*WORK+x)*4; d[i+3]=0;}}
+  ctx.putImageData(img,0,0);
+}
+function applyOutline(src){
+  const W=src.width; const out=document.createElement('canvas'); out.width=out.height=W; const o=out.getContext('2d');
+  const w=st.outW;
+  if(st.outline && w>0){
+    const sil=document.createElement('canvas'); sil.width=sil.height=W; const s=sil.getContext('2d');
+    s.drawImage(src,0,0); s.globalCompositeOperation='source-in'; s.fillStyle=st.outCol; s.fillRect(0,0,W,W);
+    for(let a=0;a<360;a+=15){const rad=a*Math.PI/180; o.drawImage(sil, Math.cos(rad)*w, Math.sin(rad)*w);}
+  }
+  o.drawImage(src,0,0);
+  return out;
+}
+function renderMaster(){
+  mctx.clearRect(0,0,WORK,WORK);
+  if(!srcImg) return;
+  drawSource(mctx);
+  if(st.bg) removeBg(mctx);
+  if(st.circle) circleMask(mctx);
+  const o=applyOutline(master);
+  mctx.clearRect(0,0,WORK,WORK); mctx.drawImage(o,0,0);
+}
+function compose(size){
+  const cv=document.createElement('canvas'); cv.width=cv.height=size; const c=cv.getContext('2d');
+  c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
+  const inner=size*(1-2*st.pad), off=(size-inner)/2;
+  c.drawImage(master, 0,0,WORK,WORK, off,off, inner,inner);
+  return cv;
+}
+
+// ---- fő vászon (szerkesztő) + előnézetek ----
+function renderStage(){
+  const cv=$('#cv'); cv.width=cv.height=WORK; const c=cv.getContext('2d');
+  c.clearRect(0,0,WORK,WORK);
+  const inner=WORK*(1-2*st.pad), off=(WORK-inner)/2;
+  c.drawImage(master,0,0,WORK,WORK, off,off, inner,inner);
+}
+function tile(size){ const cv=compose(size); cv.style.width=size+'px'; cv.style.height=size+'px'; return cv; }
+function renderPreviews(){
+  const sizes = st.kind==='emote' ? [112,56,28] : [72,36,18];
+  ['#prevDark','#prevLight'].forEach(sel=>{
+    const box=$(sel); box.innerHTML='';
+    sizes.forEach(s=>{ const t=document.createElement('div'); t.className='t';
+      t.appendChild(tile(s)); const cap=document.createElement('div'); cap.className='cap'; cap.textContent=s+'px'; t.appendChild(cap);
+      box.appendChild(t); });
+  });
+}
+function renderAll(){ renderMaster(); renderStage(); renderPreviews(); }
+
+// ---- vezérlők ----
+$('#zoom').addEventListener('input', e=>{ st.zoom=e.target.value/100; $('#zoomV').textContent=st.zoom.toFixed(1)+'×'; renderAll(); });
+$('#pad').addEventListener('input', e=>{ st.pad=e.target.value/100; $('#padV').textContent=e.target.value+'%'; renderAll(); });
+$('#tol').addEventListener('input', e=>{ st.tol=+e.target.value; $('#tolV').textContent=e.target.value; renderAll(); });
+$('#outW').addEventListener('input', e=>{ st.outW=+e.target.value; $('#outWV').textContent=e.target.value; renderAll(); });
+function tog(el,key,after){ el.addEventListener('click',()=>{ st[key]=!st[key]; el.classList.toggle('on',st[key]); after&&after(); renderAll(); }); }
+tog($('#bgTog'),'bg',()=>$('#tolRow').style.display=st.bg?'flex':'none');
+tog($('#circTog'),'circle');
+tog($('#outTog'),'outline',()=>$('#outCtl').style.display=st.outline?'block':'none');
+document.querySelectorAll('.sw').forEach(sw=>sw.addEventListener('click',()=>{
+  document.querySelectorAll('.sw').forEach(x=>x.classList.remove('on')); sw.classList.add('on'); st.outCol=sw.dataset.col; renderAll();
+}));
+document.querySelectorAll('.bgtoggle button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.bgtoggle button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  const s=$('#stage'); s.className='stage '+(b.dataset.bg==='checker'?'':b.dataset.bg);
+}));
+document.querySelectorAll('#kind button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#kind button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); st.kind=b.dataset.kind; renderPreviews();
+}));
+
+// drag a fő vásznon (pan)
+let drag=null;
+const stageEl=$('#stage');
+stageEl.addEventListener('pointerdown',e=>{ if(!srcImg)return; stageEl.setPointerCapture(e.pointerId); drag={x:e.clientX,y:e.clientY,ox:st.ox,oy:st.oy,w:stageEl.clientWidth}; });
+stageEl.addEventListener('pointermove',e=>{ if(!drag)return; const k=WORK/drag.w; st.ox=drag.ox+(e.clientX-drag.x)*k; st.oy=drag.oy+(e.clientY-drag.y)*k; renderAll(); });
+function endDrag(){ drag=null; } stageEl.addEventListener('pointerup',endDrag); stageEl.addEventListener('pointercancel',endDrag);
+
+// ---- mentés ----
+async function saveAll(){
+  if(!srcImg){ toast('Előbb tölts be képet'); return; }
+  const sizes = st.kind==='emote' ? [112,56,28] : [72,36,18];
+  const Cap=window.Capacitor, FS=Cap&&Cap.Plugins&&Cap.Plugins.Filesystem, SH=Cap&&Cap.Plugins&&Cap.Plugins.Share;
+  const base = st.kind==='emote' ? 'emote' : 'badge';
+  if(FS){
+    try{
+      const files=[];
+      for(const s of sizes){
+        const data=compose(s).toDataURL('image/png').split(',')[1];
+        const path=`${base}_${s}.png`;
+        await FS.writeFile({ path, data, directory:'CACHE' });
+        const u=await FS.getUri({ path, directory:'CACHE' }); files.push(u.uri);
+      }
+      if(SH){ await SH.share({ title:'Twitch '+base, text:'Twitch '+base+' ('+sizes.join('/')+' px)', files }); }
+      else { toast('Mentve a gyorsítótárba: '+files.length+' fájl'); }
+    }catch(err){ toast('Mentési hiba: '+(err.message||err)); }
+  } else {
+    // böngésző / teszt: letöltés
+    sizes.forEach(s=>{ const a=document.createElement('a'); a.href=compose(s).toDataURL('image/png'); a.download=`${base}_${s}.png`; document.body.appendChild(a); a.click(); a.remove(); });
+    toast('Letöltve: '+sizes.length+' PNG');
+  }
+}
+$('#saveBtn').addEventListener('click', saveAll);
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
