@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>GTA VI Companion</title>
+<style>
+  :root{
+    --bg:#120a1f; --bg2:#1a0f2e; --panel:#1f1338; --panel2:#2a1a49; --line:#3b2566;
+    --pink:#ff2d95; --cyan:#00e5ff; --gold:#ffd23f; --text:#f4ecff; --muted:#b196df;
+    --grad:linear-gradient(120deg,#ff2d95,#ff7a3d 55%,#ffd23f);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  header{padding:14px 16px 12px; background:
+    radial-gradient(120% 90% at 85% -10%, rgba(255,45,149,.35), transparent 60%),
+    radial-gradient(120% 90% at 10% -20%, rgba(0,229,255,.28), transparent 55%), var(--bg2);
+    border-bottom:1px solid var(--line)}
+  .brand{display:flex; align-items:center; gap:10px}
+  .logo{font-weight:900; font-size:22px; letter-spacing:.5px; line-height:1;
+    background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 18px rgba(255,45,149,.25)}
+  .logo .vi{color:var(--cyan); -webkit-text-fill-color:var(--cyan)}
+  .sub{color:var(--muted); font-size:12px; margin-top:3px}
+  main{flex:1; overflow:auto; -webkit-overflow-scrolling:touch}
+  .tabbar{display:flex; background:var(--bg2); border-top:1px solid var(--line)}
+  .tabbar button{flex:1; background:none; border:0; color:var(--muted); padding:9px 4px 8px; font-size:11px; font-weight:600;
+    display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer}
+  .tabbar button .ic{font-size:19px; line-height:1}
+  .tabbar button.on{color:var(--text)}
+  .tabbar button.on .ic{filter:drop-shadow(0 0 7px var(--pink))}
+  .tab{display:none; padding:16px}
+  .tab.on{display:block}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+    border-radius:16px; padding:14px 15px; margin:0 0 12px}
+  .card h3{margin:0 0 8px; font-size:15px; display:flex; align-items:center; gap:8px}
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px;
+    border:1px solid var(--line); color:var(--cyan); background:rgba(0,229,255,.08)}
+  .pink{color:var(--pink); background:rgba(255,45,149,.1); border-color:rgba(255,45,149,.3)}
+  .gold{color:var(--gold); background:rgba(255,210,63,.1); border-color:rgba(255,210,63,.3)}
+  .muted{color:var(--muted)}
+  /* countdown */
+  .cd-wrap{text-align:center; padding:8px 10px 14px}
+  .cd-title{font-size:13px; color:var(--muted); margin-bottom:4px}
+  .cd-date{font-size:17px; font-weight:800; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; margin-bottom:14px}
+  .cd{display:grid; grid-template-columns:repeat(4,1fr); gap:9px}
+  .cd .u{background:rgba(0,0,0,.28); border:1px solid var(--line); border-radius:14px; padding:12px 4px}
+  .cd .n{font-size:30px; font-weight:900; line-height:1; font-variant-numeric:tabular-nums}
+  .cd .l{font-size:10px; color:var(--muted); margin-top:5px; text-transform:uppercase; letter-spacing:.6px}
+  .bar{height:9px; border-radius:999px; background:rgba(0,0,0,.3); border:1px solid var(--line); overflow:hidden; margin-top:14px}
+  .bar > i{display:block; height:100%; background:var(--grad)}
+  .mile{display:flex; align-items:center; gap:11px; padding:10px 2px; border-bottom:1px solid var(--line)}
+  .mile:last-child{border-bottom:0}
+  .mile .dot{width:11px; height:11px; border-radius:50%; background:var(--line); flex:none; box-shadow:0 0 0 4px rgba(255,255,255,.03)}
+  .mile.done .dot{background:var(--cyan); box-shadow:0 0 10px var(--cyan)}
+  .mile.next .dot{background:var(--pink); box-shadow:0 0 12px var(--pink)}
+  .mile .d{font-size:12px; color:var(--muted); min-width:78px}
+  .mile .t{font-size:13px; font-weight:600}
+  /* map */
+  .map-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px}
+  .map-vp{position:relative; width:100%; height:62vh; min-height:360px; border:1px solid var(--line); border-radius:16px;
+    overflow:hidden; background:radial-gradient(130% 100% at 70% 0%, #241a4a, #0e1230 70%); touch-action:none}
+  .map-stage{position:absolute; left:0; top:0; width:100%; height:100%; transform-origin:0 0}
+  .map-stage svg{position:absolute; inset:0; width:100%; height:100%}
+  .hs{position:absolute; transform:translate(-50%,-100%); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px}
+  .hs .pin{width:18px; height:18px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+    background:var(--pink); border:2px solid #fff; box-shadow:0 0 10px var(--pink)}
+  .hs.city .pin{background:var(--cyan); box-shadow:0 0 10px var(--cyan)}
+  .hs .lab{transform:none; font-size:9px; font-weight:800; color:#fff; background:rgba(0,0,0,.55);
+    padding:1px 5px; border-radius:6px; white-space:nowrap; letter-spacing:.3px}
+  .zoom{position:absolute; right:10px; bottom:10px; display:flex; flex-direction:column; gap:6px}
+  .zoom button{width:38px; height:38px; border-radius:11px; border:1px solid var(--line); background:rgba(10,6,20,.8);
+    color:#fff; font-size:19px; font-weight:800; cursor:pointer}
+  .sheet{position:fixed; left:0; right:0; bottom:0; z-index:40; transform:translateY(110%); transition:transform .25s ease;
+    background:linear-gradient(180deg,var(--panel),var(--bg2)); border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0; padding:14px 16px calc(18px + env(safe-area-inset-bottom)); max-height:70vh; overflow:auto}
+  .sheet.open{transform:translateY(0)}
+  .sheet .grab{width:42px; height:4px; border-radius:999px; background:var(--line); margin:0 auto 10px}
+  .backdrop{position:fixed; inset:0; background:rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .25s; z-index:39}
+  .backdrop.on{opacity:1; pointer-events:auto}
+  .tag{font-size:10px; color:var(--muted); margin-top:8px; text-align:center}
+  /* info/tips */
+  .kv{display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px}
+  .kv:last-child{border-bottom:0}
+  .kv b{min-width:96px; color:var(--muted); font-weight:600}
+  .tip{display:flex; gap:11px; padding:11px 0; border-bottom:1px solid var(--line)}
+  .tip:last-child{border-bottom:0}
+  .tip .e{font-size:20px; flex:none}
+  .tip .h{font-weight:700; font-size:13px; margin-bottom:2px}
+  .tip .b{font-size:12.5px; color:var(--muted); line-height:1.45}
+  .note{font-size:11px; color:var(--muted); background:rgba(0,0,0,.2); border:1px dashed var(--line); border-radius:12px; padding:9px 11px; margin-top:6px}
+  a{color:var(--cyan)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div>
+      <div class="logo">GTA <span class="vi">VI</span> Companion</div>
+      <div class="sub">Visszaszámláló · térkép · újdonságok · tippek</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- VISSZASZÁMLÁLÓ -->
+  <section class="tab on" id="tab-cd">
+    <div class="card">
+      <div class="cd-wrap">
+        <div class="cd-title">Hátralévő idő a megjelenésig</div>
+        <div class="cd-date">2026. november 19.</div>
+        <div class="cd" id="cd">
+          <div class="u"><div class="n" id="cd-d">–</div><div class="l">nap</div></div>
+          <div class="u"><div class="n" id="cd-h">–</div><div class="l">óra</div></div>
+          <div class="u"><div class="n" id="cd-m">–</div><div class="l">perc</div></div>
+          <div class="u"><div class="n" id="cd-s">–</div><div class="l">mp</div></div>
+        </div>
+        <div class="bar"><i id="cd-bar" style="width:0%"></i></div>
+        <div class="tag" id="cd-sub"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📅 Mérföldkövek</h3>
+      <div id="miles"></div>
+    </div>
+    <div class="card">
+      <h3>🎮 Alapok</h3>
+      <div class="kv"><b>Platformok</b><span>PlayStation 5 · Xbox Series X|S</span></div>
+      <div class="kv"><b>PC</b><span>egyelőre nincs megerősítve</span></div>
+      <div class="kv"><b>Fejlesztő</b><span>Rockstar Games</span></div>
+      <div class="kv"><b>Helyszín</b><span>Leonida állam · Vice City</span></div>
+    </div>
+  </section>
+
+  <!-- TÉRKÉP -->
+  <section class="tab" id="tab-map">
+    <div class="map-head">
+      <span class="pill pink">🗺️ Leonida – régiók</span>
+      <span class="muted" style="font-size:11px">húzd / csippentsd</span>
+    </div>
+    <div class="map-vp" id="vp">
+      <div class="map-stage" id="stage">
+        <!-- stilizált Leonida (Florida ihlette) -->
+        <svg viewBox="0 0 100 130" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="land" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#3a2a16"/><stop offset="1" stop-color="#2a3a1c"/>
+            </linearGradient>
+            <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#132a4a"/><stop offset="1" stop-color="#0c1430"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="100" height="130" fill="url(#sea)"/>
+          <!-- panhandle + félsziget -->
+          <path d="M2,20 L44,16 L52,20 L56,30 L60,46 L62,66 L60,86 L54,104 L46,116 L40,120 L36,112 L40,96 L42,78 L40,58 L34,44 L24,38 L10,34 L2,30 Z"
+                fill="url(#land)" stroke="#5c7a3a" stroke-width="0.6" opacity="0.96"/>
+          <!-- keys -->
+          <g fill="#4a6a2e" stroke="#5c7a3a" stroke-width="0.4">
+            <circle cx="40" cy="123" r="1.6"/><circle cx="44" cy="124.5" r="1.4"/>
+            <circle cx="48" cy="125.5" r="1.3"/><circle cx="52" cy="126" r="1.1"/>
+          </g>
+          <!-- város fény -->
+          <circle cx="54" cy="90" r="9" fill="#00e5ff" opacity="0.08"/>
+        </svg>
+      </div>
+      <div class="zoom">
+        <button id="zin">＋</button><button id="zout">－</button><button id="zres" style="font-size:14px">⟲</button>
+      </div>
+    </div>
+    <div class="note">A régiók a Rockstar 2. előzeteséből / hivatalos oldaláról származnak; a térkép elrendezése közelítő (trailer-alapú), nem a játék hivatalos térképe.</div>
+  </section>
+
+  <!-- INFÓ -->
+  <section class="tab" id="tab-info">
+    <div class="card">
+      <h3>🌴 A világ</h3>
+      <p class="muted" style="font-size:13px; line-height:1.5; margin:0">
+        A játék <b>Leonida</b> államban játszódik – ez a modern kori Florida ihlette kitalált vidék –, központjában a
+        neonfényben úszó <b>Vice City</b>-vel. Mocsarak, tengerpartok, kisvárosok és a Keys szigetvilág is része.
+      </p>
+    </div>
+    <div class="card">
+      <h3>👥 Főszereplők</h3>
+      <div class="kv"><b>Lucia Caminos</b><span>a sorozat első női főszereplője</span></div>
+      <div class="kv"><b>Jason</b><span>Lucia párja – Bonnie &amp; Clyde stílusú páros</span></div>
+      <p class="muted" style="font-size:12.5px; margin:9px 0 0">Két játszható karakter, akik között a sztori során válthatsz.</p>
+    </div>
+    <div class="card">
+      <h3>✨ Amit tudunk</h3>
+      <div id="facts"></div>
+    </div>
+    <div class="card">
+      <h3>🎬 Előzetesek</h3>
+      <div class="kv"><b>1. trailer</b><span>2023. december</span></div>
+      <div class="kv"><b>2. trailer</b><span>2025 – régiók &amp; sztori bemutató</span></div>
+      <div class="note">Hivatalos forrás: rockstargames.com/VI — a részletek a megjelenésig még változhatnak.</div>
+    </div>
+  </section>
+
+  <!-- TIPPEK -->
+  <section class="tab" id="tab-tips">
+    <div class="card">
+      <h3>💡 Felkészülés a megjelenésre</h3>
+      <div id="tips"></div>
+    </div>
+    <div class="note" id="tips-note"></div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="on" data-tab="cd"><span class="ic">⏳</span>Countdown</button>
+  <button data-tab="map"><span class="ic">🗺️</span>Térkép</button>
+  <button data-tab="info"><span class="ic">📰</span>Infó</button>
+  <button data-tab="tips"><span class="ic">💡</span>Tippek</button>
+</nav>
+
+<div class="backdrop" id="bd"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <div id="sheet-body"></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const RELEASE=new Date(2026,10,19,0,0,0); // nov=10 (0-indexelt)
+const ANNOUNCE=new Date(2025,10,6,0,0,0); // a nov. 19-i dátum bejelentése (progress alap)
+
+// ---- tabs ----
+document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabbar button').forEach(x=>x.classList.toggle('on',x===b));
+  const id=b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+id));
+  if(id==='map') resetView();
+});
+
+// ---- countdown ----
+const MILES=[
+  {d:new Date(2026,10,10), t:'PS5 előtöltés (pre-load) kezdete'},
+  {d:new Date(2026,10,12), t:'Fizikai (code-in-box) kiadás'},
+  {d:new Date(2026,10,19), t:'Megjelenés – PS5 &amp; Xbox Series X|S'},
+];
+function fmtDate(d){return d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';}
+function renderMiles(){
+  const now=new Date();
+  const nextIdx=MILES.findIndex(m=>m.d>now);
+  $('#miles').innerHTML=MILES.map((m,i)=>{
+    const done=m.d<=now; const next=i===nextIdx;
+    return `<div class="mile ${done?'done':''} ${next?'next':''}"><span class="dot"></span>
+      <span class="d">${fmtDate(m.d)}</span><span class="t">${m.t}</span></div>`;
+  }).join('');
+}
+function tick(){
+  const now=new Date(); let ms=RELEASE-now;
+  if(ms<0) ms=0;
+  const d=Math.floor(ms/864e5), h=Math.floor(ms/36e5)%24, mi=Math.floor(ms/6e4)%60, s=Math.floor(ms/1e3)%60;
+  $('#cd-d').textContent=d; $('#cd-h').textContent=String(h).padStart(2,'0');
+  $('#cd-m').textContent=String(mi).padStart(2,'0'); $('#cd-s').textContent=String(s).padStart(2,'0');
+  const total=RELEASE-ANNOUNCE, done=now-ANNOUNCE;
+  const pct=Math.max(0,Math.min(100, done/total*100));
+  $('#cd-bar').style.width=pct.toFixed(2)+'%';
+  if(ms<=0){ $('#cd-sub').textContent='🎉 Megjelent! Jó játékot!'; }
+  else { $('#cd-sub').textContent=`≈ ${d} nap van hátra · a teló órája alapján`; }
+}
+
+// ---- facts / tips ----
+const FACTS=[
+  ['🏙️','Vadonatúj Vice City','A sorozat eddigi legrészletesebb, leginkább élő nyílt világa – autentikus floridai hangulat.'],
+  ['👫','Két főszereplő','Lucia és Jason – válthatsz közöttük, a kapcsolatuk a sztori motorja.'],
+  ['🌊','Változatos környezet','Nagyváros, tengerpartok, Everglades-szerű mocsarak (Grassrivers) és a Keys szigetek.'],
+  ['📈','Új szint','A Rockstar szerint a széria eddigi legnagyobb ugrása technikailag és méretben is.'],
+  ['🎵','Vice City vibe','Neon, ’80-as/modern Miami esztétika, erős rádió- és zenei kultúra várható.'],
+];
+$('#facts').innerHTML=FACTS.map(f=>`<div class="tip"><span class="e">${f[0]}</span><div><div class="h">${f[1]}</div><div class="b">${f[2]}</div></div></div>`).join('');
+
+const TIPS=[
+  ['⬇️','Töltsd előre (pre-load)','PS5-ön nov. 10-től előtöltheted, hogy megjelenéskor azonnal indulhasson – a játék mérete nagy lesz.'],
+  ['💾','Csinálj helyet','Szabadíts fel bőven tárhelyet időben; a GTA-k tipikusan 100+ GB-osak.'],
+  ['🛒','Kiadás kiválasztása','Döntsd el: digitális (azonnali indulás előtöltéssel) vagy fizikai (code-in-box, nov. 12.). A dobozos kód NEM ad korai hozzáférést.'],
+  ['🌐','Online később jön','A GTA Online-szerű mód általában nem rögtön a premierkor indul – számíts rá, hogy a sztori lesz előbb.'],
+  ['🎧','Spoiler-védelem','Megjelenés körül érdemes kerülni a közösségi médiát, ha tiszta lappal akarsz játszani.'],
+  ['🔁','Frissítsd az appot','Ahogy jönnek a hivatalos infók és (induláskor) a valódi játéktippek, új verziót adok ki.'],
+];
+$('#tips').innerHTML=TIPS.map(t=>`<div class="tip"><span class="e">${t[0]}</span><div><div class="h">${t[1]}</div><div class="b">${t[2]}</div></div></div>`).join('');
+$('#tips-note').textContent='A tippek a jelenlegi hivatalos infókon és a korábbi Rockstar-megjelenések tapasztalatán alapulnak. A játék premierje után valódi, játékbeli tippekre cserélem őket.';
+
+// ---- térkép: régiók ----
+const REGIONS=[
+  {x:54,y:70, city:true, name:'Vice City', desc:'A játék fő nagyvárosa – neonfényes, Miami ihlette metropolisz. Partok, belváros, éjszakai élet.'},
+  {x:46,y:95, name:'Leonida Keys', desc:'Szigetlánc az állam legdélebbi csücskén, a floridai Keys mintájára – tenger, horgászfalvak, hidak.'},
+  {x:30,y:64, name:'Grassrivers', desc:'Kiterjedt mocsárvidék az Everglades mintájára – vadvilág, csónakok, eldugott zugok.'},
+  {x:20,y:28, name:'Port Gellhorn', desc:'Kikötő- és iparváros az állam északnyugati részén – teherkikötő, raktárak.'},
+  {x:44,y:22, name:'Ambrosia', desc:'Kisváros a szárazföld belsejében – vidékies hangulat.'},
+  {x:40,y:36, name:'Mount Kalaga', desc:'Természeti/erdős terület – nemzeti park jellegű táj, kilátás.'},
+  {x:50,y:46, name:'Hamlet', desc:'Csendes vidéki település mezőgazdasági környezetben.'},
+];
+const stage=$('#stage'), vp=$('#vp');
+REGIONS.forEach(r=>{
+  const el=document.createElement('div');
+  el.className='hs'+(r.city?' city':'');
+  el.style.left=r.x+'%'; el.style.top=r.y+'%';
+  el.innerHTML=`<span class="pin"></span><span class="lab">${r.name}</span>`;
+  el.onclick=e=>{e.stopPropagation(); openSheet(r);};
+  stage.appendChild(el);
+});
+
+// pan/zoom
+let scale=1, tx=0, ty=0;
+function apply(){ stage.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`; }
+function clamp(){
+  const w=vp.clientWidth, h=vp.clientHeight;
+  const minx=w-w*scale, miny=h-h*scale;
+  tx=Math.min(0,Math.max(minx,tx)); ty=Math.min(0,Math.max(miny,ty));
+}
+function resetView(){ scale=1; tx=0; ty=0; apply(); }
+$('#zin').onclick=()=>{ scale=Math.min(4,scale*1.3); clamp(); apply(); };
+$('#zout').onclick=()=>{ scale=Math.max(1,scale/1.3); clamp(); apply(); };
+$('#zres').onclick=resetView;
+
+let drag=null, pinch=null;
+vp.addEventListener('pointerdown',e=>{ vp.setPointerCapture(e.pointerId); pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pts.size===1) drag={x:e.clientX,y:e.clientY,tx,ty};
+  else if(pts.size===2){ const a=[...pts.values()]; pinch={d:dist(a[0],a[1]),scale}; drag=null; } });
+vp.addEventListener('pointermove',e=>{
+  if(!pts.has(e.pointerId))return; pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&pts.size>=2){ const a=[...pts.values()]; const nd=dist(a[0],a[1]);
+    scale=Math.max(1,Math.min(4, pinch.scale*nd/pinch.d)); clamp(); apply(); }
+  else if(drag&&pts.size===1){ tx=drag.tx+(e.clientX-drag.x); ty=drag.ty+(e.clientY-drag.y); clamp(); apply(); }
+});
+function up(e){ pts.delete(e.pointerId); if(pts.size<2)pinch=null; if(pts.size===0)drag=null; }
+vp.addEventListener('pointerup',up); vp.addEventListener('pointercancel',up);
+const pts=new Map();
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+
+// sheet
+function openSheet(r){
+  $('#sheet-body').innerHTML=`<h3 style="margin:0 0 6px; font-size:17px">${r.city?'🏙️':'📍'} ${r.name}</h3>
+    <div style="margin-bottom:8px"><span class="pill ${r.city?'':'pink'}">${r.city?'Nagyváros':'Régió'}</span></div>
+    <p class="muted" style="font-size:13.5px; line-height:1.5; margin:0">${r.desc}</p>
+    <div class="note" style="margin-top:12px">Trailer-alapú elhelyezés – a végleges térkép a játékban eltérhet.</div>`;
+  $('#sheet').classList.add('open'); $('#bd').classList.add('on');
+}
+function closeSheet(){ $('#sheet').classList.remove('open'); $('#bd').classList.remove('on'); }
+$('#bd').onclick=closeSheet;
+
+renderMiles(); tick(); setInterval(tick,1000); setInterval(renderMiles,60000);
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

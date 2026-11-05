@@ -1,0 +1,7 @@
+{
+  "appId": "hu.taky.gta6companion",
+  "appName": "GTA VI Companion",
+  "webDir": "www",
+  "backgroundColor": "#120a1fff",
+  "android": { "backgroundColor": "#120a1fff", "allowMixedContent": false }
+}
