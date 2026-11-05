@@ -1,0 +1,7 @@
+{
+  "appId": "hu.taky.twitchemotemaker",
+  "appName": "Twitch Emote Maker",
+  "webDir": "www",
+  "backgroundColor": "#0e0b1aff",
+  "android": { "backgroundColor": "#0e0b1aff", "allowMixedContent": false }
+}
