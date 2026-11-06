@@ -256,20 +256,33 @@ function blobToB64(blob){ return new Promise(res=>{ const r=new FileReader(); r.
 $('#vExport').onclick=async ()=>{
   if(!curId) return;
   const rec=await dbGet(curId); if(!rec) return;
-  const Cap=window.Capacitor, FS=Cap&&Cap.Plugins&&Cap.Plugins.Filesystem, SH=Cap&&Cap.Plugins&&Cap.Plugins.Share;
   const ext=extFromType(rec.type, rec.kind);
   const fname='szef_'+curId+'.'+ext;
+  const file=new File([rec.full], fname, { type: rec.type || rec.full.type || 'application/octet-stream' });
+
+  // 1) Natív Web Share fájllal – NEM tölti egyben memóriába, így nagy videókhoz is jó.
+  try{
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title:'Megosztás' });
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; /* különben tovább a tartalékra */ }
+
+  // 2) Capacitor Filesystem + Share (base64) – kisebb fájlokhoz tartalék.
+  const Cap=window.Capacitor, FS=Cap&&Cap.Plugins&&Cap.Plugins.Filesystem, SH=Cap&&Cap.Plugins&&Cap.Plugins.Share;
   if(FS&&SH){
     try{
       const data=await blobToB64(rec.full);
       await FS.writeFile({ path:fname, data, directory:'CACHE' });
       const u=await FS.getUri({ path:fname, directory:'CACHE' });
-      await SH.share({ title:'Kép mentése', text:'Mentsd a galériába', files:[u.uri] });
-    }catch(err){ toast('Hiba: '+(err.message||err)); }
-  } else {
-    const u=URL.createObjectURL(rec.full); const a=document.createElement('a'); a.href=u; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000);
-    toast('Letöltve');
+      await SH.share({ title:'Megosztás', files:[u.uri] });
+      return;
+    }catch(err){ toast('Nagy fájlnál memóriahiba lehet – próbáld a natív megosztást. '+(err.message||'')); return; }
   }
+
+  // 3) böngésző tartalék: letöltés
+  const u=URL.createObjectURL(rec.full); const a=document.createElement('a'); a.href=u; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000);
+  toast('Letöltve');
 };
 
 // ---------- init ----------
