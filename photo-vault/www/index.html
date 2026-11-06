@@ -39,6 +39,8 @@
   .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:6px}
   .cell{position:relative; aspect-ratio:1; border-radius:10px; overflow:hidden; background:var(--panel); border:1px solid var(--line)}
   .cell img{width:100%; height:100%; object-fit:cover; display:block}
+  .cell .vb{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:26px; color:#fff; text-shadow:0 2px 8px #000; pointer-events:none}
+  .cell .ph{width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:28px; background:#0e1620; color:#5a7289}
   .empty{text-align:center; color:var(--muted); font-size:13px; padding:50px 20px; line-height:1.6}
   .fab{position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); width:58px; height:58px; border-radius:50%;
     border:0; background:var(--accent); color:#06231f; font-size:30px; font-weight:800; cursor:pointer; box-shadow:0 8px 22px rgba(45,212,191,.4); z-index:20}
@@ -48,6 +50,7 @@
   #viewer.on{display:flex}
   #viewer .vimg{flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden}
   #viewer img{max-width:100%; max-height:100%; object-fit:contain}
+  #viewer video{max-width:100%; max-height:100%}
   #viewer .vbar{display:flex; gap:8px; padding:12px 14px calc(14px + env(safe-area-inset-bottom)); background:#000a}
   #viewer .vbar button{flex:1; border:1px solid var(--line); background:var(--panel); color:var(--text); border-radius:12px; padding:12px; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px}
   #viewer .vbar button.danger{color:var(--danger); border-color:rgba(255,92,122,.4)}
@@ -79,19 +82,19 @@
     </div>
   </header>
   <main>
-    <div class="hintbar">A képek csak itt, a széfben vannak – a telefon galériájában nem jelennek meg. A „+" gombbal hozol be képeket.</div>
+    <div class="hintbar">A képek és videók csak itt, a széfben vannak – a telefon galériájában nem jelennek meg. A „+" gombbal hozol be képeket és videókat.</div>
     <div class="count" id="count"></div>
     <div class="grid" id="grid"></div>
-    <div class="empty" id="empty">Üres a széf.<br>Nyomd meg a <b>+</b> gombot, és válassz képeket a galériából.<br><br>Behozatal után a galériából kézzel törölheted az eredetit, ha nem akarod ott látni.</div>
+    <div class="empty" id="empty">Üres a széf.<br>Nyomd meg a <b>+</b> gombot, és válassz képeket vagy videókat a galériából.<br><br>Behozatal után a galériából kézzel törölheted az eredetit, ha nem akarod ott látni.</div>
   </main>
-  <input type="file" id="file" accept="image/*" multiple>
+  <input type="file" id="file" accept="image/*,video/*" multiple>
   <button class="fab" id="addBtn">＋</button>
 </div>
 
 <!-- VIEWER -->
 <div id="viewer">
   <div class="vtop"><button id="vClose">✕</button></div>
-  <div class="vimg"><img id="vImg" alt=""></div>
+  <div class="vimg"><img id="vImg" alt=""><video id="vVid" controls playsinline style="display:none"></video></div>
   <div class="vbar">
     <button class="go" id="vExport">⬆️ Galériába</button>
     <button class="danger" id="vDelete">🗑️ Törlés</button>
@@ -173,15 +176,38 @@ function makeThumb(blob, max=400){ return new Promise((res)=>{
     cv.toBlob(b=>{ URL.revokeObjectURL(url); res(b||blob); },'image/jpeg',0.82); };
   im.onerror=()=>{ URL.revokeObjectURL(url); res(blob); }; im.src=url; }); }
 
+function makeVideoThumb(blob, max=400){ return new Promise(res=>{
+  const url=URL.createObjectURL(blob); const v=document.createElement('video');
+  v.muted=true; v.playsInline=true; v.preload='metadata'; let done=false;
+  const finish=b=>{ if(done)return; done=true; try{URL.revokeObjectURL(url);}catch(e){} res(b); };
+  function draw(){ try{
+    const sc=Math.min(1, max/Math.max(v.videoWidth,v.videoHeight))||1;
+    const w=Math.round((v.videoWidth||max)*sc), h=Math.round((v.videoHeight||max)*sc);
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(v,0,0,w,h);
+    cv.toBlob(b=>finish(b),'image/jpeg',0.8);
+  }catch(e){ finish(null); } }
+  v.onloadeddata=()=>{ try{ v.currentTime=Math.min(1,(v.duration||2)*0.1)||0; }catch(e){ draw(); } };
+  v.onseeked=draw; v.onerror=()=>finish(null);
+  setTimeout(()=>finish(null), 8000);
+  v.src=url;
+}); }
+function extFromType(type, kind){
+  type=(type||'').toLowerCase();
+  const map={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif',
+    'video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov','video/3gpp':'3gp','video/x-matroska':'mkv'};
+  return map[type] || (kind==='video'?'mp4':'jpg');
+}
+
 $('#addBtn').onclick=()=>$('#file').click();
 $('#file').addEventListener('change', async e=>{
   const files=[...(e.target.files||[])]; e.target.value='';
   if(!files.length) return;
-  toast(files.length+' kép mentése…');
+  toast(files.length+' elem mentése…');
   for(const f of files){
-    const thumb=await makeThumb(f);
+    const isVid=(f.type||'').startsWith('video');
+    const thumb = isVid ? await makeVideoThumb(f) : await makeThumb(f);
     const id='i'+Date.now()+Math.random().toString(36).slice(2,7);
-    await dbAdd({ id, ts:Date.now(), name:f.name||'kep', type:f.type||'image/jpeg', full:f, thumb });
+    await dbAdd({ id, ts:Date.now(), name:f.name||'media', type:f.type||(isVid?'video/mp4':'image/jpeg'), kind:isVid?'video':'image', full:f, thumb });
   }
   renderGrid(); toast('Kész ✓');
 });
@@ -195,9 +221,12 @@ async function renderGrid(){
   $('#empty').style.display = items.length ? 'none' : 'block';
   const g=$('#grid'); g.innerHTML='';
   items.forEach(it=>{
-    const u=URL.createObjectURL(it.thumb); urls.push(u);
+    let inner='';
+    if(it.thumb){ const u=URL.createObjectURL(it.thumb); urls.push(u); inner=`<img src="${u}" alt="">`; }
+    else { inner=`<div class="ph">${it.kind==='video'?'🎞️':'🖼️'}</div>`; }
+    if(it.kind==='video') inner+=`<div class="vb">▶</div>`;
     const cell=document.createElement('div'); cell.className='cell';
-    cell.innerHTML=`<img src="${u}" alt="">`;
+    cell.innerHTML=inner;
     cell.onclick=()=>openViewer(it.id);
     g.appendChild(cell);
   });
@@ -208,9 +237,13 @@ let curId=null, curUrl=null;
 async function openViewer(id){
   const rec=await dbGet(id); if(!rec) return;
   curId=id; if(curUrl)URL.revokeObjectURL(curUrl); curUrl=URL.createObjectURL(rec.full);
-  $('#vImg').src=curUrl; $('#viewer').classList.add('on');
+  const img=$('#vImg'), vid=$('#vVid');
+  if(rec.kind==='video'){ img.style.display='none'; img.src=''; vid.style.display='block'; vid.src=curUrl; }
+  else { vid.style.display='none'; try{vid.pause();vid.removeAttribute('src');vid.load();}catch(e){} img.style.display='block'; img.src=curUrl; }
+  $('#viewer').classList.add('on');
 }
-function closeViewer(){ $('#viewer').classList.remove('on'); if(curUrl){URL.revokeObjectURL(curUrl); curUrl=null;} curId=null; }
+function closeViewer(){ const vid=$('#vVid'); try{vid.pause(); vid.removeAttribute('src'); vid.load();}catch(e){}
+  $('#vImg').src=''; $('#viewer').classList.remove('on'); if(curUrl){URL.revokeObjectURL(curUrl); curUrl=null;} curId=null; }
 $('#vClose').onclick=closeViewer;
 
 $('#vDelete').onclick=async ()=>{
@@ -224,7 +257,7 @@ $('#vExport').onclick=async ()=>{
   if(!curId) return;
   const rec=await dbGet(curId); if(!rec) return;
   const Cap=window.Capacitor, FS=Cap&&Cap.Plugins&&Cap.Plugins.Filesystem, SH=Cap&&Cap.Plugins&&Cap.Plugins.Share;
-  const ext=(rec.type&&rec.type.includes('png'))?'png':'jpg';
+  const ext=extFromType(rec.type, rec.kind);
   const fname='szef_'+curId+'.'+ext;
   if(FS&&SH){
     try{
