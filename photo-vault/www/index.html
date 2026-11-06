@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Privát Széf</title>
+<style>
+  :root{ --bg:#0b0f14; --bg2:#121922; --panel:#172230; --line:#26384d; --accent:#2dd4bf; --accent2:#22c3b0;
+    --text:#eaf2f8; --muted:#8aa0b4; --danger:#ff5c7a; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none}
+  html,body{margin:0; height:100%}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  /* LOCK */
+  #lock{position:fixed; inset:0; z-index:100; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:24px}
+  #lock .ico{font-size:46px}
+  #lock .ttl{font-size:17px; font-weight:800}
+  #lock .msg{font-size:12.5px; color:var(--muted); min-height:16px; text-align:center}
+  .dots{display:flex; gap:16px}
+  .dots .d{width:16px; height:16px; border-radius:50%; border:2px solid var(--line)}
+  .dots .d.on{background:var(--accent); border-color:var(--accent)}
+  .dots.err .d{border-color:var(--danger); animation:shake .3s}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .pad{display:grid; grid-template-columns:repeat(3,70px); gap:14px}
+  .pad button{height:70px; border-radius:50%; border:1px solid var(--line); background:var(--bg2); color:var(--text);
+    font-size:26px; font-weight:700; cursor:pointer}
+  .pad button.fn{font-size:15px; background:none; border:0; color:var(--muted)}
+  .pad button:active{background:var(--panel)}
+  /* APP */
+  #app{flex:1; display:none; flex-direction:column; overflow:hidden}
+  header{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--bg2)}
+  header .logo{font-weight:900; font-size:16px}
+  header .logo b{color:var(--accent)}
+  header .actions{display:flex; gap:8px}
+  .ib{width:40px; height:40px; border-radius:11px; border:1px solid var(--line); background:var(--panel); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center}
+  main{flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:12px}
+  .count{font-size:11px; color:var(--muted); margin:0 2px 10px}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:6px}
+  .cell{position:relative; aspect-ratio:1; border-radius:10px; overflow:hidden; background:var(--panel); border:1px solid var(--line)}
+  .cell img{width:100%; height:100%; object-fit:cover; display:block}
+  .empty{text-align:center; color:var(--muted); font-size:13px; padding:50px 20px; line-height:1.6}
+  .fab{position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); width:58px; height:58px; border-radius:50%;
+    border:0; background:var(--accent); color:#06231f; font-size:30px; font-weight:800; cursor:pointer; box-shadow:0 8px 22px rgba(45,212,191,.4); z-index:20}
+  input[type=file]{display:none}
+  /* VIEWER */
+  #viewer{position:fixed; inset:0; z-index:60; background:#000d; display:none; flex-direction:column}
+  #viewer.on{display:flex}
+  #viewer .vimg{flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden}
+  #viewer img{max-width:100%; max-height:100%; object-fit:contain}
+  #viewer .vbar{display:flex; gap:8px; padding:12px 14px calc(14px + env(safe-area-inset-bottom)); background:#000a}
+  #viewer .vbar button{flex:1; border:1px solid var(--line); background:var(--panel); color:var(--text); border-radius:12px; padding:12px; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px}
+  #viewer .vbar button.danger{color:var(--danger); border-color:rgba(255,92,122,.4)}
+  #viewer .vbar button.go{background:var(--accent); color:#06231f; border:0}
+  .vtop{display:flex; justify-content:flex-end; padding:10px 14px}
+  .vtop button{width:40px; height:40px; border-radius:50%; border:0; background:#000a; color:#fff; font-size:20px; cursor:pointer}
+  .toast{position:fixed; left:50%; bottom:92px; transform:translateX(-50%); background:#000d; color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; z-index:200; max-width:86vw; text-align:center}
+  .toast.on{opacity:1}
+  .hintbar{font-size:11px; color:var(--muted); background:rgba(0,0,0,.25); border:1px dashed var(--line); border-radius:12px; padding:9px 11px; margin:0 0 10px; line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock">
+  <div class="ico">🔒</div>
+  <div class="ttl" id="lockTtl">Add meg a kódot</div>
+  <div class="dots" id="dots"><div class="d"></div><div class="d"></div><div class="d"></div><div class="d"></div></div>
+  <div class="msg" id="lockMsg"></div>
+  <div class="pad" id="pad"></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="logo">Privát <b>Széf</b></div>
+    <div class="actions">
+      <button class="ib" id="lockBtn" title="Zárolás">🔒</button>
+    </div>
+  </header>
+  <main>
+    <div class="hintbar">A képek csak itt, a széfben vannak – a telefon galériájában nem jelennek meg. A „+" gombbal hozol be képeket.</div>
+    <div class="count" id="count"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty">Üres a széf.<br>Nyomd meg a <b>+</b> gombot, és válassz képeket a galériából.<br><br>Behozatal után a galériából kézzel törölheted az eredetit, ha nem akarod ott látni.</div>
+  </main>
+  <input type="file" id="file" accept="image/*" multiple>
+  <button class="fab" id="addBtn">＋</button>
+</div>
+
+<!-- VIEWER -->
+<div id="viewer">
+  <div class="vtop"><button id="vClose">✕</button></div>
+  <div class="vimg"><img id="vImg" alt=""></div>
+  <div class="vbar">
+    <button class="go" id="vExport">⬆️ Galériába</button>
+    <button class="danger" id="vDelete">🗑️ Törlés</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const SALT='pv-taky-2026';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2400);}
+
+// ---------- PIN ----------
+async function hash(s){
+  try{ const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  catch(e){ let h=0; for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;} return 'f'+(h>>>0).toString(16); }
+}
+function getPinHash(){ try{return localStorage.getItem('pv_pin')}catch(e){return null} }
+function setPinHash(h){ try{localStorage.setItem('pv_pin',h)}catch(e){} }
+
+let pinMode='unlock', entered='', firstPin='';
+function setLockUI(){
+  const hasPin=!!getPinHash();
+  pinMode = hasPin ? 'unlock' : 'set';
+  $('#lockTtl').textContent = hasPin ? 'Add meg a kódot' : 'Állíts be egy 4 jegyű kódot';
+  $('#lockMsg').textContent = '';
+  entered=''; firstPin=''; updateDots();
+}
+function updateDots(){ document.querySelectorAll('#dots .d').forEach((d,i)=>d.classList.toggle('on', i<entered.length)); }
+function dotsError(){ const el=$('#dots'); el.classList.add('err'); setTimeout(()=>el.classList.remove('err'),320); }
+function buildPad(){
+  const pad=$('#pad'); pad.innerHTML='';
+  const keys=['1','2','3','4','5','6','7','8','9','', '0','⌫'];
+  keys.forEach(k=>{
+    const b=document.createElement('button');
+    if(k===''){ b.style.visibility='hidden'; }
+    else if(k==='⌫'){ b.textContent='⌫'; b.className='fn'; b.onclick=()=>{ entered=entered.slice(0,-1); updateDots(); }; }
+    else { b.textContent=k; b.onclick=()=>press(k); }
+    pad.appendChild(b);
+  });
+}
+async function press(d){
+  if(entered.length>=4) return;
+  entered+=d; updateDots();
+  if(entered.length<4) return;
+  const code=entered;
+  setTimeout(async ()=>{
+    if(pinMode==='set'){ firstPin=code; pinMode='confirm'; $('#lockTtl').textContent='Írd be mégegyszer'; $('#lockMsg').textContent=''; entered=''; updateDots(); }
+    else if(pinMode==='confirm'){
+      if(code===firstPin){ setPinHash(await hash(firstPin+SALT)); unlock(); }
+      else { $('#lockMsg').textContent='Nem egyezik, kezdjük újra'; dotsError(); pinMode='set'; $('#lockTtl').textContent='Állíts be egy 4 jegyű kódot'; firstPin=''; entered=''; updateDots(); }
+    }
+    else { // unlock
+      const ok = (await hash(code+SALT))===getPinHash();
+      if(ok){ unlock(); } else { $('#lockMsg').textContent='Hibás kód'; dotsError(); entered=''; updateDots(); }
+    }
+  }, 120);
+}
+function unlock(){ $('#lock').style.display='none'; $('#app').style.display='flex'; renderGrid(); }
+function lock(){ $('#app').style.display='none'; $('#viewer').classList.remove('on'); $('#lock').style.display='flex'; setLockUI(); }
+$('#lockBtn').onclick=lock;
+
+// ---------- IndexedDB tároló (app-privát, galériától független) ----------
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('photovault',1);
+  r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('imgs')) r.result.createObjectStore('imgs',{keyPath:'id'}); };
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function dbAdd(rec){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction('imgs','readwrite'); tx.objectStore('imgs').put(rec); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function dbAll(){ const db=await idb(); return new Promise((res,rej)=>{ const out=[]; const tx=db.transaction('imgs','readonly'); const c=tx.objectStore('imgs').openCursor(); c.onsuccess=e=>{const cur=e.target.result; if(cur){out.push(cur.value); cur.continue();} else res(out.sort((a,b)=>b.ts-a.ts));}; c.onerror=()=>rej(c.error); }); }
+async function dbGet(id){ const db=await idb(); return new Promise((res,rej)=>{ const g=db.transaction('imgs','readonly').objectStore('imgs').get(id); g.onsuccess=()=>res(g.result); g.onerror=()=>rej(g.error); }); }
+async function dbDel(id){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction('imgs','readwrite'); tx.objectStore('imgs').delete(id); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+
+// ---------- import ----------
+function makeThumb(blob, max=400){ return new Promise((res)=>{
+  const url=URL.createObjectURL(blob); const im=new Image();
+  im.onload=()=>{ const sc=Math.min(1, max/Math.max(im.width,im.height)); const w=Math.round(im.width*sc), h=Math.round(im.height*sc);
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(im,0,0,w,h);
+    cv.toBlob(b=>{ URL.revokeObjectURL(url); res(b||blob); },'image/jpeg',0.82); };
+  im.onerror=()=>{ URL.revokeObjectURL(url); res(blob); }; im.src=url; }); }
+
+$('#addBtn').onclick=()=>$('#file').click();
+$('#file').addEventListener('change', async e=>{
+  const files=[...(e.target.files||[])]; e.target.value='';
+  if(!files.length) return;
+  toast(files.length+' kép mentése…');
+  for(const f of files){
+    const thumb=await makeThumb(f);
+    const id='i'+Date.now()+Math.random().toString(36).slice(2,7);
+    await dbAdd({ id, ts:Date.now(), name:f.name||'kep', type:f.type||'image/jpeg', full:f, thumb });
+  }
+  renderGrid(); toast('Kész ✓');
+});
+
+// ---------- rács ----------
+let urls=[];
+function revokeAll(){ urls.forEach(u=>URL.revokeObjectURL(u)); urls=[]; }
+async function renderGrid(){
+  const items=await dbAll(); revokeAll();
+  $('#count').textContent = items.length ? (items.length+' kép a széfben') : '';
+  $('#empty').style.display = items.length ? 'none' : 'block';
+  const g=$('#grid'); g.innerHTML='';
+  items.forEach(it=>{
+    const u=URL.createObjectURL(it.thumb); urls.push(u);
+    const cell=document.createElement('div'); cell.className='cell';
+    cell.innerHTML=`<img src="${u}" alt="">`;
+    cell.onclick=()=>openViewer(it.id);
+    g.appendChild(cell);
+  });
+}
+
+// ---------- viewer ----------
+let curId=null, curUrl=null;
+async function openViewer(id){
+  const rec=await dbGet(id); if(!rec) return;
+  curId=id; if(curUrl)URL.revokeObjectURL(curUrl); curUrl=URL.createObjectURL(rec.full);
+  $('#vImg').src=curUrl; $('#viewer').classList.add('on');
+}
+function closeViewer(){ $('#viewer').classList.remove('on'); if(curUrl){URL.revokeObjectURL(curUrl); curUrl=null;} curId=null; }
+$('#vClose').onclick=closeViewer;
+
+$('#vDelete').onclick=async ()=>{
+  if(!curId) return;
+  if(!confirm('Biztosan törlöd ezt a képet a széfből?')) return;
+  await dbDel(curId); closeViewer(); renderGrid(); toast('Törölve');
+};
+
+function blobToB64(blob){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.readAsDataURL(blob); }); }
+$('#vExport').onclick=async ()=>{
+  if(!curId) return;
+  const rec=await dbGet(curId); if(!rec) return;
+  const Cap=window.Capacitor, FS=Cap&&Cap.Plugins&&Cap.Plugins.Filesystem, SH=Cap&&Cap.Plugins&&Cap.Plugins.Share;
+  const ext=(rec.type&&rec.type.includes('png'))?'png':'jpg';
+  const fname='szef_'+curId+'.'+ext;
+  if(FS&&SH){
+    try{
+      const data=await blobToB64(rec.full);
+      await FS.writeFile({ path:fname, data, directory:'CACHE' });
+      const u=await FS.getUri({ path:fname, directory:'CACHE' });
+      await SH.share({ title:'Kép mentése', text:'Mentsd a galériába', files:[u.uri] });
+    }catch(err){ toast('Hiba: '+(err.message||err)); }
+  } else {
+    const u=URL.createObjectURL(rec.full); const a=document.createElement('a'); a.href=u; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000);
+    toast('Letöltve');
+  }
+};
+
+// ---------- init ----------
+buildPad(); setLockUI();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
