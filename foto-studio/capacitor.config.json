@@ -1,0 +1,7 @@
+{
+  "appId": "hu.taky.fotostudio",
+  "appName": "Foto Stúdió",
+  "webDir": "www",
+  "backgroundColor": "#0c111aff",
+  "android": { "backgroundColor": "#0c111aff", "allowMixedContent": false }
+}
