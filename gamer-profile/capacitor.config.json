@@ -1,0 +1,7 @@
+{
+  "appId": "hu.taky.gamerprofile",
+  "appName": "Gamer Profil",
+  "webDir": "www",
+  "backgroundColor": "#0b0f1aff",
+  "android": { "backgroundColor": "#0b0f1aff", "allowMixedContent": false }
+}

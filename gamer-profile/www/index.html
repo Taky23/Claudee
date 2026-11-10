@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Gamer Profil</title>
+<style>
+  :root{ --bg:#0b0f1a; --card:#121829; --card2:#0e1322; --line:#24304a; --text:#eaf1ff; --muted:#8ea4c8; --accent:#00e5ff; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow-x:hidden;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  body::before{content:""; position:fixed; inset:0; z-index:-1; opacity:.6;
+    background:
+      radial-gradient(60% 40% at 80% 0%, var(--accentSoft), transparent 70%),
+      radial-gradient(50% 35% at 10% 10%, var(--accentSoft), transparent 70%),
+      linear-gradient(transparent 0 39px, var(--gridln) 39px 40px) 0 0/40px 40px,
+      linear-gradient(90deg, transparent 0 39px, var(--gridln) 39px 40px) 0 0/40px 40px;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:12px 16px}
+  .topbar .t{font-weight:900; font-size:15px; letter-spacing:.3px}
+  .topbar .t b{color:var(--accent)}
+  .tb-actions{display:flex; gap:8px}
+  .ib{width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:#0e1322cc; color:var(--text); font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center}
+  .ib.on{background:var(--accent); color:#04121f; border-color:var(--accent)}
+  .wrap{max-width:560px; margin:0 auto; padding:0 14px 90px}
+
+  /* CARD (ez kerül a megosztott képre) */
+  #card{background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line); border-radius:22px; overflow:hidden; box-shadow:0 20px 50px #0008}
+  .banner{height:120px; position:relative; background:linear-gradient(120deg, var(--accent), var(--accent2)); background-size:cover; background-position:center}
+  .banner .edit{position:absolute; right:10px; top:10px}
+  .avatar-row{display:flex; align-items:flex-end; gap:12px; padding:0 18px; margin-top:-46px}
+  .avatar{width:96px; height:96px; border-radius:50%; border:4px solid var(--card2); background:#0e1322 center/cover; position:relative; flex:none;
+    box-shadow:0 0 0 3px var(--accent), 0 0 22px var(--accentGlow)}
+  .avatar .cam{position:absolute; right:-2px; bottom:-2px; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#04121f; display:flex; align-items:center; justify-content:center; font-size:14px; border:2px solid var(--card2)}
+  .idblock{flex:1; padding-bottom:6px; min-width:0}
+  .name{font-size:22px; font-weight:900; line-height:1.1; display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+  .verified{color:var(--accent); font-size:16px}
+  .tag{color:var(--muted); font-size:13px; margin-top:2px}
+  .status{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text); background:#0008; border:1px solid var(--line); border-radius:999px; padding:3px 10px; margin-top:6px}
+  .status .dot{width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent)}
+  .bio{padding:12px 18px 2px; color:#cfe0f7; font-size:13.5px; line-height:1.5}
+  .xp{padding:10px 18px 4px}
+  .xp .lv{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:5px}
+  .xp .lv b{color:var(--accent)}
+  .bar{height:10px; border-radius:999px; background:#0a0f1c; border:1px solid var(--line); overflow:hidden}
+  .bar > i{display:block; height:100%; background:linear-gradient(90deg, var(--accent), #eafaff); box-shadow:0 0 12px var(--accentGlow)}
+  .section-t{font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; padding:16px 18px 8px; display:flex; justify-content:space-between; align-items:center}
+  .stats{display:grid; grid-template-columns:repeat(2,1fr); gap:9px; padding:0 18px}
+  .stat{background:#0a0f1c; border:1px solid var(--line); border-radius:14px; padding:12px; text-align:center; position:relative}
+  .stat .v{font-size:23px; font-weight:900; color:var(--accent); line-height:1}
+  .stat .k{font-size:11px; color:var(--muted); margin-top:5px}
+  .games{padding:0 18px; display:flex; flex-direction:column; gap:10px}
+  .game{display:flex; gap:11px; background:#0a0f1c; border:1px solid var(--line); border-radius:14px; padding:10px; align-items:center}
+  .game .cov{width:56px; height:56px; border-radius:11px; background:#162038 center/cover; flex:none; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--muted)}
+  .game .gi{flex:1; min-width:0}
+  .game .gt{font-weight:800; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .game .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+  .gchip{font-size:11px; color:var(--text); background:#0b1120; border:1px solid var(--line); border-radius:8px; padding:3px 8px}
+  .gchip b{color:var(--accent)}
+  .badges{display:flex; gap:9px; flex-wrap:wrap; padding:0 18px 18px}
+  .badge{display:flex; flex-direction:column; align-items:center; gap:4px; width:64px}
+  .badge .ic{width:52px; height:52px; border-radius:14px; background:#0a0f1c; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:24px;
+    box-shadow:inset 0 0 14px var(--accentSoft)}
+  .badge .bl{font-size:10px; color:var(--muted); text-align:center; line-height:1.1}
+
+  /* EDIT elemek */
+  .ed-in{background:#0a0f1c; border:1px solid var(--accent); color:var(--text); border-radius:9px; padding:7px 9px; font:inherit; width:100%}
+  .ed-in.sm{padding:5px 7px; font-size:12px}
+  textarea.ed-in{resize:vertical; min-height:54px}
+  .rm{width:22px; height:22px; border-radius:50%; background:#ff4d6d; color:#fff; border:0; font-size:13px; cursor:pointer; flex:none; display:flex; align-items:center; justify-content:center}
+  .addbtn{border:1px dashed var(--line); background:#0a0f1c; color:var(--accent); border-radius:12px; padding:9px; font-size:13px; font-weight:800; cursor:pointer; width:100%; margin-top:8px}
+  .mini{font-size:11px; color:var(--muted)}
+  .swrow{display:flex; gap:9px; flex-wrap:wrap; padding:2px 18px 6px}
+  .sw{width:30px; height:30px; border-radius:50%; cursor:pointer; border:2px solid transparent}
+  .sw.on{border-color:#fff; transform:scale(1.1)}
+  .editcard{background:#0e1322; border:1px solid var(--line); border-radius:16px; padding:12px 14px; margin:14px 0}
+  .editcard h4{margin:0 0 8px; font-size:13px; color:var(--accent)}
+  input[type=file]{display:none}
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#000d; color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; z-index:80; max-width:88vw; text-align:center}
+  .toast.on{opacity:1}
+  .fab{position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); display:flex; gap:10px}
+  .fab button{height:52px; border-radius:26px; border:0; padding:0 18px; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 8px 22px #0007; display:flex; align-items:center; gap:7px}
+  .fab .share{background:var(--accent); color:#04121f}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="t">GAMER <b>PROFIL</b></div>
+  <div class="tb-actions">
+    <button class="ib" id="editBtn" title="Szerkesztés">✏️</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="card"></div>
+  <div id="editExtra"></div>
+</div>
+
+<input type="file" id="imgFile" accept="image/*">
+<div class="fab"><button class="share" id="shareBtn">📷 Kép mentése</button></div>
+<div class="toast" id="toast"></div>
+
+<script src="html2canvas.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2500);}
+const ACCENTS=['#00e5ff','#8a5cff','#2dff9e','#ff4d93','#ff8a3d','#ffd23f','#ff4d4d','#53b1ff'];
+
+const DEF={
+  accent:'#00e5ff', name:'xXTakyXx', verified:true, tag:'@taky · PC Gamer', status:'Online – Tarkovban',
+  bio:'Hardcore FPS és survival rajongó. Ha látsz a raidben, fuss. 😎',
+  level:42, xp:68, avatar:null, banner:null,
+  stats:[{k:'Játékóra',v:'1.2k'},{k:'K/D',v:'2.4'},{k:'Győzelem',v:'318'},{k:'Rang',v:'Gyémánt'}],
+  games:[
+    {id:'g1',t:'Escape from Tarkov',cover:null,chips:[{k:'Óra',v:'540'},{k:'K/D',v:'3.1'}]},
+    {id:'g2',t:'GTA VI',cover:null,chips:[{k:'Szint',v:'—'},{k:'Állapot',v:'Várólistán'}]},
+    {id:'g3',t:'Valorant',cover:null,chips:[{k:'Rang',v:'Immortal'},{k:'WR',v:'58%'}]}
+  ],
+  badges:[{ic:'🏆',l:'MLG'},{ic:'🎯',l:'Sniper'},{ic:'🔥',l:'Streak 30'},{ic:'💎',l:'Gyémánt'}]
+};
+let P=load()||JSON.parse(JSON.stringify(DEF));
+let edit=false; const imgURL={}; // id -> objectURL
+
+function save(){ try{ const c=JSON.parse(JSON.stringify(P)); localStorage.setItem('gp_profile', JSON.stringify(c)); }catch(e){} }
+function load(){ try{ const s=localStorage.getItem('gp_profile'); return s?JSON.parse(s):null; }catch(e){ return null; } }
+
+// ---- IndexedDB képek ----
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('gpimg',1); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('i')) r.result.createObjectStore('i'); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function imgPut(id,blob){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction('i','readwrite'); tx.objectStore('i').put(blob,id); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function imgGet(id){ const db=await idb(); return new Promise((res)=>{ const g=db.transaction('i','readonly').objectStore('i').get(id); g.onsuccess=()=>res(g.result||null); g.onerror=()=>res(null); }); }
+async function preloadImgs(){
+  const ids=['avatar','banner',...P.games.map(g=>g.cover)].filter(Boolean);
+  for(const id of ids){ if(imgURL[id])continue; const b=await imgGet(id); if(b) imgURL[id]=URL.createObjectURL(b); }
+}
+
+// ---- kép választás ----
+let pickTarget=null;
+function pickImage(target){ pickTarget=target; $('#imgFile').click(); }
+$('#imgFile').addEventListener('change', async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f||!pickTarget) return;
+  let id;
+  if(pickTarget==='avatar'||pickTarget==='banner'){ id=pickTarget; P[pickTarget]=id; }
+  else { id='cov'+Date.now(); const g=P.games.find(x=>x.id===pickTarget); if(g) g.cover=id; }
+  await imgPut(id,f); if(imgURL[id])URL.revokeObjectURL(imgURL[id]); imgURL[id]=URL.createObjectURL(f);
+  save(); render();
+});
+
+// ---- render ----
+function bgStyle(id){ return (id&&imgURL[id]) ? `background-image:url('${imgURL[id]}')` : ''; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function hexA(hex,a){const n=hex.replace('#','');return 'rgba('+parseInt(n.slice(0,2),16)+','+parseInt(n.slice(2,4),16)+','+parseInt(n.slice(4,6),16)+','+a+')';}
+function blend(h1,h2,t){const p=h=>{const n=h.replace('#','');return [parseInt(n.slice(0,2),16),parseInt(n.slice(2,4),16),parseInt(n.slice(4,6),16)];};const a=p(h1),b=p(h2);return '#'+a.map((x,i)=>Math.round(x+(b[i]-x)*t).toString(16).padStart(2,'0')).join('');}
+function render(){
+  const _r=document.documentElement.style; _r.setProperty('--accent',P.accent);
+  _r.setProperty('--accent2',blend(P.accent,'#7a2bff',0.4)); _r.setProperty('--accentGlow',hexA(P.accent,0.55)); _r.setProperty('--accentSoft',hexA(P.accent,0.20)); _r.setProperty('--gridln',hexA(P.accent,0.06));
+  const card=$('#card');
+  if(!edit){
+    card.innerHTML=`
+      <div class="banner" style="${bgStyle(P.banner)}"></div>
+      <div class="avatar-row">
+        <div class="avatar" style="${bgStyle(P.avatar)}"></div>
+        <div class="idblock">
+          <div class="name">${esc(P.name)} ${P.verified?'<span class="verified">✔</span>':''}</div>
+          <div class="tag">${esc(P.tag)}</div>
+          <div class="status"><span class="dot"></span>${esc(P.status)}</div>
+        </div>
+      </div>
+      <div class="bio">${esc(P.bio)}</div>
+      <div class="xp"><div class="lv"><span>Szint <b>${esc(P.level)}</b></span><span>${esc(P.xp)}%</span></div><div class="bar"><i style="width:${Math.max(0,Math.min(100,+P.xp||0))}%"></i></div></div>
+      <div class="section-t">Statisztika</div>
+      <div class="stats">${P.stats.map(s=>`<div class="stat"><div class="v">${esc(s.v)}</div><div class="k">${esc(s.k)}</div></div>`).join('')}</div>
+      <div class="section-t">Játékok</div>
+      <div class="games">${P.games.map(g=>`
+        <div class="game"><div class="cov" style="${bgStyle(g.cover)}">${g.cover&&imgURL[g.cover]?'':'🎮'}</div>
+          <div class="gi"><div class="gt">${esc(g.t)}</div><div class="chips">${g.chips.map(c=>`<span class="gchip">${esc(c.k)} <b>${esc(c.v)}</b></span>`).join('')}</div></div></div>`).join('')}</div>
+      <div class="section-t">Jelvények</div>
+      <div class="badges">${P.badges.map(b=>`<div class="badge"><div class="ic">${esc(b.ic)}</div><div class="bl">${esc(b.l)}</div></div>`).join('')}</div>`;
+    $('#editExtra').innerHTML='';
+    return;
+  }
+  // EDIT NÉZET
+  card.innerHTML=`
+    <div class="banner" style="${bgStyle(P.banner)}"><div class="edit"><button class="ib" id="eBanner" style="background:#000a">🖼️</button></div></div>
+    <div class="avatar-row">
+      <div class="avatar" style="${bgStyle(P.avatar)}"><div class="cam" id="eAvatar">📷</div></div>
+      <div class="idblock" style="padding-bottom:0"></div>
+    </div>`;
+  const ex=$('#editExtra');
+  ex.innerHTML=`
+    <div class="editcard"><h4>Alapadatok</h4>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input class="ed-in" id="fName" placeholder="Név" value="${esc(P.name)}">
+        <input class="ed-in" id="fTag" placeholder="Tag / alcím" value="${esc(P.tag)}">
+        <input class="ed-in" id="fStatus" placeholder="Státusz" value="${esc(P.status)}">
+        <textarea class="ed-in" id="fBio" placeholder="Bemutatkozás">${esc(P.bio)}</textarea>
+        <label class="mini" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="fVer" ${P.verified?'checked':''}> Pipa (verified) jelvény</label>
+        <div style="display:flex;gap:8px">
+          <input class="ed-in sm" id="fLevel" placeholder="Szint" value="${esc(P.level)}" style="flex:1">
+          <input class="ed-in sm" id="fXp" placeholder="XP %" value="${esc(P.xp)}" style="flex:1">
+        </div>
+      </div>
+    </div>
+    <div class="editcard"><h4>Szín</h4><div class="swrow" style="padding:0">${ACCENTS.map(a=>`<div class="sw ${a===P.accent?'on':''}" data-a="${a}" style="background:${a}"></div>`).join('')}</div></div>
+    <div class="editcard"><h4>Statisztika-csempék</h4><div id="statEd"></div><button class="addbtn" id="addStat">＋ Csempe</button></div>
+    <div class="editcard"><h4>Játékok</h4><div id="gameEd"></div><button class="addbtn" id="addGame">＋ Játék</button></div>
+    <div class="editcard"><h4>Jelvények</h4><div id="badgeEd"></div><button class="addbtn" id="addBadge">＋ Jelvény</button></div>`;
+
+  // alapmezők
+  $('#eBanner').onclick=()=>pickImage('banner');
+  $('#eAvatar').onclick=()=>pickImage('avatar');
+  bindText('#fName','name'); bindText('#fTag','tag'); bindText('#fStatus','status'); bindText('#fBio','bio');
+  bindText('#fLevel','level'); bindText('#fXp','xp');
+  $('#fVer').onchange=e=>{P.verified=e.target.checked; save();};
+  ex.querySelectorAll('.sw').forEach(s=>s.onclick=()=>{ P.accent=s.dataset.a; save(); render(); });
+
+  // stat szerkesztő
+  const se=$('#statEd'); se.innerHTML='';
+  P.stats.forEach((s,i)=>{ const row=document.createElement('div'); row.style.cssText='display:flex;gap:7px;margin-bottom:7px;align-items:center';
+    row.innerHTML=`<input class="ed-in sm" placeholder="Érték" value="${esc(s.v)}" style="flex:1"><input class="ed-in sm" placeholder="Címke" value="${esc(s.k)}" style="flex:1.2"><button class="rm">✕</button>`;
+    const[v,k]=row.querySelectorAll('input'); v.oninput=e=>{s.v=e.target.value;save();}; k.oninput=e=>{s.k=e.target.value;save();};
+    row.querySelector('.rm').onclick=()=>{P.stats.splice(i,1);save();render();}; se.appendChild(row); });
+  $('#addStat').onclick=()=>{P.stats.push({k:'Új',v:'0'});save();render();};
+
+  // játék szerkesztő
+  const ge=$('#gameEd'); ge.innerHTML='';
+  P.games.forEach((g,i)=>{ const box=document.createElement('div'); box.style.cssText='border:1px solid var(--line);border-radius:12px;padding:9px;margin-bottom:9px';
+    box.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
+        <div class="cov" style="width:40px;height:40px;border-radius:9px;${bgStyle(g.cover)}">${g.cover&&imgURL[g.cover]?'':'🎮'}</div>
+        <input class="ed-in sm gt" placeholder="Játék neve" value="${esc(g.t)}" style="flex:1">
+        <button class="ib" style="width:34px;height:34px" data-cov="${g.id}">🖼️</button>
+        <button class="rm">✕</button></div>
+      <div class="gchips"></div>
+      <button class="addbtn" style="padding:6px;font-size:12px" data-addchip="${g.id}">＋ Adat</button>`;
+    box.querySelector('.gt').oninput=e=>{g.t=e.target.value;save();};
+    box.querySelector('[data-cov]').onclick=()=>pickImage(g.id);
+    box.querySelector('.rm').onclick=()=>{P.games.splice(i,1);save();render();};
+    const gc=box.querySelector('.gchips');
+    g.chips.forEach((c,ci)=>{ const r=document.createElement('div'); r.style.cssText='display:flex;gap:6px;margin-bottom:6px';
+      r.innerHTML=`<input class="ed-in sm" placeholder="Címke" value="${esc(c.k)}" style="flex:1"><input class="ed-in sm" placeholder="Érték" value="${esc(c.v)}" style="flex:1"><button class="rm">✕</button>`;
+      const[k,v]=r.querySelectorAll('input'); k.oninput=e=>{c.k=e.target.value;save();}; v.oninput=e=>{c.v=e.target.value;save();};
+      r.querySelector('.rm').onclick=()=>{g.chips.splice(ci,1);save();render();}; gc.appendChild(r); });
+    box.querySelector('[data-addchip]').onclick=()=>{g.chips.push({k:'Adat',v:'—'});save();render();};
+    ge.appendChild(box); });
+  $('#addGame').onclick=()=>{P.games.push({id:'g'+Date.now(),t:'Új játék',cover:null,chips:[{k:'Óra',v:'0'}]});save();render();};
+
+  // jelvény szerkesztő
+  const be=$('#badgeEd'); be.innerHTML='';
+  P.badges.forEach((b,i)=>{ const r=document.createElement('div'); r.style.cssText='display:flex;gap:7px;margin-bottom:7px;align-items:center';
+    r.innerHTML=`<input class="ed-in sm" value="${esc(b.ic)}" style="width:54px;text-align:center"><input class="ed-in sm" placeholder="Címke" value="${esc(b.l)}" style="flex:1"><button class="rm">✕</button>`;
+    const[ic,l]=r.querySelectorAll('input'); ic.oninput=e=>{b.ic=e.target.value;save();}; l.oninput=e=>{b.l=e.target.value;save();};
+    r.querySelector('.rm').onclick=()=>{P.badges.splice(i,1);save();render();}; be.appendChild(r); });
+  $('#addBadge').onclick=()=>{P.badges.push({ic:'⭐',l:'Új'});save();render();};
+}
+function bindText(sel,key){ const el=$(sel); if(!el)return; el.oninput=e=>{ P[key]=e.target.value; save(); }; }
+
+$('#editBtn').onclick=()=>{ edit=!edit; $('#editBtn').classList.toggle('on',edit); $('#editBtn').textContent=edit?'✓':'✏️'; render(); if(!edit) toast('Mentve ✓'); };
+
+// ---- kép export ----
+$('#shareBtn').onclick=async ()=>{
+  const wasEdit=edit; if(edit){ edit=false; $('#editBtn').classList.remove('on'); $('#editBtn').textContent='✏️'; render(); await new Promise(r=>setTimeout(r,80)); }
+  toast('Kép készítése…');
+  try{
+    const cv=await html2canvas($('#card'), { backgroundColor:'#0b0f1a', scale:2, useCORS:true, logging:false });
+    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+    const file=new File([blob],'gamer_profil.png',{type:'image/png'});
+    let shared=false;
+    try{ if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Gamer profil'}); shared=true; } }
+    catch(e){ if(e&&e.name==='AbortError') shared=true; }
+    if(!shared){
+      const Cap=window.Capacitor, FS=Cap&&Cap.Plugins&&Cap.Plugins.Filesystem, SH=Cap&&Cap.Plugins&&Cap.Plugins.Share;
+      if(FS&&SH){ const data=cv.toDataURL('image/png').split(',')[1]; await FS.writeFile({path:'gamer_profil.png',data,directory:'CACHE'}); const u=await FS.getUri({path:'gamer_profil.png',directory:'CACHE'}); await SH.share({title:'Gamer profil',files:[u.uri]}); }
+      else { const a=document.createElement('a'); a.href=cv.toDataURL('image/png'); a.download='gamer_profil.png'; a.click(); toast('Letöltve'); }
+    }
+  }catch(e){ toast('Hiba a kép készítésekor: '+(e.message||e)); }
+  if(wasEdit){ edit=true; $('#editBtn').classList.add('on'); $('#editBtn').textContent='✓'; render(); }
+};
+
+// ---- init ----
+(async()=>{ await preloadImgs(); render(); })();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
