@@ -1,0 +1,14 @@
+{
+  "name": "manga-fordito-apk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Manga Fordító – szöveg-fordító automatikus nyelvfelismeréssel (Android, Capacitor).",
+  "devDependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/app": "6.0.2",
+    "@capacitor/share": "6.0.4",
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "6.1.2",
+    "@capacitor/core": "6.1.2"
+  }
+}
