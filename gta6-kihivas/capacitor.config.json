@@ -1,0 +1,7 @@
+{
+  "appId": "hu.taky.gta6kihivas",
+  "appName": "GTA VI Kihívás",
+  "webDir": "www",
+  "backgroundColor": "#120a1fff",
+  "android": { "backgroundColor": "#120a1fff", "allowMixedContent": false }
+}
