@@ -18,6 +18,10 @@
   .btn.ghost{background:rgba(255,82,119,.12); color:var(--accent); border:1px solid var(--line); box-shadow:none}
   .btn:active{transform:translateY(1px)} .btn:disabled{opacity:.5}
   input[type=file]{display:none}
+  .urlbar{display:flex; gap:8px; margin:12px 0 0}
+  .urlbar input{flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:11px; padding:11px; font:inherit; font-size:14px}
+  .urlbar .btn{width:auto; padding:11px 15px; font-size:14px}
+  .or{text-align:center; font-size:11px; color:var(--muted); margin:10px 0 0}
   .langbar{display:flex; align-items:center; gap:8px; margin:12px 0}
   .langbar .l{flex:1; text-align:center; background:var(--bg2); border:1px solid var(--line); border-radius:11px; padding:10px; font-size:13px; font-weight:700}
   .langbar .ar{color:var(--muted)}
@@ -57,7 +61,12 @@
 </header>
 
 <main>
-  <label><input type="file" id="file" accept="image/*" multiple><span class="btn" id="pickBtn">＋ Oldal(ak) betöltése</span></label>
+  <div class="urlbar">
+    <input id="urlIn" placeholder="🔗 MangaDex fejezet-link vagy kép-URL">
+    <button class="btn" id="urlBtn">Letöltés</button>
+  </div>
+  <div class="or">— vagy —</div>
+  <label style="display:block;margin-top:10px"><input type="file" id="file" accept="image/*" multiple><span class="btn" id="pickBtn">＋ Oldal(ak) a telefonról</span></label>
   <div class="langbar"><div class="l">🇬🇧 Angol</div><div class="ar">→</div><div class="l">🇭🇺 Magyar</div></div>
   <div class="thumbs" id="thumbs"></div>
 
@@ -68,7 +77,7 @@
   <div id="results"></div>
 
   <div class="empty" id="emptyBox">Tölts be egy vagy több <b>angol</b> manga/képregény oldalt, és az app kiolvassa a szöveget, majd magyarra fordítja.</div>
-  <div class="note">Az OCR (szöveg-kiolvasás) a telefonon fut, offline. A fordításhoz <b>internet</b> kell. Tiszta, jól olvasható szövegnél a legpontosabb; a kézírásos/stilizált betűk nehezebbek. Az overlay (képre írt magyar szöveg) közelítő elhelyezésű.</div>
+  <div class="note"><b>Online:</b> másold be egy <b>MangaDex</b> fejezet linkjét (mangadex.org/chapter/…) → az app magától lehúzza az összes oldalt. Direkt kép-URL-ek is mennek. (Tetszőleges/kalóz oldalakat nem tud – Cloudflare-védelem miatt.)<br>Az OCR a telefonon fut, offline; a letöltéshez és fordításhoz <b>internet</b> kell. Tiszta, nyomtatott szövegnél a legpontosabb.</div>
 </main>
 
 <div class="toast" id="toast"></div>
@@ -92,6 +101,37 @@ $('#file').addEventListener('change', async e=>{
     pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url, img, canvas:capped(img) }); }
   renderThumbs();
 });
+// ---- online betöltés (MangaDex / kép-URL) ----
+function httpJson(url){ const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp;
+  if(H) return H.get({url, headers:{'Accept':'application/json'}}).then(r=>typeof r.data==='string'?JSON.parse(r.data):r.data);
+  return fetch(url).then(r=>r.json()); }
+function httpImg(url){ const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp;
+  if(H) return H.get({url, responseType:'blob', headers:{}}).then(r=>{ const ct=(r.headers&&(r.headers['Content-Type']||r.headers['content-type']))||'image/jpeg'; return 'data:'+ct+';base64,'+r.data; });
+  return fetch(url).then(r=>r.blob()).then(b=>URL.createObjectURL(b)); }
+function chapterId(s){ const m=String(s).match(/chapter\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i); if(m)return m[1];
+  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim())) return s.trim(); return null; }
+async function mangadexUrls(cid){ const meta=await httpJson('https://api.mangadex.org/at-home/server/'+cid);
+  if(!meta||!meta.chapter) throw new Error('Nem találom a fejezetet (MangaDex)'); const host=meta.baseUrl, hash=meta.chapter.hash, files=meta.chapter.data||[];
+  return files.map(f=>host+'/data/'+hash+'/'+f); }
+
+$('#urlBtn').onclick=async ()=>{
+  const v=$('#urlIn').value.trim(); if(!v){ toast('Illessz be egy linket'); return; }
+  const btn=$('#urlBtn'); btn.disabled=true; const old=btn.textContent; btn.innerHTML='<span class="spin"></span>';
+  try{
+    let urls=[]; const cid=chapterId(v);
+    if(cid || /mangadex/i.test(v)){ if(!cid) throw new Error('Nem MangaDex fejezet-link. Nyisd meg a fejezetet és másold a .../chapter/... linket.'); urls=await mangadexUrls(cid); }
+    else { urls = v.split(/\s+/).filter(u=>/^https?:\/\//i.test(u)); if(!urls.length) throw new Error('Adj meg MangaDex fejezet-linket vagy kép-URL-t'); }
+    if(!urls.length) throw new Error('Nincs letölthető oldal');
+    let n=0;
+    for(const u of urls){ n++; $('#stat').textContent='Oldal letöltése '+n+'/'+urls.length+'…'; $('#progWrap').style.display='block'; $('#progBar').style.width=Math.round(n/urls.length*100)+'%';
+      try{ const du=await httpImg(u); const img=await loadImg(du); pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url:du, img, canvas:capped(img) }); renderThumbs(); }catch(e){}
+    }
+    $('#progWrap').style.display='none'; $('#stat').textContent=pages.length+' oldal betöltve ✓'; $('#urlIn').value='';
+    if(!pages.length) toast('Nem sikerült oldalt letölteni');
+  }catch(e){ $('#progWrap').style.display='none'; toast(e.message||'Hiba'); $('#stat').textContent=''; }
+  btn.disabled=false; btn.textContent=old;
+};
+
 function renderThumbs(){
   const t=$('#thumbs'); t.innerHTML='';
   pages.forEach(p=>{ const c=document.createElement('div'); c.className='c'; c.innerHTML=`<img src="${p.url}"><div class="x">✕</div>`;
