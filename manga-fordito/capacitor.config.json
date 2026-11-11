@@ -1,0 +1,8 @@
+{
+  "appId": "hu.taky.mangaford",
+  "appName": "Manga Fordító",
+  "webDir": "www",
+  "backgroundColor": "#0d1117ff",
+  "android": { "backgroundColor": "#0d1117ff", "allowMixedContent": false },
+  "plugins": { "CapacitorHttp": { "enabled": true } }
+}

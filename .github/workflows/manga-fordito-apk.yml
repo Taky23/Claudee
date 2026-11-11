@@ -1,0 +1,62 @@
+name: Manga Fordító APK (Android)
+
+on:
+  push:
+    paths: ['manga-fordito/**', '.github/workflows/manga-fordito-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Függőségek telepítése
+        working-directory: manga-fordito
+        run: npm install --no-audit --no-fund
+      - name: Android projekt létrehozása
+        working-directory: manga-fordito
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Ikon és indítókép generálása
+        working-directory: manga-fordito
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#0d1117' --iconBackgroundColorDark '#0d1117' --splashBackgroundColor '#0d1117' --splashBackgroundColorDark '#0d1117'
+      - name: Vissza gomb natív kezelő bemásolása
+        working-directory: manga-fordito
+        run: |
+          base=android/app/src/main
+          mkdir -p "$base/java/hu/taky/mangaford"
+          cp native/java/MainActivity.java "$base/java/hu/taky/mangaford/MainActivity.java"
+      - name: Állandó aláíró kulcs
+        run: mkdir -p ~/.android && cp manga-fordito/debug.keystore ~/.android/debug.keystore
+      - name: SDK útvonal
+        working-directory: manga-fordito/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: APK építése
+        working-directory: manga-fordito/android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: APK átnevezése
+        run: cp manga-fordito/android/app/build/outputs/apk/debug/app-debug.apk MangaFordito.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MangaFordito-apk
+          path: MangaFordito.apk
+      - name: Kiadás (csak a main ágon)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete manga-fordito-apk --yes --cleanup-tag || true
+          gh release create manga-fordito-apk MangaFordito.apk --target "${{ github.sha }}" \
+            --title "Manga Fordító – Android (APK)" \
+            --notes "Töltsd le a MangaFordito.apk fájlt, és telepítsd (ismeretlen forrásból telepítést engedélyezni kell). Betöltesz egy vagy több ANGOL manga/képregény oldalt, az app a telefonon (offline) kiolvassa a szöveget (OCR), és magyarra fordítja – a magyar szöveget kiírja és a képre is ráteszi (overlay). Több oldal egyszerre. Az OCR offline, a fordításhoz internet kell. Tiszta, nyomtatott szövegnél a legpontosabb."
