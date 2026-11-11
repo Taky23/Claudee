@@ -62,7 +62,7 @@
 
 <main>
   <div class="urlbar">
-    <input id="urlIn" placeholder="🔗 MangaDex fejezet-link vagy kép-URL">
+    <input id="urlIn" placeholder="🔗 MangaDex / oldal-link / kép-URL">
     <button class="btn" id="urlBtn">Letöltés</button>
   </div>
   <div class="or">— vagy —</div>
@@ -77,7 +77,7 @@
   <div id="results"></div>
 
   <div class="empty" id="emptyBox">Tölts be egy vagy több <b>angol</b> manga/képregény oldalt, és az app kiolvassa a szöveget, majd magyarra fordítja.</div>
-  <div class="note"><b>Online:</b> másold be egy <b>MangaDex</b> fejezet linkjét (mangadex.org/chapter/…) → az app magától lehúzza az összes oldalt. Direkt kép-URL-ek is mennek. (Tetszőleges/kalóz oldalakat nem tud – Cloudflare-védelem miatt.)<br>Az OCR a telefonon fut, offline; a letöltéshez és fordításhoz <b>internet</b> kell. Tiszta, nyomtatott szövegnél a legpontosabb.</div>
+  <div class="note"><b>Online:</b> <b>MangaDex</b> fejezet-link (mangadex.org/chapter/…) → az összes oldal magától lejön. Bármilyen más <b>oldal-linket</b> is megpróbál (kísérleti – kiszedi a képeket a HTML-ből; egyszerűbb oldalakon megy, Cloudflare-/JS-rendereltnél nem). Direkt kép-URL-ek is mennek.<br>Az OCR a telefonon fut, offline; a letöltéshez és fordításhoz <b>internet</b> kell.</div>
 </main>
 
 <div class="toast" id="toast"></div>
@@ -105,9 +105,22 @@ $('#file').addEventListener('change', async e=>{
 function httpJson(url){ const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp;
   if(H) return H.get({url, headers:{'Accept':'application/json'}}).then(r=>typeof r.data==='string'?JSON.parse(r.data):r.data);
   return fetch(url).then(r=>r.json()); }
-function httpImg(url){ const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp;
-  if(H) return H.get({url, responseType:'blob', headers:{}}).then(r=>{ const ct=(r.headers&&(r.headers['Content-Type']||r.headers['content-type']))||'image/jpeg'; return 'data:'+ct+';base64,'+r.data; });
+const UA='Mozilla/5.0 (Linux; Android 14; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Mobile Safari/537.36';
+function httpImg(url, ref){ const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp;
+  const headers={'User-Agent':UA}; if(ref) headers['Referer']=ref;
+  if(H) return H.get({url, responseType:'blob', headers}).then(r=>{ const ct=(r.headers&&(r.headers['Content-Type']||r.headers['content-type']))||'image/jpeg'; return 'data:'+ct+';base64,'+r.data; });
   return fetch(url).then(r=>r.blob()).then(b=>URL.createObjectURL(b)); }
+function absUrl(u,base){ try{ return new URL(u,base).href; }catch(e){ return null; } }
+async function extractImages(pageUrl){
+  const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp; let html;
+  if(H){ const r=await H.get({url:pageUrl, headers:{'User-Agent':UA,'Accept':'text/html'}}); html=typeof r.data==='string'?r.data:JSON.stringify(r.data); }
+  else { html=await (await fetch(pageUrl)).text(); }
+  if(/just a moment|cf-browser-verification|turnstile|challenge-platform/i.test(html)) throw new Error('Cloudflare-védelem – ezt az oldalt appból nem lehet lehúzni.');
+  const set=[]; const add=u=>{ const a=absUrl((u||'').trim().replace(/\\\//g,'/'),pageUrl); if(a && !set.includes(a)) set.push(a); };
+  [...html.matchAll(/<img[^>]+?(?:data-src|data-original|data-lazy-src|data-url|src)\s*=\s*["']([^"']+)["']/gi)].forEach(m=>add(m[1]));
+  [...html.matchAll(/https?:(?:\\?\/){2}[^\s"'<>\\)]+?\.(?:jpe?g|png|webp)(?:\?[^\s"'<>\\)]*)?/gi)].forEach(m=>add(m[0]));
+  return set.filter(u=>!/logo|icon|avatar|banner|thumb|sprite|favicon|cover|\/ad[s_\-]|loading|spinner/i.test(u));
+}
 function chapterId(s){ const m=String(s).match(/chapter\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i); if(m)return m[1];
   if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim())) return s.trim(); return null; }
 async function mangadexUrls(cid){ const meta=await httpJson('https://api.mangadex.org/at-home/server/'+cid);
@@ -118,13 +131,22 @@ $('#urlBtn').onclick=async ()=>{
   const v=$('#urlIn').value.trim(); if(!v){ toast('Illessz be egy linket'); return; }
   const btn=$('#urlBtn'); btn.disabled=true; const old=btn.textContent; btn.innerHTML='<span class="spin"></span>';
   try{
-    let urls=[]; const cid=chapterId(v);
-    if(cid || /mangadex/i.test(v)){ if(!cid) throw new Error('Nem MangaDex fejezet-link. Nyisd meg a fejezetet és másold a .../chapter/... linket.'); urls=await mangadexUrls(cid); }
-    else { urls = v.split(/\s+/).filter(u=>/^https?:\/\//i.test(u)); if(!urls.length) throw new Error('Adj meg MangaDex fejezet-linket vagy kép-URL-t'); }
+    let urls=[], ref=null; const cid=chapterId(v);
+    if(cid){ urls=await mangadexUrls(cid); }
+    else if(/mangadex/i.test(v)){ throw new Error('Nem találtam a fejezet-azonosítót a MangaDex linkben.'); }
+    else {
+      const lines=v.split(/\s+/).filter(u=>/^https?:\/\//i.test(u));
+      const imgs=lines.filter(u=>/\.(jpe?g|png|webp|gif)(\?|$)/i.test(u));
+      if(imgs.length){ urls=imgs; }
+      else if(lines.length===1){ $('#stat').textContent='Oldal elemzése…'; try{ ref=new URL(lines[0]).origin; }catch(_){}
+        urls=await extractImages(lines[0]);
+        if(!urls.length) throw new Error('Ezen az oldalon nem találtam kép-oldalakat (valószínűleg Cloudflare-védett vagy JS-sel tölt). Használd a telefonról feltöltést, vagy egy MangaDex linket.'); }
+      else throw new Error('Adj meg egy fejezet-linket vagy kép-URL-eket');
+    }
     if(!urls.length) throw new Error('Nincs letölthető oldal');
     let n=0;
     for(const u of urls){ n++; $('#stat').textContent='Oldal letöltése '+n+'/'+urls.length+'…'; $('#progWrap').style.display='block'; $('#progBar').style.width=Math.round(n/urls.length*100)+'%';
-      try{ const du=await httpImg(u); const img=await loadImg(du); pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url:du, img, canvas:capped(img) }); renderThumbs(); }catch(e){}
+      try{ const du=await httpImg(u, ref); const img=await loadImg(du); pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url:du, img, canvas:capped(img) }); renderThumbs(); }catch(e){}
     }
     $('#progWrap').style.display='none'; $('#stat').textContent=pages.length+' oldal betöltve ✓'; $('#urlIn').value='';
     if(!pages.length) toast('Nem sikerült oldalt letölteni');
