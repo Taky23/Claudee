@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>GTA VI Kihívás</title>
+<style>
+  :root{ --bg:#120a1f; --bg2:#1a0f2e; --panel:#1f1338; --panel2:#2a1a49; --line:#3b2566;
+    --pink:#ff2d95; --cyan:#00e5ff; --gold:#ffd23f; --green:#3ad67a; --orange:#ff8a3d; --text:#f4ecff; --muted:#b196df;
+    --grad:linear-gradient(120deg,#ff2d95,#ff7a3d 55%,#ffd23f); }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; display:flex; flex-direction:column; overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  header{padding:12px 16px; background:radial-gradient(120% 90% at 85% -10%, rgba(255,45,149,.33), transparent 60%),radial-gradient(120% 90% at 10% -20%, rgba(0,229,255,.26), transparent 55%), var(--bg2); border-bottom:1px solid var(--line)}
+  header .logo{font-weight:900; font-size:17px}
+  header .logo .vi{color:var(--cyan)} header .logo b{color:var(--pink)}
+  header .sub{font-size:11px; color:var(--muted); margin-top:2px}
+  main{flex:1; overflow:auto; -webkit-overflow-scrolling:touch}
+  .tab{display:none; padding:16px} .tab.on{display:block}
+  .tabbar{display:flex; background:var(--bg2); border-top:1px solid var(--line)}
+  .tabbar button{flex:1; background:none; border:0; color:var(--muted); padding:9px 4px 8px; font-size:11px; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer}
+  .tabbar button .ic{font-size:19px}
+  .tabbar button.on{color:#fff} .tabbar button.on .ic{filter:drop-shadow(0 0 7px var(--pink))}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:16px; padding:14px; margin:0 0 13px}
+  .btn{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; border:0; border-radius:13px; padding:14px; font-size:15px; font-weight:900; cursor:pointer; color:#fff; background:var(--grad); box-shadow:0 6px 18px rgba(255,45,149,.3)}
+  .btn.ghost{background:rgba(255,45,149,.12); color:var(--pink); border:1px solid var(--line); box-shadow:none}
+  .btn:active{transform:translateY(1px)} .btn:disabled{opacity:.5}
+  .chips{display:flex; flex-wrap:wrap; gap:7px}
+  .chip{border:1px solid var(--line); background:var(--bg2); color:var(--text); border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:700; cursor:pointer}
+  .chip.on{background:rgba(255,45,149,.2); border-color:var(--pink); color:#fff}
+  .seg{display:flex; gap:8px; margin:0 0 12px}
+  .seg button{flex:1; border:1px solid var(--line); background:var(--bg2); color:var(--muted); border-radius:12px; padding:10px; font-size:13px; font-weight:800; cursor:pointer}
+  .seg button.on{color:#fff; border-color:var(--cyan); background:rgba(0,229,255,.16)}
+  .lbl{font-size:12px; font-weight:700; color:var(--muted); margin:14px 2px 7px}
+  /* generált kártya */
+  #result{position:relative; border-radius:18px; overflow:hidden; border:1px solid var(--line); min-height:220px; background:#0e0a18 center/cover; display:flex; flex-direction:column; justify-content:flex-end}
+  #result .bgdim{position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,6,20,.25), rgba(10,6,20,.9))}
+  #result .inner{position:relative; padding:18px}
+  .diffbadge{display:inline-block; font-size:11px; font-weight:900; padding:4px 11px; border-radius:999px; letter-spacing:.5px; text-transform:uppercase; margin-bottom:10px}
+  #result .txt{font-size:20px; font-weight:900; line-height:1.3; text-shadow:0 2px 10px #000}
+  #result .meta{font-size:11px; color:var(--muted); margin-top:9px}
+  .d-easy{background:rgba(58,214,122,.2); color:var(--green); border:1px solid var(--green)}
+  .d-normal{background:rgba(0,229,255,.18); color:var(--cyan); border:1px solid var(--cyan)}
+  .d-hard{background:rgba(255,138,61,.2); color:var(--orange); border:1px solid var(--orange)}
+  .d-insane{background:rgba(255,45,149,.2); color:var(--pink); border:1px solid var(--pink)}
+  .rowbtns{display:flex; gap:8px; margin-top:12px}
+  .rowbtns .btn{font-size:13px; padding:12px}
+  .empty{text-align:center; color:var(--muted); font-size:13px; padding:30px 14px; line-height:1.6}
+  /* lista */
+  .ch{display:flex; gap:10px; align-items:flex-start; background:var(--bg2); border:1px solid var(--line); border-radius:13px; padding:11px; margin-bottom:9px}
+  .ch.done{opacity:.55}
+  .ch .ck{width:26px; height:26px; border-radius:7px; border:2px solid var(--line); flex:none; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; color:var(--green)}
+  .ch.done .ck{border-color:var(--green); background:rgba(58,214,122,.15)}
+  .ch .ct{flex:1; min-width:0}
+  .ch .ctext{font-size:13.5px; line-height:1.4}
+  .ch.done .ctext{text-decoration:line-through}
+  .ch .cmeta{margin-top:5px; display:flex; gap:7px; align-items:center}
+  .dtag{font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; text-transform:uppercase}
+  .ch .del{color:var(--pink); background:none; border:0; font-size:16px; cursor:pointer}
+  .addrow{display:flex; gap:8px; margin-top:4px}
+  input.ti, textarea.ti, select.ti{background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:11px; padding:11px; font:inherit; width:100%}
+  textarea.ti{resize:vertical; min-height:48px}
+  select.ti{appearance:none}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:10px}
+  .gcell{aspect-ratio:1; border-radius:11px; overflow:hidden; border:1px solid var(--line); background:var(--bg2); position:relative}
+  .gcell img{width:100%;height:100%;object-fit:cover;display:block}
+  .gcell .x{position:absolute; top:3px; right:3px; width:22px; height:22px; border-radius:50%; background:#000b; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center}
+  .blk{margin-bottom:12px}
+  .blk .bt{font-size:12px; font-weight:800; color:var(--cyan); margin-bottom:6px}
+  .blkline{display:flex; gap:7px; margin-bottom:6px}
+  .blkline .rm{width:34px; border:1px solid var(--line); background:var(--bg2); color:var(--pink); border-radius:9px; cursor:pointer; font-size:14px}
+  input[type=file]{display:none}
+  .toast{position:fixed; left:50%; bottom:76px; transform:translateX(-50%); background:#000d; color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; z-index:80; max-width:88vw; text-align:center}
+  .toast.on{opacity:1}
+  .note{font-size:11px;color:var(--muted);background:rgba(0,0,0,.2);border:1px dashed var(--line);border-radius:12px;padding:9px 11px;margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">GTA <span class="vi">VI</span> <b>Kihívás</b></div>
+  <div class="sub">saját kihívások · generátor · képtár · offline</div>
+</header>
+
+<main>
+  <!-- GENERÁTOR -->
+  <section class="tab on" id="tab-gen">
+    <div class="seg" id="modeSeg">
+      <button data-mode="pool" class="on">📝 Saját listából</button>
+      <button data-mode="blocks">🎰 Blokk-kombó</button>
+    </div>
+    <div class="lbl">Nehézség</div>
+    <div class="chips" id="diffChips">
+      <div class="chip on" data-d="all">Mind</div>
+      <div class="chip" data-d="easy">Könnyű</div>
+      <div class="chip" data-d="normal">Normál</div>
+      <div class="chip" data-d="hard">Nehéz</div>
+      <div class="chip" data-d="insane">Insane</div>
+    </div>
+    <div id="result" style="margin-top:14px"><div class="bgdim"></div><div class="inner"><div class="empty" id="resEmpty">Nyomd meg a <b>GENERÁLÁS</b> gombot! 🎲</div><div id="resBody" style="display:none"><span class="diffbadge" id="resDiff"></span><div class="txt" id="resTxt"></div><div class="meta" id="resMeta"></div></div></div></div>
+    <button class="btn" id="genBtn" style="margin-top:14px">🎲 GENERÁLÁS</button>
+    <div class="rowbtns">
+      <button class="btn ghost" id="saveGen" style="display:none">＋ Mentés a listába</button>
+      <button class="btn ghost" id="shareGen" style="display:none">📷 Kép</button>
+    </div>
+  </section>
+
+  <!-- KIHÍVÁSAIM -->
+  <section class="tab" id="tab-list">
+    <div class="card">
+      <div class="lbl" style="margin-top:0">Új kihívás</div>
+      <textarea class="ti" id="newText" placeholder="Pl.: Rabolj ki egy boltot jármű nélkül"></textarea>
+      <div class="addrow">
+        <select class="ti" id="newDiff" style="flex:1.1">
+          <option value="easy">Könnyű</option><option value="normal" selected>Normál</option><option value="hard">Nehéz</option><option value="insane">Insane</option>
+        </select>
+        <button class="btn" id="addCh" style="flex:1">＋ Hozzáad</button>
+      </div>
+    </div>
+    <div class="lbl" id="listCount"></div>
+    <div id="chList"></div>
+    <div class="empty" id="listEmpty">Még nincs kihívásod. Adj hozzá fentebb, vagy generálj a 🎰 móddal és mentsd el!</div>
+  </section>
+
+  <!-- KÉPTÁR -->
+  <section class="tab" id="tab-gallery">
+    <button class="btn" id="addImg">＋ Képek hozzáadása</button>
+    <div class="note">Ezek a játék-képek kerülnek a generált kihívás-kártya hátterébe. (Trailerkép, screenshot, később saját gameplay.) Offline, a telón tárolva.</div>
+    <div class="grid" id="galGrid"></div>
+    <div class="empty" id="galEmpty" style="display:none">Nincs kép. Adj hozzá a fenti gombbal.</div>
+  </section>
+
+  <!-- BLOKKOK -->
+  <section class="tab" id="tab-blocks">
+    <div class="note" style="margin-top:0">A blokk-kombó mód ezekből gyárt random kihívásokat: <b>akció + helyszín + csavar</b>. Szerkeszd kedvedre!</div>
+    <div id="blocksEd"></div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="on" data-tab="gen"><span class="ic">🎲</span>Generátor</button>
+  <button data-tab="list"><span class="ic">📝</span>Kihívások</button>
+  <button data-tab="gallery"><span class="ic">🖼️</span>Képtár</button>
+  <button data-tab="blocks"><span class="ic">🎰</span>Blokkok</button>
+</nav>
+
+<input type="file" id="imgFile" accept="image/*" multiple>
+<div class="toast" id="toast"></div>
+
+<script src="html2canvas.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2400);}
+const DIFF={easy:{l:'Könnyű',c:'d-easy'},normal:{l:'Normál',c:'d-normal'},hard:{l:'Nehéz',c:'d-hard'},insane:{l:'Insane',c:'d-insane'}};
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+
+const DEF={
+  challenges:[
+    {id:'c1',text:'Menekülj el a rendőrök elől 5 percig Vice Cityben',diff:'hard',done:false},
+    {id:'c2',text:'Teljesíts egy utcai versenyt jármű-módosítás nélkül',diff:'normal',done:false},
+    {id:'c3',text:'Készíts egy fotót a naplementéről a tengerparton',diff:'easy',done:false}
+  ],
+  blocks:{
+    act:['Rabolj ki egy boltot','Menekülj el a rendőrök elől','Nyerj meg egy versenyt','Lopj el egy luxusautót','Élj túl 5 percet 3 csillaggal','Győzz le egy rivális bandát','Készíts egy menő fotót','Juss el a térkép túlvégére','Okozz totál káoszt','Szabadíts ki egy társat'],
+    place:['Vice City belvárosában','a tengerparton','a Keys szigeteken','a mocsárban (Grassrivers)','Port Gellhornban','a reptéren','egy éjszakai klubban','a lakónegyedben','a kikötőben','az autópályán'],
+    twist:['csak pisztollyal','jármű nélkül','éjszaka','teljes sebességgel','1 élettel','öltönyben','fegyver nélkül','3 csillagos körözéssel','30 másodperc alatt','gyalog']
+  },
+  gallery:[]
+};
+let D=load()||JSON.parse(JSON.stringify(DEF));
+let genState={mode:'pool',filter:'all',current:null};
+const imgURL={};
+
+function save(){ try{ localStorage.setItem('gta6ch', JSON.stringify({challenges:D.challenges,blocks:D.blocks,gallery:D.gallery})); }catch(e){} }
+function load(){ try{ const s=localStorage.getItem('gta6ch'); if(!s)return null; const o=JSON.parse(s); return {challenges:o.challenges||DEF.challenges, blocks:o.blocks||DEF.blocks, gallery:o.gallery||[]}; }catch(e){ return null; } }
+
+// IndexedDB képek
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('gtaimg',1); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('i')) r.result.createObjectStore('i'); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function imgPut(id,b){ const db=await idb(); return new Promise((res,rej)=>{ const tx=db.transaction('i','readwrite'); tx.objectStore('i').put(b,id); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function imgGet(id){ const db=await idb(); return new Promise(res=>{ const g=db.transaction('i','readonly').objectStore('i').get(id); g.onsuccess=()=>res(g.result||null); g.onerror=()=>res(null); }); }
+async function imgDel(id){ const db=await idb(); return new Promise(res=>{ const tx=db.transaction('i','readwrite'); tx.objectStore('i').delete(id); tx.oncomplete=res; tx.onerror=res; }); }
+async function preload(){ for(const id of D.gallery){ if(imgURL[id])continue; const b=await imgGet(id); if(b) imgURL[id]=URL.createObjectURL(b); } }
+
+// tabs
+document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabbar button').forEach(x=>x.classList.toggle('on',x===b));
+  const id=b.dataset.tab; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+id));
+  if(id==='gallery')renderGallery(); if(id==='blocks')renderBlocks(); if(id==='list')renderList();
+});
+
+// ---- generátor ----
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#modeSeg button').forEach(x=>x.classList.toggle('on',x===b)); genState.mode=b.dataset.mode; });
+document.querySelectorAll('#diffChips .chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('#diffChips .chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); genState.filter=c.dataset.d; });
+
+function generate(){
+  let text, diff;
+  if(genState.mode==='pool'){
+    let pool=D.challenges.filter(c=>!c.done); if(genState.filter!=='all') pool=pool.filter(c=>c.diff===genState.filter);
+    if(!pool.length){ toast(genState.filter==='all'?'Nincs (teljesítetlen) kihívás a listádban':'Nincs ilyen nehézségű kihívás'); return; }
+    const c=rand(pool); text=c.text; diff=c.diff;
+  } else {
+    text = rand(D.blocks.act)+' '+rand(D.blocks.place)+' '+rand(D.blocks.twist);
+    diff = genState.filter==='all' ? rand(['easy','normal','hard','insane']) : genState.filter;
+  }
+  const bg = D.gallery.length ? rand(D.gallery) : null;
+  genState.current={text,diff,bg};
+  showResult();
+}
+function showResult(){
+  const r=genState.current; if(!r) return;
+  $('#resEmpty').style.display='none'; $('#resBody').style.display='block';
+  const res=$('#result'); res.style.backgroundImage = (r.bg&&imgURL[r.bg]) ? `url('${imgURL[r.bg]}')` : 'none';
+  res.style.background = (r.bg&&imgURL[r.bg]) ? `#0e0a18 url('${imgURL[r.bg]}') center/cover` : 'linear-gradient(135deg,#2a1550,#120a1f)';
+  const db=$('#resDiff'); db.className='diffbadge '+DIFF[r.diff].c; db.textContent=DIFF[r.diff].l;
+  $('#resTxt').textContent=r.text;
+  $('#resMeta').textContent = genState.mode==='blocks' ? '🎰 Blokk-kombó' : '📝 Saját listából';
+  $('#saveGen').style.display = genState.mode==='blocks' ? 'flex':'none';
+  $('#shareGen').style.display='flex';
+}
+$('#genBtn').onclick=generate;
+$('#saveGen').onclick=()=>{ const r=genState.current; if(!r)return; D.challenges.unshift({id:'c'+Date.now(),text:r.text,diff:r.diff,done:false}); save(); toast('Mentve a listába ✓'); };
+
+$('#shareGen').onclick=async ()=>{
+  const r=genState.current; if(!r)return; toast('Kép készítése…');
+  try{
+    const cv=await html2canvas($('#result'),{backgroundColor:'#120a1f',scale:2,useCORS:true,logging:false});
+    const blob=await new Promise(res=>cv.toBlob(res,'image/png'));
+    const file=new File([blob],'gta6_kihivas.png',{type:'image/png'});
+    let ok=false; try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:'GTA VI kihívás'}); ok=true; } }catch(e){ if(e&&e.name==='AbortError')ok=true; }
+    if(!ok){ const Cap=window.Capacitor,FS=Cap&&Cap.Plugins&&Cap.Plugins.Filesystem,SH=Cap&&Cap.Plugins&&Cap.Plugins.Share;
+      if(FS&&SH){ const data=cv.toDataURL('image/png').split(',')[1]; await FS.writeFile({path:'gta6_kihivas.png',data,directory:'CACHE'}); const u=await FS.getUri({path:'gta6_kihivas.png',directory:'CACHE'}); await SH.share({title:'GTA VI kihívás',files:[u.uri]}); }
+      else { const a=document.createElement('a'); a.href=cv.toDataURL('image/png'); a.download='gta6_kihivas.png'; a.click(); toast('Letöltve'); } }
+  }catch(e){ toast('Hiba: '+(e.message||e)); }
+};
+
+// ---- kihívásaim ----
+$('#addCh').onclick=()=>{ const t=$('#newText').value.trim(); if(!t){toast('Írj be egy kihívást');return;} D.challenges.unshift({id:'c'+Date.now(),text:t,diff:$('#newDiff').value,done:false}); $('#newText').value=''; save(); renderList(); };
+function renderList(){
+  const done=D.challenges.filter(c=>c.done).length;
+  $('#listCount').textContent = D.challenges.length ? (D.challenges.length+' kihívás · '+done+' kész') : '';
+  $('#listEmpty').style.display = D.challenges.length ? 'none':'block';
+  const L=$('#chList'); L.innerHTML='';
+  D.challenges.forEach(c=>{ const d=document.createElement('div'); d.className='ch'+(c.done?' done':'');
+    d.innerHTML=`<div class="ck">${c.done?'✓':''}</div><div class="ct"><div class="ctext">${esc(c.text)}</div><div class="cmeta"><span class="dtag ${DIFF[c.diff].c}">${DIFF[c.diff].l}</span></div></div><button class="del">🗑️</button>`;
+    d.querySelector('.ck').onclick=()=>{ c.done=!c.done; save(); renderList(); };
+    d.querySelector('.del').onclick=()=>{ D.challenges=D.challenges.filter(x=>x!==c); save(); renderList(); };
+    L.appendChild(d); });
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+// ---- képtár ----
+let pickFor='gallery';
+$('#addImg').onclick=()=>{ pickFor='gallery'; $('#imgFile').click(); };
+$('#imgFile').addEventListener('change', async e=>{
+  const files=[...(e.target.files||[])]; e.target.value=''; if(!files.length)return;
+  for(const f of files){ const id='g'+Date.now()+Math.random().toString(36).slice(2,6); await imgPut(id,f); imgURL[id]=URL.createObjectURL(f); D.gallery.unshift(id); }
+  save(); renderGallery(); toast(files.length+' kép hozzáadva');
+});
+function renderGallery(){
+  $('#galEmpty').style.display = D.gallery.length ? 'none':'block';
+  const g=$('#galGrid'); g.innerHTML='';
+  D.gallery.forEach(id=>{ const c=document.createElement('div'); c.className='gcell';
+    c.innerHTML=`<img src="${imgURL[id]||''}"><div class="x">✕</div>`;
+    c.querySelector('.x').onclick=async()=>{ await imgDel(id); if(imgURL[id]){URL.revokeObjectURL(imgURL[id]);delete imgURL[id];} D.gallery=D.gallery.filter(x=>x!==id); save(); renderGallery(); };
+    g.appendChild(c); });
+}
+
+// ---- blokkok ----
+function renderBlocks(){
+  const defs=[['act','Akció'],['place','Helyszín'],['twist','Csavar']];
+  const E=$('#blocksEd'); E.innerHTML='';
+  defs.forEach(([key,label])=>{ const box=document.createElement('div'); box.className='blk';
+    box.innerHTML=`<div class="bt">${label}</div>`;
+    D.blocks[key].forEach((v,i)=>{ const r=document.createElement('div'); r.className='blkline';
+      r.innerHTML=`<input class="ti" value="${esc(v)}"><button class="rm">✕</button>`;
+      r.querySelector('input').oninput=e=>{ D.blocks[key][i]=e.target.value; save(); };
+      r.querySelector('.rm').onclick=()=>{ D.blocks[key].splice(i,1); save(); renderBlocks(); };
+      box.appendChild(r); });
+    const add=document.createElement('button'); add.className='btn ghost'; add.style.cssText='padding:9px;font-size:13px;margin-top:4px'; add.textContent='＋ Új '+label.toLowerCase();
+    add.onclick=()=>{ D.blocks[key].push('Új elem'); save(); renderBlocks(); };
+    box.appendChild(add); E.appendChild(box); });
+}
+
+// init
+(async()=>{ await preload(); renderList(); })();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
