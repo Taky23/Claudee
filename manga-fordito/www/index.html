@@ -31,7 +31,7 @@
   .thumbs .c .x{position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:50%; background:#000b; color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center}
   .prog{height:10px; border-radius:999px; background:#0a0f1c; border:1px solid var(--line); overflow:hidden; margin:10px 0 4px}
   .prog > i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width .2s}
-  .stat{font-size:12px; color:var(--muted); text-align:center}
+  .stat{font-size:13.5px; color:var(--text); text-align:center; font-weight:600; min-height:18px; margin-top:4px}
   .page{background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden; margin:14px 0}
   .page .imgwrap{position:relative; background:#000}
   .page canvas, .page img.orig{width:100%; display:block}
@@ -143,7 +143,7 @@ function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clea
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
 
 let pages=[]; // {id, url, img, canvas(capped)}
-const MAX=1500;
+const MAX=1280;
 
 function loadImg(url){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=url; }); }
 function capped(img){ const s=Math.min(1,MAX/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); return c; }
@@ -248,8 +248,8 @@ function chunks(text){ const out=[]; text.split(/\n/).forEach(line=>{ if(!line.t
 async function apiTranslate(text){
   const url='https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair=en|hu&mt=1';
   const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp; let data;
-  if(H){ const r=await H.get({url,headers:{'Accept':'application/json'}}); data=typeof r.data==='string'?JSON.parse(r.data):r.data; }
-  else { const r=await fetch(url); data=await r.json(); }
+  if(H){ const r=await H.get({url,headers:{'Accept':'application/json'}, readTimeout:12000, connectTimeout:12000}); data=typeof r.data==='string'?JSON.parse(r.data):r.data; }
+  else { const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),12000); try{ const r=await fetch(url,{signal:ctrl.signal}); data=await r.json(); } finally{ clearTimeout(to); } }
   const tt=data&&data.responseData&&data.responseData.translatedText;
   if(tt==null) throw new Error('Nincs fordítás-válasz');
   if(/MYMEMORY WARNING|INVALID|QUERY LENGTH LIMIT|PLEASE SELECT/i.test(tt)) throw new Error('Fordító-korlát – próbáld később');
@@ -263,6 +263,9 @@ async function deviceTranslate(text){ if(deviceTx===null) return null;
     if(r==='__TO__'||r==null){ deviceTx=null; return null; } deviceTx=1; return r;
   }catch(e){ deviceTx=null; return null; } }
 async function translate(text){ let r=await deviceTranslate(text); if(r!=null) return r; const parts=chunks(text); const done=[]; for(const p of parts) done.push(await apiTranslate(p)); return done.join(' '); }
+async function translateRegions(regions){ let i=0; const N=Math.min(5,regions.length);
+  async function w(){ while(i<regions.length){ const k=i++; try{ regions[k].hu=await translate(regions[k].text); }catch(e){ regions[k].hu='⚠️'; } } }
+  await Promise.all(Array.from({length:N},()=>w())); }
 
 // ---- overlay rajzolás ----
 function wrap(ctx,text,w){ const words=text.split(/\s+/); const lines=[]; let cur='';
@@ -303,13 +306,16 @@ $('#goBtn').onclick=async ()=>{
   const total=pages.length; const t0=Date.now(); const out=[];
   try{
     await ensureWorker();
+    $('#stat').textContent='Feldolgozás indul… (oldalanként pár mp)';
     for(let i=0;i<total;i++){ const pg=pages[i];
-      const per=i>0?(Date.now()-t0)/i:0; const rem=per*(total-i);
-      $('#stat').textContent=`Oldal ${i+1}/${total} – kiolvasás + fordítás`+(per?` · ~${fmtETA(rem)} van hátra`:'…');
+      const eta = i>0 ? ' · ~'+fmtETA((Date.now()-t0)/i*(total-i))+' van hátra' : ' · ETA számolás…';
+      $('#stat').textContent=`Oldal ${i+1}/${total} – kiolvasás${eta}`;
       $('#progBar').style.width=Math.round(i/total*100)+'%';
       let data; try{ const res=await worker.recognize(pg.canvas,{},{blocks:true,text:true}); data=res.data; }catch(e){ data={text:''}; }
       const regions=regionsFrom(data);
-      for(const r of regions){ try{ r.hu=await translate(r.text); }catch(e){ r.hu='⚠️ '+(e.message||'hiba'); } }
+      $('#stat').textContent=`Oldal ${i+1}/${total} – fordítás (${regions.length} rész)${eta}`;
+      $('#progBar').style.width=Math.round((i+0.5)/total*100)+'%';
+      if(regions.length) await translateRegions(regions);
       out.push({ base:pg.canvas, url:pg.url, regions });
     }
     $('#progBar').style.width='100%'; $('#stat').textContent='Kész ✓ – '+total+' oldal';
