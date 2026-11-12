@@ -1,5 +1,5 @@
 const CACHE = 'mangaford-v1';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'tesseract.min.js', 'worker.min.js',
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'tesseract.min.js', 'worker.min.js', 'jszip.min.js',
   'core/tesseract-core-simd-lstm.wasm.js', 'core/tesseract-core-simd-lstm.wasm', 'eng.traineddata.gz'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f=>c.add(f).catch(()=>{})))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
