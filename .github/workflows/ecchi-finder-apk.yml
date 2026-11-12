@@ -1,0 +1,65 @@
+name: Ecchi Finder APK (Android)
+
+on:
+  push:
+    paths: ['ecchi-finder/**', '.github/workflows/ecchi-finder-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Függőségek telepítése
+        working-directory: ecchi-finder
+        run: npm install --no-audit --no-fund
+      - name: AniList adatok beépítése (ecchi, offline)
+        working-directory: ecchi-finder
+        run: node fetch-data.js
+      - name: Android projekt létrehozása
+        working-directory: ecchi-finder
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Ikon és indítókép generálása
+        working-directory: ecchi-finder
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#140a14' --iconBackgroundColorDark '#140a14' --splashBackgroundColor '#140a14' --splashBackgroundColorDark '#140a14'
+      - name: Vissza gomb natív kezelő bemásolása
+        working-directory: ecchi-finder
+        run: |
+          base=android/app/src/main
+          mkdir -p "$base/java/hu/taky/ecchifinder"
+          cp native/java/MainActivity.java "$base/java/hu/taky/ecchifinder/MainActivity.java"
+      - name: Állandó aláíró kulcs
+        run: mkdir -p ~/.android && cp ecchi-finder/debug.keystore ~/.android/debug.keystore
+      - name: SDK útvonal
+        working-directory: ecchi-finder/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: APK építése
+        working-directory: ecchi-finder/android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: APK átnevezése
+        run: cp ecchi-finder/android/app/build/outputs/apk/debug/app-debug.apk EcchiFinder.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EcchiFinder-apk
+          path: EcchiFinder.apk
+      - name: Kiadás (csak a main ágon)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ecchi-finder-apk --yes --cleanup-tag || true
+          gh release create ecchi-finder-apk EcchiFinder.apk --target "${{ github.sha }}" \
+            --title "Ecchi Finder – Android (APK)" \
+            --notes "18+ felnőtt tartalom. Ecchi anime felfedező/ajánló: a 🎲 gomb bedob egy random ecchi animét (borító, pontszám, leírás), és böngészhető/kereshető rács is van. Az adatok és borítók az AniList nyilvános adatbázisából (a valódi hentai kiszűrve); az app NEM streamel epizódokat – a 🔗 gomb a hivatalos AniList oldalra visz. Csak akkor telepítsd/használd, ha elmúltál 18, és a felnőtt tartalom a lakóhelyeden megengedett."

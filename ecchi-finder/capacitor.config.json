@@ -1,0 +1,7 @@
+{
+  "appId": "hu.taky.ecchifinder",
+  "appName": "Ecchi Finder",
+  "webDir": "www",
+  "backgroundColor": "#140a14ff",
+  "android": { "backgroundColor": "#140a14ff", "allowMixedContent": false }
+}

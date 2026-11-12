@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Ecchi Finder</title>
+<style>
+  :root{ --bg:#140a14; --bg2:#1d0f1d; --panel:#241328; --panel2:#2e1733; --line:#43223f;
+    --pink:#ff4d8d; --pink2:#ff7ab0; --purple:#b76bff; --gold:#ffc24d; --text:#f6eaf2; --muted:#c29ab6; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; display:flex; flex-direction:column; overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  header{padding:12px 16px; background:radial-gradient(120% 90% at 85% -10%, rgba(255,77,141,.3), transparent 60%), var(--bg2); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between}
+  header .logo{font-weight:900; font-size:18px} header .logo b{color:var(--pink)}
+  header .badge{font-size:10px; font-weight:900; color:#fff; background:var(--pink); border-radius:6px; padding:3px 7px}
+  main{flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:14px 16px 28px}
+  .btn{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; border:0; border-radius:14px; padding:15px; font-size:16px; font-weight:900; cursor:pointer; color:#fff; background:linear-gradient(120deg,var(--pink),var(--purple)); box-shadow:0 8px 22px rgba(255,77,141,.3)}
+  .btn:active{transform:translateY(1px)}
+  .pick{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:18px; overflow:hidden; margin:14px 0}
+  .pick .cov{width:100%; aspect-ratio:3/4; max-height:360px; object-fit:cover; display:block; background:#2a1630}
+  .pick .body{padding:14px}
+  .pick .t{font-size:18px; font-weight:900; line-height:1.2}
+  .meta{display:flex; flex-wrap:wrap; gap:7px; margin:9px 0}
+  .tag{font-size:11px; font-weight:800; border:1px solid var(--line); border-radius:999px; padding:3px 9px; color:var(--muted)}
+  .tag.s{color:var(--gold); border-color:rgba(255,194,77,.4)}
+  .tag.p{color:var(--pink); border-color:rgba(255,77,141,.4)}
+  .desc{font-size:13px; color:#e3cfdd; line-height:1.5; margin-top:8px}
+  .rowbtns{display:flex; gap:8px; margin-top:12px}
+  .rowbtns .btn{font-size:14px; padding:12px}
+  .btn.ghost{background:rgba(255,77,141,.12); color:var(--pink); border:1px solid var(--line); box-shadow:none}
+  .sect{font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin:18px 2px 10px; display:flex; justify-content:space-between; align-items:center}
+  .search{width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:11px; font:inherit; margin-bottom:6px}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:9px}
+  .cell{border-radius:12px; overflow:hidden; border:1px solid var(--line); background:var(--bg2); cursor:pointer; position:relative}
+  .cell img{width:100%; aspect-ratio:3/4; object-fit:cover; display:block}
+  .cell .ct{position:absolute; left:0; right:0; bottom:0; padding:14px 6px 5px; font-size:10px; font-weight:700; line-height:1.15;
+    background:linear-gradient(transparent, rgba(0,0,0,.85)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .cell .sc{position:absolute; top:4px; right:4px; font-size:10px; font-weight:900; color:#fff; background:rgba(0,0,0,.6); border-radius:6px; padding:2px 5px}
+  .note{font-size:11px; color:var(--muted); background:rgba(0,0,0,.2); border:1px dashed var(--line); border-radius:12px; padding:9px 11px; margin-top:16px; line-height:1.5}
+  /* detail sheet */
+  #sheet{position:fixed; inset:0; z-index:60; background:#0e060e; display:none; flex-direction:column; overflow:auto}
+  #sheet.on{display:flex}
+  #sheet .hero{position:relative}
+  #sheet .hero img{width:100%; aspect-ratio:16/10; object-fit:cover; display:block; background:#2a1630}
+  #sheet .hero .x{position:absolute; top:10px; right:10px; width:40px; height:40px; border-radius:50%; background:#000a; color:#fff; border:0; font-size:20px; cursor:pointer}
+  #sheet .sb{padding:16px}
+  #sheet .st{font-size:21px; font-weight:900; line-height:1.2}
+  #sheet .sr{font-size:12px; color:var(--muted); margin-top:3px}
+  #sheet .sd{font-size:14px; line-height:1.6; color:#e8d6e4; margin-top:12px}
+  /* 18+ gate */
+  #gate{position:fixed; inset:0; z-index:100; background:linear-gradient(160deg,#1d0f1d,#140a14); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:28px; text-align:center}
+  #gate .big{font-size:52px}
+  #gate h2{margin:0; font-size:22px}
+  #gate p{margin:0; color:var(--muted); font-size:13.5px; line-height:1.6; max-width:420px}
+  #gate .g-actions{display:flex; flex-direction:column; gap:10px; width:100%; max-width:340px; margin-top:6px}
+  #gate button{border:0; border-radius:13px; padding:15px; font-size:15px; font-weight:900; cursor:pointer}
+  #gate .yes{background:linear-gradient(120deg,var(--pink),var(--purple)); color:#fff}
+  #gate .no{background:var(--panel); color:var(--muted); border:1px solid var(--line)}
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#000d; color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; z-index:120; max-width:88vw; text-align:center}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Ecchi <b>Finder</b></div>
+  <div class="badge">18+</div>
+</header>
+
+<main>
+  <button class="btn" id="rollBtn">🎲 Dobj be egy animét!</button>
+  <div id="pick"></div>
+
+  <div class="sect"><span>Böngészés</span><span id="count" class="muted" style="color:var(--muted);font-size:11px"></span></div>
+  <input class="search" id="search" placeholder="Keresés cím szerint…">
+  <div class="grid" id="grid"></div>
+
+  <div class="note">Felnőtt (18+), fikciós anime-tartalom. Az adatok és borítók az <b>AniList</b> nyilvános adatbázisából származnak; az app <b>nem</b> streamel és nem tárol epizódokat – a „🔗 AniList" gomb a hivatalos oldalra visz, ahol megtalálod a legális nézési lehetőségeket. (A valódi hentai/pornó címek ki vannak szűrve.)</div>
+</main>
+
+<div id="sheet">
+  <div class="hero"><img id="shImg" alt=""><button class="x" id="shClose">✕</button></div>
+  <div class="sb">
+    <div class="st" id="shTitle"></div>
+    <div class="sr" id="shMeta"></div>
+    <div class="meta" id="shGenres"></div>
+    <div class="sd" id="shDesc"></div>
+    <button class="btn" id="shLink" style="margin-top:16px">🔗 AniList megnyitása</button>
+  </div>
+</div>
+
+<div id="gate">
+  <div class="big">🔞</div>
+  <h2>Felnőtt tartalom</h2>
+  <p>Ez az app <b>ecchi</b> (erotikus utalásokat tartalmazó) animéket ajánl. Csak akkor lépj be, ha elmúltál <b>18 éves</b>, és a felnőtt tartalom a lakóhelyeden megengedett. Fikciós, rajzolt tartalom; nincs streamelés.</p>
+  <div class="g-actions">
+    <button class="yes" id="gYes">Elmúltam 18 – belépek</button>
+    <button class="no" id="gNo">Kilépés</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2400);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+// 18+ gate
+function openGate(){ $('#gate').style.display='flex'; }
+function passGate(){ try{localStorage.setItem('ecchi18','1');}catch(_){ } $('#gate').style.display='none'; }
+$('#gYes').onclick=passGate;
+$('#gNo').onclick=()=>{ const Cap=window.Capacitor, A=Cap&&Cap.Plugins&&Cap.Plugins.App; if(A&&A.exitApp) A.exitApp(); else $('#gate').innerHTML='<div class="big">👋</div><h2>Viszlát!</h2><p>Zárd be az appot.</p>'; };
+try{ if(localStorage.getItem('ecchi18')==='1') $('#gate').style.display='none'; else openGate(); }catch(_){ openGate(); }
+
+let DATA=[]; let filtered=[];
+fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{ DATA=(j&&j.anime)||[]; filtered=DATA; renderGrid(); if(DATA.length) roll(); else toast('Nincs adat – frissíts később'); }).catch(()=>toast('Adat betöltési hiba'));
+
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+function metaLine(a){ const bits=[]; if(a.year)bits.push(a.year); if(a.format)bits.push(a.format); if(a.eps)bits.push(a.eps+' rész'); if(a.score)bits.push('★ '+(a.score/10).toFixed(1)); return bits.join(' · '); }
+
+function roll(){
+  if(!DATA.length) return; const a=rand(DATA);
+  $('#pick').innerHTML=`
+    <div class="pick">
+      <img class="cov" src="${esc(a.cover)}" alt="" referrerpolicy="no-referrer">
+      <div class="body">
+        <div class="t">${esc(a.title)}</div>
+        <div class="meta">${a.score?`<span class="tag s">★ ${(a.score/10).toFixed(1)}</span>`:''}${a.year?`<span class="tag">${a.year}</span>`:''}${a.eps?`<span class="tag">${a.eps} rész</span>`:''}${(a.genres||[]).slice(0,3).map(g=>`<span class="tag p">${esc(g)}</span>`).join('')}</div>
+        <div class="desc">${esc((a.desc||'').slice(0,240))}${(a.desc||'').length>240?'…':''}</div>
+        <div class="rowbtns"><button class="btn" id="pDetail">Részletek</button><button class="btn ghost" id="pRoll">🎲 Újra</button></div>
+      </div>
+    </div>`;
+  $('#pDetail').onclick=()=>openDetail(a); $('#pRoll').onclick=roll;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$('#rollBtn').onclick=roll;
+
+function renderGrid(){
+  $('#count').textContent=filtered.length+' cím';
+  const g=$('#grid'); g.innerHTML='';
+  filtered.forEach(a=>{ const c=document.createElement('div'); c.className='cell';
+    c.innerHTML=`<img src="${esc(a.cover)}" loading="lazy" referrerpolicy="no-referrer" alt="">${a.score?`<span class="sc">★${(a.score/10).toFixed(1)}</span>`:''}<div class="ct">${esc(a.title)}</div>`;
+    c.onclick=()=>openDetail(a); g.appendChild(c); });
+}
+$('#search').addEventListener('input', e=>{ const q=e.target.value.trim().toLowerCase();
+  filtered = !q ? DATA : DATA.filter(a=>(a.title||'').toLowerCase().includes(q)||(a.rom||'').toLowerCase().includes(q)); renderGrid(); });
+
+function openDetail(a){
+  $('#shImg').src=a.banner||a.cover; $('#shTitle').textContent=a.title;
+  $('#shMeta').textContent=metaLine(a)+(a.rom&&a.rom!==a.title?(' · '+a.rom):'');
+  $('#shGenres').innerHTML=(a.genres||[]).map(g=>`<span class="tag p">${esc(g)}</span>`).join('');
+  $('#shDesc').textContent=a.desc||'Nincs leírás.';
+  $('#shLink').onclick=()=>{ const url=a.url; const B=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser; if(B&&B.open)B.open({url}); else window.open(url,'_blank'); };
+  $('#sheet').classList.add('on');
+}
+$('#shClose').onclick=()=>$('#sheet').classList.remove('on');
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
