@@ -1,0 +1,14 @@
+{
+  "name": "ecchi-finder-apk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ecchi Finder – ecchi anime felfedező/ajánló (AniList), 18+ (Android, Capacitor).",
+  "devDependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/app": "6.0.2",
+    "@capacitor/browser": "6.0.6",
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "6.1.2",
+    "@capacitor/core": "6.1.2"
+  }
+}
