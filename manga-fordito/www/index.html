@@ -52,6 +52,36 @@
   .toast.on{opacity:1}
   .spin{display:inline-block;width:16px;height:16px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--bg2);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:30}
+  .tabbar button{flex:1;background:none;border:0;color:var(--muted);padding:9px 4px 8px;font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+  .tabbar button .ic{font-size:19px} .tabbar button.on{color:#fff}
+  .tab{display:none} .tab.on{display:block}
+  main{padding-bottom:80px}
+  .savebar{display:flex;gap:8px;margin:12px 0;align-items:center;flex-wrap:wrap}
+  .savebar input{flex:1;min-width:140px;background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:11px;padding:11px;font:inherit}
+  .savebar .btn{width:auto;padding:11px 14px;font-size:14px}
+  .lib-head{font-size:15px;font-weight:800;margin:4px 2px 12px}
+  .libgrid{display:flex;flex-direction:column;gap:10px}
+  .libcard{display:flex;gap:11px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px}
+  .libcard .lt{width:54px;height:72px;border-radius:9px;background:#000 center/cover;flex:none;border:1px solid var(--line);cursor:pointer}
+  .libcard .li{flex:1;min-width:0;cursor:pointer}
+  .libcard .lti{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .libcard .lm{font-size:12px;color:var(--muted);margin-top:3px}
+  .libcard .ldel{background:none;border:0;color:var(--accent);font-size:17px;cursor:pointer;align-self:flex-start}
+  .reader{position:fixed;inset:0;z-index:70;background:#0a0d12;display:none;flex-direction:column}
+  .reader.on{display:flex}
+  .reader .rtop{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);gap:8px}
+  .reader .rtop #rCount{font-size:13px;color:var(--muted);font-weight:700}
+  .reader .rtop > button{border:0;background:none;color:#fff;font-size:22px;cursor:pointer}
+  .reader .rtgl{display:flex;gap:6px}
+  .reader .rtgl .mini{border:1px solid var(--line);background:var(--bg2);color:var(--text);font-size:12px;font-weight:700;border-radius:9px;padding:6px 10px;cursor:pointer}
+  .reader .rtgl .mini.on{border-color:var(--accent);color:#fff;background:rgba(255,82,119,.18)}
+  .rview{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start;touch-action:pan-y;background:#000}
+  .rview .rimg{max-width:100%;display:block}
+  .rnav{position:absolute;top:50%;left:0;right:0;display:flex;justify-content:space-between;pointer-events:none;transform:translateY(-50%)}
+  .rnav button{pointer-events:auto;margin:0 8px;width:44px;height:66px;border-radius:12px;border:0;background:#000a;color:#fff;font-size:26px;cursor:pointer}
+  .rsheet{max-height:42vh;overflow:auto;background:var(--panel);border-top:1px solid var(--line);padding:14px 16px calc(14px + env(safe-area-inset-bottom));font-size:15px;line-height:1.55;display:none}
+  .rsheet.on{display:block}
 </style>
 </head>
 <body>
@@ -61,6 +91,7 @@
 </header>
 
 <main>
+  <section class="tab on" id="tab-trans">
   <div class="urlbar">
     <input id="urlIn" placeholder="🔗 MangaDex / oldal-link / kép-URL">
     <button class="btn" id="urlBtn">Letöltés</button>
@@ -74,11 +105,34 @@
   <div class="prog" id="progWrap" style="display:none"><i id="progBar"></i></div>
   <div class="stat" id="stat"></div>
 
-  <div id="results"></div>
+  <div class="savebar" id="saveBar" style="display:none">
+    <input id="saveTitle" placeholder="Manga címe / fejezet">
+    <button class="btn" id="openReaderBtn">📖 Olvasó</button>
+    <button class="btn ghost" id="saveLibBtn">💾 Könyvtárba</button>
+  </div>
 
   <div class="empty" id="emptyBox">Tölts be egy vagy több <b>angol</b> manga/képregény oldalt, és az app kiolvassa a szöveget, majd magyarra fordítja.</div>
   <div class="note"><b>Online:</b> <b>MangaDex</b> fejezet-link (mangadex.org/chapter/…) → az összes oldal magától lejön. Bármilyen más <b>oldal-linket</b> is megpróbál (kísérleti – kiszedi a képeket a HTML-ből; egyszerűbb oldalakon megy, Cloudflare-/JS-rendereltnél nem). Direkt kép-URL-ek is mennek.<br>Az OCR a telefonon fut, offline; a letöltéshez és fordításhoz <b>internet</b> kell.</div>
+  </section>
+
+  <section class="tab" id="tab-lib">
+    <div class="lib-head">📚 Könyvtár</div>
+    <div class="libgrid" id="libGrid"></div>
+    <div class="empty" id="libEmpty">Még nincs mentett manga. Fordíts le egy fejezetet, majd „💾 Könyvtárba".</div>
+  </section>
 </main>
+
+<nav class="tabbar">
+  <button class="on" data-tab="trans"><span class="ic">🔤</span>Fordító</button>
+  <button data-tab="lib"><span class="ic">📚</span>Könyvtár</button>
+</nav>
+
+<div class="reader" id="reader">
+  <div class="rtop"><button id="rClose">✕</button><span id="rCount">1/1</span><div class="rtgl"><button id="rLang" class="mini on">Magyar</button><button id="rText" class="mini">📝 Szöveg</button></div></div>
+  <div class="rview" id="rView"></div>
+  <div class="rnav"><button id="rPrev">‹</button><button id="rNext">›</button></div>
+  <div class="rsheet" id="rSheet"></div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -144,8 +198,11 @@ $('#urlBtn').onclick=async ()=>{
       else throw new Error('Adj meg egy fejezet-linket vagy kép-URL-eket');
     }
     if(!urls.length) throw new Error('Nincs letölthető oldal');
-    let n=0;
-    for(const u of urls){ n++; $('#stat').textContent='Oldal letöltése '+n+'/'+urls.length+'…'; $('#progWrap').style.display='block'; $('#progBar').style.width=Math.round(n/urls.length*100)+'%';
+    let n=0; const dt0=Date.now();
+    for(const u of urls){ n++;
+      const per=n>1?(Date.now()-dt0)/(n-1):0; const rem=per*(urls.length-(n-1));
+      $('#stat').textContent='Oldal letöltése '+n+'/'+urls.length+(per?(' · ~'+fmtETA(rem)+' van hátra'):'…');
+      $('#progWrap').style.display='block'; $('#progBar').style.width=Math.round(n/urls.length*100)+'%';
       try{ const du=await httpImg(u, ref); const img=await loadImg(du); pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url:du, img, canvas:capped(img) }); renderThumbs(); }catch(e){}
     }
     $('#progWrap').style.display='none'; $('#stat').textContent=pages.length+' oldal betöltve ✓'; $('#urlIn').value='';
@@ -226,58 +283,96 @@ function drawOverlay(canvas, regions){
 }
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 
+// ---- ETA ----
+function fmtETA(ms){ const s=Math.round(ms/1000); if(s<5)return 'pár mp'; if(s<60)return s+' mp'; const m=Math.floor(s/60); return m+' p '+(s%60)+' mp'; }
+
+// ---- könyvtár (IndexedDB) ----
+function ldb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('mflib',1); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('ch')) r.result.createObjectStore('ch',{keyPath:'id'}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function libPut(rec){ const db=await ldb(); return new Promise((res,rej)=>{ const tx=db.transaction('ch','readwrite'); tx.objectStore('ch').put(rec); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function libAll(){ const db=await ldb(); return new Promise(res=>{ const out=[]; const c=db.transaction('ch','readonly').objectStore('ch').openCursor(); c.onsuccess=e=>{const cur=e.target.result; if(cur){const v=cur.value; out.push({id:v.id,title:v.title,created:v.created,count:(v.pages||[]).length,thumb:v.pages&&v.pages[0]&&v.pages[0].blob}); cur.continue();} else res(out.sort((a,b)=>b.created-a.created)); }; c.onerror=()=>res(out); }); }
+async function libGet(id){ const db=await ldb(); return new Promise(res=>{ const g=db.transaction('ch','readonly').objectStore('ch').get(id); g.onsuccess=()=>res(g.result||null); g.onerror=()=>res(null); }); }
+async function libDel(id){ const db=await ldb(); return new Promise(res=>{ const tx=db.transaction('ch','readwrite'); tx.objectStore('ch').delete(id); tx.oncomplete=res; tx.onerror=res; }); }
+function canvasBlob(c){ return new Promise(r=>c.toBlob(b=>r(b),'image/jpeg',0.85)); }
+
 // ---- futtatás ----
-let busy=false;
+let busy=false, curResult=null;
 $('#goBtn').onclick=async ()=>{
   if(busy||!pages.length) return; busy=true;
   const btn=$('#goBtn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Dolgozom…';
-  $('#results').innerHTML=''; $('#progWrap').style.display='block'; $('#emptyBox').style.display='none';
-  const total=pages.length; let step=0, totalSteps=total*2;
-  const setp=(msg)=>{ $('#stat').textContent=msg; $('#progBar').style.width=Math.round(step/totalSteps*100)+'%'; };
+  $('#progWrap').style.display='block'; $('#saveBar').style.display='none'; $('#emptyBox').style.display='none';
+  const total=pages.length; const t0=Date.now(); const out=[];
   try{
     await ensureWorker();
-    for(let i=0;i<total;i++){
-      const pg=pages[i];
-      setp(`Oldal ${i+1}/${total} – szöveg kiolvasása…`);
-      let data; try{ const res=await worker.recognize(pg.canvas, {}, { blocks:true, text:true }); data=res.data; }catch(e){ data={text:''}; }
-      step++; setp(`Oldal ${i+1}/${total} – fordítás…`);
-      const regions=regionsFrom(data); regions._base=pg.canvas;
+    for(let i=0;i<total;i++){ const pg=pages[i];
+      const per=i>0?(Date.now()-t0)/i:0; const rem=per*(total-i);
+      $('#stat').textContent=`Oldal ${i+1}/${total} – kiolvasás + fordítás`+(per?` · ~${fmtETA(rem)} van hátra`:'…');
+      $('#progBar').style.width=Math.round(i/total*100)+'%';
+      let data; try{ const res=await worker.recognize(pg.canvas,{},{blocks:true,text:true}); data=res.data; }catch(e){ data={text:''}; }
+      const regions=regionsFrom(data);
       for(const r of regions){ try{ r.hu=await translate(r.text); }catch(e){ r.hu='⚠️ '+(e.message||'hiba'); } }
-      step++; setp(`Oldal ${i+1}/${total} kész`);
-      renderPage(i+1, pg, regions);
+      out.push({ base:pg.canvas, url:pg.url, regions });
     }
-    $('#progBar').style.width='100%'; $('#stat').textContent='Kész ✓';
+    $('#progBar').style.width='100%'; $('#stat').textContent='Kész ✓ – '+total+' oldal';
+    curResult=out;
+    if(!$('#saveTitle').value) $('#saveTitle').value='Manga – '+new Date().toLocaleDateString('hu');
+    $('#saveBar').style.display='flex';
+    openReader(out, 0);
   }catch(e){ toast('Hiba: '+(e.message||e)); $('#stat').textContent='Hiba'; }
   $('#progWrap').style.display='none'; busy=false; btn.disabled=false; btn.innerHTML='🔤 Kiolvasás és fordítás';
 };
 
-function renderPage(num, pg, regions){
-  const hasOverlay = regions.some(r=>r.bbox&&r.hu);
-  const card=document.createElement('div'); card.className='page';
-  const over = hasOverlay ? drawOverlay(pg.canvas, regions) : null;
-  const wrapEl=document.createElement('div'); wrapEl.className='imgwrap';
-  const imgEl=document.createElement('img'); imgEl.className='orig'; imgEl.src=pg.url; imgEl.style.display = over?'none':'block';
-  if(over){ over.className='ovl'; wrapEl.appendChild(over); }
-  wrapEl.appendChild(imgEl);
-  const top=document.createElement('div'); top.className='ptop';
-  top.innerHTML=`<span class="pn">Oldal ${num}</span><div class="tgl"></div>`;
-  if(over){ const tg=top.querySelector('.tgl');
-    const b1=document.createElement('button'); b1.className='mini on'; b1.textContent='Magyar';
-    const b2=document.createElement('button'); b2.className='mini'; b2.textContent='Eredeti';
-    b1.onclick=()=>{ over.style.display='block'; imgEl.style.display='none'; b1.classList.add('on'); b2.classList.remove('on'); };
-    b2.onclick=()=>{ over.style.display='none'; imgEl.style.display='block'; b2.classList.add('on'); b1.classList.remove('on'); };
-    tg.appendChild(b1); tg.appendChild(b2);
-  }
-  const txt=document.createElement('div'); txt.className='txtout';
-  const huAll=regions.map(r=>r.hu).filter(Boolean).join('\n');
-  txt.innerHTML=`<div class="tt"><span>Magyar szöveg</span><div class="acts"><button class="mini" data-copy>⧉ Másol</button><button class="mini" data-share>⬆️</button></div></div>`;
-  if(regions.length){ regions.forEach(r=>{ const d=document.createElement('div'); d.className='blk'; d.innerHTML=`${esc(r.hu||'')}<div class="en">${esc(r.text)}</div>`; txt.appendChild(d); }); }
-  else { const d=document.createElement('div'); d.className='empty'; d.textContent='Nem találtam szöveget ezen az oldalon.'; txt.appendChild(d); }
-  txt.querySelector('[data-copy]').onclick=async()=>{ try{ await navigator.clipboard.writeText(huAll); toast('Másolva ✓'); }catch(_){ toast('Nem sikerült'); } };
-  txt.querySelector('[data-share]').onclick=async()=>{ try{ if(navigator.share){ await navigator.share({text:huAll}); return; } }catch(e){ if(e&&e.name==='AbortError')return; } const Cap=window.Capacitor,SH=Cap&&Cap.Plugins&&Cap.Plugins.Share; if(SH){try{await SH.share({text:huAll});return;}catch(_){}} try{await navigator.clipboard.writeText(huAll);toast('Vágólapra másolva');}catch(_){} };
-  card.appendChild(top); card.appendChild(wrapEl); card.appendChild(txt);
-  $('#results').appendChild(card);
+$('#openReaderBtn').onclick=()=>{ if(curResult&&curResult.length) openReader(curResult,0); };
+$('#saveLibBtn').onclick=async ()=>{
+  if(!curResult||!curResult.length){ toast('Nincs mit menteni'); return; }
+  const title=($('#saveTitle').value||'').trim()||('Manga – '+new Date().toLocaleDateString('hu'));
+  toast('Mentés…');
+  try{
+    const rec=[];
+    for(const p of curResult){ const blob=await canvasBlob(p.base); const regions=(p.regions||[]).map(r=>({text:r.text,hu:r.hu,bbox:r.bbox})); rec.push({blob,regions}); }
+    await libPut({ id:'ch'+Date.now(), title, created:Date.now(), pages:rec });
+    toast('Mentve a könyvtárba ✓');
+  }catch(e){ toast('Mentési hiba: '+(e.message||e)); }
+};
+
+// ---- olvasó (lapozható) ----
+let rItems=[], rIdx=0, rLang=true;
+async function itemsFromSaved(ch){ const items=[]; for(const p of ch.pages){ const url=URL.createObjectURL(p.blob); const img=await loadImg(url); const base=document.createElement('canvas'); base.width=img.width; base.height=img.height; base.getContext('2d').drawImage(img,0,0); items.push({ base, url, regions:p.regions||[] }); } return items; }
+function openReader(items, idx){ if(!items||!items.length){ toast('Nincs oldal'); return; } rItems=items; rIdx=idx||0; rLang=true; $('#rLang').classList.add('on'); $('#rLang').textContent='Magyar'; $('#reader').classList.add('on'); $('#rSheet').classList.remove('on'); renderReader(); }
+function closeReader(){ $('#reader').classList.remove('on'); }
+function renderReader(){
+  const it=rItems[rIdx]; if(!it) return;
+  $('#rCount').textContent=(rIdx+1)+'/'+rItems.length;
+  const v=$('#rView'); v.innerHTML='';
+  const hasOv = it.regions && it.regions.some(r=>r.bbox&&r.hu);
+  if(rLang && hasOv){ it.regions._base=it.base; const ov=drawOverlay(it.base, it.regions); ov.className='rimg'; v.appendChild(ov); }
+  else { const im=document.createElement('img'); im.className='rimg'; im.src=it.url; v.appendChild(im); }
+  const hu=(it.regions||[]).map(r=>r.hu).filter(Boolean).join('\n\n');
+  $('#rSheet').innerHTML = hu?esc(hu).replace(/\n/g,'<br>'):'Nincs szöveg ezen az oldalon.';
+  v.scrollTop=0;
 }
+function rGo(d){ const n=rIdx+d; if(n<0||n>=rItems.length) return; rIdx=n; renderReader(); }
+$('#rClose').onclick=closeReader;
+$('#rPrev').onclick=()=>rGo(-1); $('#rNext').onclick=()=>rGo(1);
+$('#rLang').onclick=()=>{ rLang=!rLang; $('#rLang').classList.toggle('on',rLang); $('#rLang').textContent=rLang?'Magyar':'Eredeti'; renderReader(); };
+$('#rText').onclick=()=>$('#rSheet').classList.toggle('on');
+(function(){ const v=$('#rView'); let sx=0,sy=0,act=false;
+  v.addEventListener('pointerdown',e=>{ sx=e.clientX; sy=e.clientY; act=true; });
+  v.addEventListener('pointerup',e=>{ if(!act)return; act=false; const dx=e.clientX-sx, dy=e.clientY-sy; if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.3){ rGo(dx<0?1:-1); } });
+})();
+
+// ---- könyvtár nézet ----
+async function renderLibrary(){ const items=await libAll(); $('#libEmpty').style.display=items.length?'none':'block';
+  const g=$('#libGrid'); g.innerHTML='';
+  items.forEach(it=>{ const d=document.createElement('div'); d.className='libcard'; const tu=it.thumb?URL.createObjectURL(it.thumb):'';
+    d.innerHTML=`<div class="lt" style="${tu?`background-image:url('${tu}')`:''}"></div><div class="li"><div class="lti">${esc(it.title)}</div><div class="lm">${it.count} oldal · ${new Date(it.created).toLocaleDateString('hu')}</div></div><button class="ldel">🗑️</button>`;
+    const open=async()=>{ toast('Megnyitás…'); const ch=await libGet(it.id); if(!ch)return; const items2=await itemsFromSaved(ch); openReader(items2,0); };
+    d.querySelector('.lt').onclick=open; d.querySelector('.li').onclick=open;
+    d.querySelector('.ldel').onclick=async(e)=>{ e.stopPropagation(); if(confirm('Törlöd: '+it.title+'?')){ await libDel(it.id); renderLibrary(); } };
+    g.appendChild(d); });
+}
+
+// ---- tabok ----
+document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.tabbar button').forEach(x=>x.classList.toggle('on',x===b)); const id=b.dataset.tab; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+id)); if(id==='lib')renderLibrary(); });
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
