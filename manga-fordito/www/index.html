@@ -104,7 +104,7 @@
     <button class="btn" id="urlBtn">Letöltés</button>
   </div>
   <div class="or">— vagy —</div>
-  <label style="display:block;margin-top:10px"><input type="file" id="file" accept="image/*" multiple><span class="btn" id="pickBtn">＋ Oldal(ak) a telefonról</span></label>
+  <label style="display:block;margin-top:10px"><input type="file" id="file" accept="image/*,.zip,.cbz,application/zip" multiple><span class="btn" id="pickBtn">＋ Oldalak / CBZ a telefonról</span></label>
   <div class="langbar"><div class="l">🇬🇧 Angol</div><div class="ar">→</div><div class="l">🇭🇺 Magyar</div></div>
   <div class="ocrmode" id="ocrMode">
     <button data-ocr="online" class="on">⚡ Gyors (online OCR)</button>
@@ -126,8 +126,8 @@
     <button class="btn ghost" id="saveLibBtn">💾 Könyvtárba</button>
   </div>
 
-  <div class="empty" id="emptyBox">Tölts be egy vagy több <b>angol</b> manga/képregény oldalt, és az app kiolvassa a szöveget, majd magyarra fordítja.</div>
-  <div class="note"><b>Online:</b> <b>MangaDex</b> fejezet-link (mangadex.org/chapter/…) → az összes oldal magától lejön. Bármilyen más <b>oldal-linket</b> is megpróbál (kísérleti – kiszedi a képeket a HTML-ből; egyszerűbb oldalakon megy, Cloudflare-/JS-rendereltnél nem). Direkt kép-URL-ek is mennek.<br><b>Sebesség:</b> a „⚡ Gyors (online OCR)" a kiolvasást egy szerverre bízza (pár mp/oldal) – ehhez net kell. Az „📴 Offline" a telefonon OCR-ezik (lassú). A fordításhoz mindenképp net kell.</div>
+  <div class="empty" id="emptyBox">Tölts be egy <b>angol</b> manga oldalt/CBZ-t, vagy adj meg MangaDex/oldal-linket – az app kiolvassa a szöveget és magyarra fordítja.</div>
+  <div class="note"><b>Online:</b> <b>MangaDex</b> fejezet-link (mangadex.org/chapter/…) → az összes oldal magától lejön. Bármilyen más <b>oldal-linket</b> is megpróbál (kísérleti – kiszedi a képeket a HTML-ből; egyszerűbb oldalakon megy, Cloudflare-/JS-rendereltnél nem). Direkt kép-URL-ek is mennek. <b>Nincs linkelhető oldalad?</b> Töltsd le a fejezetet <b>CBZ/ZIP</b>-ként (pl. Mihon → fejezet letöltése), és importáld egyetlen fájlként – az app kicsomagolja.<br><b>Sebesség:</b> a „⚡ Gyors (online OCR)" a kiolvasást egy szerverre bízza (pár mp/oldal) – ehhez net kell. Az „📴 Offline" a telefonon OCR-ezik (lassú). A fordításhoz mindenképp net kell.</div>
   </section>
 
   <section class="tab" id="tab-lib">
@@ -152,6 +152,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="tesseract.min.js"></script>
+<script src="jszip.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2800);}
@@ -164,10 +165,25 @@ function loadImg(url){ return new Promise((res,rej)=>{ const im=new Image(); im.
 function capped(img){ const s=Math.min(1,MAX/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); return c; }
 
 $('#pickBtn').onclick=()=>$('#file').click();
+async function addZip(f){
+  if(typeof JSZip==='undefined'){ toast('ZIP-olvasó nem töltött be'); return; }
+  $('#progWrap').style.display='block'; $('#stat').textContent='CBZ kicsomagolása…';
+  let zip; try{ zip=await JSZip.loadAsync(f); }catch(e){ $('#progWrap').style.display='none'; toast('Nem sikerült kicsomagolni (sérült vagy jelszavas ZIP?)'); return; }
+  const entries=Object.values(zip.files).filter(x=>!x.dir && /\.(jpe?g|png|webp|gif|bmp)$/i.test(x.name)).sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
+  if(!entries.length){ $('#progWrap').style.display='none'; toast('Nincs kép a fájlban'); return; }
+  let n=0;
+  for(const e of entries){ n++; $('#stat').textContent='Kicsomagolás '+n+'/'+entries.length+'…'; $('#progBar').style.width=Math.round(n/entries.length*100)+'%';
+    try{ const blob=await e.async('blob'); const url=URL.createObjectURL(blob); const img=await loadImg(url); pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url, img, canvas:capped(img) }); renderThumbs(); }catch(_){}
+  }
+  $('#progWrap').style.display='none'; $('#stat').textContent=pages.length+' oldal betöltve ✓';
+}
 $('#file').addEventListener('change', async e=>{
   const files=[...(e.target.files||[])]; e.target.value='';
-  for(const f of files){ const url=URL.createObjectURL(f); let img; try{img=await loadImg(url);}catch(_){continue;}
-    pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url, img, canvas:capped(img) }); }
+  for(const f of files){
+    if(/\.(zip|cbz)$/i.test(f.name) || /zip/i.test(f.type)){ await addZip(f); continue; }
+    const url=URL.createObjectURL(f); let img; try{img=await loadImg(url);}catch(_){continue;}
+    pages.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), url, img, canvas:capped(img) });
+  }
   renderThumbs();
 });
 // ---- online betöltés (MangaDex / kép-URL) ----
