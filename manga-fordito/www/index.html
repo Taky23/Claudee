@@ -22,6 +22,13 @@
   .urlbar input{flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:11px; padding:11px; font:inherit; font-size:14px}
   .urlbar .btn{width:auto; padding:11px 15px; font-size:14px}
   .or{text-align:center; font-size:11px; color:var(--muted); margin:10px 0 0}
+  .ocrmode{display:flex; gap:8px; margin:12px 0 0}
+  .ocrmode button{flex:1; border:1px solid var(--line); background:var(--bg2); color:var(--muted); border-radius:12px; padding:10px; font-size:13px; font-weight:800; cursor:pointer}
+  .ocrmode button.on{color:#fff; border-color:var(--accent); background:rgba(255,82,119,.18)}
+  .keybox{margin:10px 0 0; font-size:12px; color:var(--muted)}
+  .keybox summary{cursor:pointer; padding:6px 2px}
+  .keybox input{width:100%; margin-top:8px; background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px; font:inherit}
+  .keybox .kmini{font-size:11px; color:var(--muted); margin-top:6px; line-height:1.4}
   .langbar{display:flex; align-items:center; gap:8px; margin:12px 0}
   .langbar .l{flex:1; text-align:center; background:var(--bg2); border:1px solid var(--line); border-radius:11px; padding:10px; font-size:13px; font-weight:700}
   .langbar .ar{color:var(--muted)}
@@ -99,6 +106,14 @@
   <div class="or">— vagy —</div>
   <label style="display:block;margin-top:10px"><input type="file" id="file" accept="image/*" multiple><span class="btn" id="pickBtn">＋ Oldal(ak) a telefonról</span></label>
   <div class="langbar"><div class="l">🇬🇧 Angol</div><div class="ar">→</div><div class="l">🇭🇺 Magyar</div></div>
+  <div class="ocrmode" id="ocrMode">
+    <button data-ocr="online" class="on">⚡ Gyors (online OCR)</button>
+    <button data-ocr="offline">📴 Offline (lassú)</button>
+  </div>
+  <details class="keybox"><summary>OCR API kulcs (opcionális – gyorsabb/több)</summary>
+    <input id="ocrKey" placeholder="OCR.space kulcs (ingyenes)">
+    <div class="kmini">Ingyenes kulcs 1 perc alatt: <b>ocr.space/ocrapi</b>. Üresen hagyva a teszt-kulcsot használja (korlátos, csak próbához).</div>
+  </details>
   <div class="thumbs" id="thumbs"></div>
 
   <button class="btn" id="goBtn" disabled>🔤 Kiolvasás és fordítás</button>
@@ -112,7 +127,7 @@
   </div>
 
   <div class="empty" id="emptyBox">Tölts be egy vagy több <b>angol</b> manga/képregény oldalt, és az app kiolvassa a szöveget, majd magyarra fordítja.</div>
-  <div class="note"><b>Online:</b> <b>MangaDex</b> fejezet-link (mangadex.org/chapter/…) → az összes oldal magától lejön. Bármilyen más <b>oldal-linket</b> is megpróbál (kísérleti – kiszedi a képeket a HTML-ből; egyszerűbb oldalakon megy, Cloudflare-/JS-rendereltnél nem). Direkt kép-URL-ek is mennek.<br>Az OCR a telefonon fut, offline; a letöltéshez és fordításhoz <b>internet</b> kell.</div>
+  <div class="note"><b>Online:</b> <b>MangaDex</b> fejezet-link (mangadex.org/chapter/…) → az összes oldal magától lejön. Bármilyen más <b>oldal-linket</b> is megpróbál (kísérleti – kiszedi a képeket a HTML-ből; egyszerűbb oldalakon megy, Cloudflare-/JS-rendereltnél nem). Direkt kép-URL-ek is mennek.<br><b>Sebesség:</b> a „⚡ Gyors (online OCR)" a kiolvasást egy szerverre bízza (pár mp/oldal) – ehhez net kell. Az „📴 Offline" a telefonon OCR-ezik (lassú). A fordításhoz mindenképp net kell.</div>
   </section>
 
   <section class="tab" id="tab-lib">
@@ -228,6 +243,30 @@ async function ensureWorker(){ if(worker) return worker;
   });
   return worker;
 }
+// ---- gyors online OCR (OCR.space) ----
+let ocrMode='online';
+document.querySelectorAll('#ocrMode button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#ocrMode button').forEach(x=>x.classList.toggle('on',x===b)); ocrMode=b.dataset.ocr; });
+try{ $('#ocrKey').value=localStorage.getItem('ocrkey')||''; }catch(_){}
+$('#ocrKey').oninput=e=>{ try{localStorage.setItem('ocrkey',e.target.value.trim());}catch(_){} };
+async function ocrSpace(canvas){
+  let key=''; try{key=(localStorage.getItem('ocrkey')||'').trim();}catch(_){} if(!key)key='helloworld';
+  const dataUrl=canvas.toDataURL('image/jpeg',0.8);
+  const body='apikey='+encodeURIComponent(key)+'&language=eng&isOverlayRequired=true&OCREngine=2&scale=true&base64Image='+encodeURIComponent(dataUrl);
+  const Cap=window.Capacitor, H=Cap&&Cap.Plugins&&Cap.Plugins.CapacitorHttp; let data;
+  if(H){ const r=await H.post({url:'https://api.ocr.space/parse/image', headers:{'Content-Type':'application/x-www-form-urlencoded'}, data:body, readTimeout:40000, connectTimeout:20000}); data=typeof r.data==='string'?JSON.parse(r.data):r.data; }
+  else { const r=await fetch('https://api.ocr.space/parse/image',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body}); data=await r.json(); }
+  if(data && data.IsErroredOnProcessing){ const m=(data.ErrorMessage&&(data.ErrorMessage[0]||data.ErrorMessage))||'OCR hiba'; throw new Error(String(m).slice(0,80)); }
+  const pr=data&&data.ParsedResults&&data.ParsedResults[0]; if(!pr) return [];
+  const regions=[]; const lines=(pr.TextOverlay&&pr.TextOverlay.Lines)||[];
+  lines.forEach(ln=>{ const ws=ln.Words||[]; if(!ws.length)return;
+    const x0=Math.min(...ws.map(w=>+w.Left)), y0=Math.min(...ws.map(w=>+w.Top)), x1=Math.max(...ws.map(w=>+w.Left+ +w.Width)), y1=Math.max(...ws.map(w=>+w.Top+ +w.Height));
+    const text=(ln.LineText||ws.map(w=>w.WordText).join(' ')).trim();
+    if(text.length>=2) regions.push({text, bbox:{x0,y0,x1,y1}});
+  });
+  if(!regions.length && pr.ParsedText && pr.ParsedText.trim()) regions.push({text:pr.ParsedText.trim().replace(/\s+/g,' '), bbox:null});
+  return regions;
+}
+
 function regionsFrom(data){
   // paragraphok (bbox+szöveg); tartalék: lines; tartalék: teljes szöveg
   const out=[];
@@ -305,14 +344,15 @@ $('#goBtn').onclick=async ()=>{
   $('#progWrap').style.display='block'; $('#saveBar').style.display='none'; $('#emptyBox').style.display='none';
   const total=pages.length; const t0=Date.now(); const out=[];
   try{
-    await ensureWorker();
-    $('#stat').textContent='Feldolgozás indul… (oldalanként pár mp)';
+    if(ocrMode==='offline') await ensureWorker();
+    $('#stat').textContent='Feldolgozás indul…';
     for(let i=0;i<total;i++){ const pg=pages[i];
       const eta = i>0 ? ' · ~'+fmtETA((Date.now()-t0)/i*(total-i))+' van hátra' : ' · ETA számolás…';
       $('#stat').textContent=`Oldal ${i+1}/${total} – kiolvasás${eta}`;
       $('#progBar').style.width=Math.round(i/total*100)+'%';
-      let data; try{ const res=await worker.recognize(pg.canvas,{},{blocks:true,text:true}); data=res.data; }catch(e){ data={text:''}; }
-      const regions=regionsFrom(data);
+      let regions;
+      if(ocrMode==='online'){ try{ regions=await ocrSpace(pg.canvas); }catch(e){ regions=[]; if(i===0) toast('OCR hiba: '+(e.message||'')); } }
+      else { let data; try{ const res=await worker.recognize(pg.canvas,{},{blocks:true,text:true}); data=res.data; }catch(e){ data={text:''}; } regions=regionsFrom(data); }
       $('#stat').textContent=`Oldal ${i+1}/${total} – fordítás (${regions.length} rész)${eta}`;
       $('#progBar').style.width=Math.round((i+0.5)/total*100)+'%';
       if(regions.length) await translateRegions(regions);
