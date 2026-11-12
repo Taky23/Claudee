@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const OUT = path.join(__dirname, 'www', 'data.json');
 
-const query = `query($page:Int){ Page(page:$page, perPage:50){ pageInfo{hasNextPage} media(genre:"Ecchi", type:ANIME, isAdult:false, sort:POPULARITY_DESC){ id title{romaji english} coverImage{large color} bannerImage averageScore seasonYear episodes format status genres description(asHtml:false) siteUrl } } }`;
+const query = `query($page:Int){ Page(page:$page, perPage:50){ pageInfo{hasNextPage} media(genre:"Ecchi", type:ANIME, isAdult:false, sort:POPULARITY_DESC){ id title{romaji english} coverImage{large color} bannerImage averageScore seasonYear episodes format status genres tags{name rank} description(asHtml:false) siteUrl } } }`;
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -37,6 +37,7 @@ function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
         format: m.format || null,
         status: m.status || null,
         genres: m.genres || [],
+        tags: (m.tags || []).slice(0, 14).map(t => t.name),
         desc: (m.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 700),
         url: m.siteUrl,
       }));

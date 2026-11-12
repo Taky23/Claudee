@@ -28,6 +28,7 @@
   .desc{font-size:13px; color:#e3cfdd; line-height:1.5; margin-top:8px}
   .rowbtns{display:flex; gap:8px; margin-top:12px}
   .rowbtns .btn{font-size:14px; padding:12px}
+  .simnote{font-size:12px; color:var(--muted); padding:10px 14px 0} .simnote b{color:var(--pink)}
   .btn.ghost{background:rgba(255,77,141,.12); color:var(--pink); border:1px solid var(--line); box-shadow:none}
   .sect{font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin:18px 2px 10px; display:flex; justify-content:space-between; align-items:center}
   .search{width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:12px; padding:11px; font:inherit; margin-bottom:6px}
@@ -85,7 +86,8 @@
     <div class="sr" id="shMeta"></div>
     <div class="meta" id="shGenres"></div>
     <div class="sd" id="shDesc"></div>
-    <button class="btn" id="shLink" style="margin-top:16px">🔗 AniList megnyitása</button>
+    <button class="btn" id="shSim" style="margin-top:16px">🔁 Ehhez hasonlót dobj</button>
+    <button class="btn ghost" id="shLink" style="margin-top:10px">🔗 AniList megnyitása</button>
   </div>
 </div>
 
@@ -119,21 +121,30 @@ fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{ DATA=(j&&j.ani
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 function metaLine(a){ const bits=[]; if(a.year)bits.push(a.year); if(a.format)bits.push(a.format); if(a.eps)bits.push(a.eps+' rész'); if(a.score)bits.push('★ '+(a.score/10).toFixed(1)); return bits.join(' · '); }
 
-function roll(){
-  if(!DATA.length) return; const a=rand(DATA);
+let recent=[];
+function simScore(a,b){ if(a.id===b.id) return -1; const ta=new Set(a.tags||[]); let s=0;
+  (b.tags||[]).forEach(t=>{ if(ta.has(t)) s+=2; }); const ga=new Set(a.genres||[]); (b.genres||[]).forEach(g=>{ if(ga.has(g)) s+=1; }); return s; }
+function similarList(ref){ return DATA.map(x=>({x,s:simScore(ref,x)})).filter(o=>o.s>0).sort((p,q)=>q.s-p.s).slice(0,14).map(o=>o.x); }
+function renderPick(a, ref){
   $('#pick').innerHTML=`
     <div class="pick">
+      ${ref?`<div class="simnote">🔁 Hasonló ehhez: <b>${esc(ref.title)}</b></div>`:''}
       <img class="cov" src="${esc(a.cover)}" alt="" referrerpolicy="no-referrer">
       <div class="body">
         <div class="t">${esc(a.title)}</div>
         <div class="meta">${a.score?`<span class="tag s">★ ${(a.score/10).toFixed(1)}</span>`:''}${a.year?`<span class="tag">${a.year}</span>`:''}${a.eps?`<span class="tag">${a.eps} rész</span>`:''}${(a.genres||[]).slice(0,3).map(g=>`<span class="tag p">${esc(g)}</span>`).join('')}</div>
         <div class="desc">${esc((a.desc||'').slice(0,240))}${(a.desc||'').length>240?'…':''}</div>
-        <div class="rowbtns"><button class="btn" id="pDetail">Részletek</button><button class="btn ghost" id="pRoll">🎲 Újra</button></div>
+        <div class="rowbtns"><button class="btn" id="pDetail">Részletek</button><button class="btn ghost" id="pSim">🔁 Ehhez hasonlót</button></div>
+        <div class="rowbtns" style="margin-top:8px"><button class="btn ghost" id="pRand" style="flex:1">🎲 Teljesen random</button></div>
       </div>
     </div>`;
-  $('#pDetail').onclick=()=>openDetail(a); $('#pRoll').onclick=roll;
+  $('#pDetail').onclick=()=>openDetail(a); $('#pSim').onclick=()=>rollSimilar(a); $('#pRand').onclick=roll;
   window.scrollTo({top:0,behavior:'smooth'});
 }
+function roll(){ if(!DATA.length) return; renderPick(rand(DATA), null); }
+function rollSimilar(ref){ const list=similarList(ref); if(!list.length){ toast('Nincs elég hasonló ehhez'); return; }
+  let pool=list.filter(x=>!recent.includes(x.id)); if(!pool.length){ recent=[]; pool=list; }
+  const a=rand(pool); recent.push(a.id); if(recent.length>6) recent.shift(); renderPick(a, ref); }
 $('#rollBtn').onclick=roll;
 
 function renderGrid(){
@@ -152,6 +163,7 @@ function openDetail(a){
   $('#shGenres').innerHTML=(a.genres||[]).map(g=>`<span class="tag p">${esc(g)}</span>`).join('');
   $('#shDesc').textContent=a.desc||'Nincs leírás.';
   $('#shLink').onclick=()=>{ const url=a.url; const B=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser; if(B&&B.open)B.open({url}); else window.open(url,'_blank'); };
+  $('#shSim').onclick=()=>{ $('#sheet').classList.remove('on'); rollSimilar(a); };
   $('#sheet').classList.add('on');
 }
 $('#shClose').onclick=()=>$('#sheet').classList.remove('on');
