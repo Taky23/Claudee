@@ -76,7 +76,7 @@
   <input class="search" id="search" placeholder="Keresés cím szerint…">
   <div class="grid" id="grid"></div>
 
-  <div class="note">Felnőtt (18+), fikciós anime-tartalom. Ez az app <b>csak uncensored jellegű</b> ecchi címeket dob be (erős „Nudity" besorolás alapján – a szelíd fanservice kiszűrve). Az adatok és borítók az <b>AniList</b> nyilvános adatbázisából származnak; az app <b>nem</b> streamel és nem tárol epizódokat – a „🔗 AniList" gomb a hivatalos oldalra visz, ahol megtalálod a legális nézési lehetőségeket. (A valódi hentai/pornó címek ki vannak szűrve.)</div>
+  <div class="note">Felnőtt (18+), fikciós anime-tartalom. Ez az app <b>uncensored jellegű</b> ecchi (🔞) <b>és a legkeményebb, explicit 18+/hentai</b> (🔥) címeket dob be. Az adatok és borítók az <b>AniList</b> nyilvános adatbázisából származnak; az app <b>nem</b> streamel és nem tárol epizódokat – a „🔗 AniList" gomb a hivatalos oldalra visz, ahol megtalálod a legális nézési lehetőségeket. (A valódi hentai/pornó címek ki vannak szűrve.)</div>
 </main>
 
 <div id="sheet">
@@ -94,7 +94,7 @@
 <div id="gate">
   <div class="big">🔞</div>
   <h2>Felnőtt tartalom</h2>
-  <p>Ez az app <b>ecchi</b> (erotikus utalásokat tartalmazó) animéket ajánl. Csak akkor lépj be, ha elmúltál <b>18 éves</b>, és a felnőtt tartalom a lakóhelyeden megengedett. Fikciós, rajzolt tartalom; nincs streamelés.</p>
+  <p>Ez az app <b>ecchi</b> és <b>explicit 18+ (hentai)</b> animéket ajánl. Csak akkor lépj be, ha elmúltál <b>18 éves</b>, és a felnőtt tartalom a lakóhelyeden megengedett. Fikciós, rajzolt tartalom; nincs streamelés – a linkek az AniList hivatalos oldalára visznek.</p>
   <div class="g-actions">
     <button class="yes" id="gYes">Elmúltam 18 – belépek</button>
     <button class="no" id="gNo">Kilépés</button>
@@ -132,7 +132,7 @@ function renderPick(a, ref){
       <img class="cov" src="${esc(a.cover)}" alt="" referrerpolicy="no-referrer">
       <div class="body">
         <div class="t">${esc(a.title)}</div>
-        <div class="meta"><span class="tag p">🔞 Uncensored</span>${a.score?`<span class="tag s">★ ${(a.score/10).toFixed(1)}</span>`:''}${a.year?`<span class="tag">${a.year}</span>`:''}${a.eps?`<span class="tag">${a.eps} rész</span>`:''}${(a.genres||[]).slice(0,3).map(g=>`<span class="tag p">${esc(g)}</span>`).join('')}</div>
+        <div class="meta"><span class="tag p">${a.adult?'🔥 Hardcore (18+)':'🔞 Uncensored'}</span>${a.score?`<span class="tag s">★ ${(a.score/10).toFixed(1)}</span>`:''}${a.year?`<span class="tag">${a.year}</span>`:''}${a.eps?`<span class="tag">${a.eps} rész</span>`:''}${(a.genres||[]).slice(0,3).map(g=>`<span class="tag p">${esc(g)}</span>`).join('')}</div>
         <div class="desc">${esc((a.desc||'').slice(0,240))}${(a.desc||'').length>240?'…':''}</div>
         <div class="rowbtns"><button class="btn" id="pDetail">Részletek</button><button class="btn ghost" id="pSim">🔁 Ehhez hasonlót</button></div>
         <div class="rowbtns" style="margin-top:8px"><button class="btn ghost" id="pRand" style="flex:1">🎲 Teljesen random</button></div>
@@ -151,7 +151,7 @@ function renderGrid(){
   $('#count').textContent=filtered.length+' cím';
   const g=$('#grid'); g.innerHTML='';
   filtered.forEach(a=>{ const c=document.createElement('div'); c.className='cell';
-    c.innerHTML=`<img src="${esc(a.cover)}" loading="lazy" referrerpolicy="no-referrer" alt=""><span class="sc" style="left:6px;right:auto;background:#ff2d95cc">🔞</span>${a.score?`<span class="sc">★${(a.score/10).toFixed(1)}</span>`:''}<div class="ct">${esc(a.title)}</div>`;
+    c.innerHTML=`<img src="${esc(a.cover)}" loading="lazy" referrerpolicy="no-referrer" alt=""><span class="sc" style="left:6px;right:auto;background:${a.adult?'#ff3b30cc':'#ff2d95cc'}">${a.adult?'🔥':'🔞'}</span>${a.score?`<span class="sc">★${(a.score/10).toFixed(1)}</span>`:''}<div class="ct">${esc(a.title)}</div>`;
     c.onclick=()=>openDetail(a); g.appendChild(c); });
 }
 $('#search').addEventListener('input', e=>{ const q=e.target.value.trim().toLowerCase();
