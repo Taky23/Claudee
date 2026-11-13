@@ -86,6 +86,13 @@
     font-size:14px; font-weight:800; color:#fff; background:var(--grad); box-shadow:0 6px 18px rgba(255,45,149,.3)}
   .cta:active{transform:translateY(1px)}
   .cta.alt{background:rgba(0,229,255,.12); color:var(--cyan); border:1px solid rgba(0,229,255,.4); box-shadow:none; margin-top:9px}
+  .trailer{display:flex; gap:11px; align-items:center; background:rgba(0,0,0,.25); border:1px solid var(--line); border-radius:12px; padding:9px; margin-bottom:9px; cursor:pointer}
+  .trailer:active{transform:translateY(1px)}
+  .trailer .th{width:112px; height:63px; border-radius:9px; flex:none; position:relative; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#2a1550,#120a1f) center/cover}
+  .trailer .play{width:30px; height:30px; border-radius:50%; background:rgba(255,45,149,.9); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; box-shadow:0 0 12px rgba(255,45,149,.5)}
+  .trailer .tt{font-weight:800; font-size:14px}
+  .trailer .td{font-size:12px; color:var(--muted); margin-top:3px}
+  .newtag{display:inline-block; font-size:9px; font-weight:900; color:#fff; background:var(--pink); border-radius:5px; padding:1px 5px; margin-left:6px; vertical-align:middle}
   /* info/tips */
   .kv{display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px}
   .kv:last-child{border-bottom:0}
@@ -214,10 +221,27 @@
       <div id="facts"></div>
     </div>
     <div class="card">
-      <h3>🎬 Előzetesek</h3>
-      <div class="kv"><b>1. trailer</b><span>2023. december</span></div>
-      <div class="kv"><b>2. trailer</b><span>2025 – régiók &amp; sztori bemutató</span></div>
-      <div class="note">Hivatalos forrás: rockstargames.com/VI — a részletek a megjelenésig még változhatnak.</div>
+      <h3>🎬 Trailerek &amp; friss hírek</h3>
+      <p class="muted" style="font-size:13px; margin:0">A trailerek (megnézhetők), a legújabb hírek és a hivatalos galéria a <b>📰 Hírek</b> fülön találhatók.</p>
+    </div>
+  </section>
+
+  <!-- HÍREK -->
+  <section class="tab" id="tab-news">
+    <div class="card">
+      <h3>📰 Friss hírek <span class="newtag">6 nap!</span></h3>
+      <div id="news"></div>
+      <div class="note">Frissítve: 2026. nov. 13. · forrás: Rockstar Newswire + sajtó. Egy részük sajtóértesülés, a megjelenésig pontosodhat.</div>
+    </div>
+    <div class="card">
+      <h3>🎬 Trailerek &amp; videók</h3>
+      <div id="trailers"></div>
+      <div class="note">A bélyegképekhez és a videókhoz internet kell; a gombok a YouTube-on / a Rockstar oldalán nyitják meg őket.</div>
+    </div>
+    <div class="card">
+      <h3>📸 Hivatalos képek</h3>
+      <p class="muted" style="font-size:13px; line-height:1.5; margin:0 0 6px">A legfrissebb hivatalos screenshotok és művészeti anyagok a Rockstar oldalán.</p>
+      <button class="cta" data-url="https://www.rockstargames.com/VI">🖼️ Rockstar – GTA VI oldal (galéria)</button>
     </div>
   </section>
 
@@ -234,7 +258,8 @@
 <nav class="tabbar">
   <button class="on" data-tab="cd"><span class="ic">⏳</span>Countdown</button>
   <button data-tab="map"><span class="ic">🗺️</span>Térkép</button>
-  <button data-tab="info"><span class="ic">📰</span>Infó</button>
+  <button data-tab="news"><span class="ic">📰</span>Hírek</button>
+  <button data-tab="info"><span class="ic">ℹ️</span>Infó</button>
   <button data-tab="tips"><span class="ic">💡</span>Tippek</button>
 </nav>
 
@@ -261,7 +286,8 @@ document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>{
 const MILES=[
   {d:new Date(2026,10,10), t:'PS5 előtöltés (pre-load) kezdete'},
   {d:new Date(2026,10,12), t:'Fizikai (code-in-box) kiadás'},
-  {d:new Date(2026,10,19), t:'Megjelenés – PS5 &amp; Xbox Series X|S'},
+  {d:new Date(2026,10,19), t:'Megjelenés + Soundtrack („The Album")'},
+  {d:new Date(2026,10,21), t:'GTA VI: The Festival (Miami)'},
 ];
 function fmtDate(d){return d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';}
 function renderMiles(){
@@ -293,8 +319,36 @@ const FACTS=[
   ['🌊','Változatos környezet','Nagyváros, tengerpartok, Everglades-szerű mocsarak (Grassrivers) és a Keys szigetek.'],
   ['📈','Új szint','A Rockstar szerint a széria eddigi legnagyobb ugrása technikailag és méretben is.'],
   ['🎵','Vice City vibe','Neon, ’80-as/modern Miami esztétika, erős rádió- és zenei kultúra várható.'],
+  ['📦','Hatalmas méret','A letöltés akár ~212 GB – szabadíts fel helyet időben.'],
+  ['⚙️','Teljesítmény','30 fps minden konzolon; PS5 Pro: PSSR + ray-tracinges árnyékok.'],
+  ['🔥','Rekord-előrendelés','~7,71 millió előrendelés – a Take-Two szerint messze a várakozások felett.'],
 ];
 $('#facts').innerHTML=FACTS.map(f=>`<div class="tip"><span class="e">${f[0]}</span><div><div class="h">${f[1]}</div><div class="b">${f[2]}</div></div></div>`).join('');
+
+// ---- hírek + trailerek ----
+const NEWS=[
+  ['✅','Megjelenés megerősítve – nov. 19.','Nincs újabb halasztás (nov. 12.). PS5 és Xbox Series X|S.'],
+  ['⬇️','Pre-load elindult (nov. 10.)','A letöltés akár ~212 GB – szabadíts fel helyet időben.'],
+  ['🎬','Új trailer a pre-loadhoz','Teljesítmény-részletek: 30 fps minden konzolon; PS5 Pro: PSSR + ray-tracinges árnyékok.'],
+  ['📈','7,71 millió előrendelés','A Take-Two szerint messze a várakozások felett teljesít.'],
+  ['🎉','GTA VI: The Festival – nov. 21.','Rockstar + PlayStation esemény a Mana Wynwoodban (Miami).'],
+  ['🎵','Soundtrack: „The Album"','34 eredeti szám, nov. 19-én jelenik meg a játékkal együtt.'],
+  ['🗺️','Térkép-leak','Egy korán eladott Collector’s Boxból kiszivárgott a térkép (nov. 12.) – a Rockstar hivatalosan nem adta ki.'],
+];
+$('#news').innerHTML=NEWS.map(n=>`<div class="tip"><span class="e">${n[0]}</span><div><div class="h">${n[1]}</div><div class="b">${n[2]}</div></div></div>`).join('');
+
+const TRAILERS=[
+  {t:'Trailer 1', d:'2023. december', yt:'QdBZY2fkU-0'},
+  {t:'Trailer 2', d:'2025. május – régiók & sztori', yt:'VQRLujxTm3c'},
+  {t:'Legújabb videók (launch / pre-load)', d:'2026 – a hivatalos Rockstar-csatornán', url:'https://www.rockstargames.com/videos'},
+];
+function openUrl(url){ const B=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser; if(B&&B.open)B.open({url}); else window.open(url,'_blank'); }
+$('#trailers').innerHTML=TRAILERS.map(tr=>{
+  const link=tr.url||('https://www.youtube.com/watch?v='+tr.yt);
+  const thumb=tr.yt?`https://img.youtube.com/vi/${tr.yt}/hqdefault.jpg`:'';
+  return `<div class="trailer" data-url="${link}"><div class="th" style="${thumb?`background-image:url('${thumb}')`:''}"><span class="play">▶</span></div><div><div class="tt">${tr.t}</div><div class="td">${tr.d}</div></div></div>`;
+}).join('');
+document.querySelectorAll('#trailers .trailer').forEach(el=>el.onclick=()=>openUrl(el.dataset.url));
 
 const TIPS=[
   ['⬇️','Töltsd előre (pre-load)','PS5-ön nov. 10-től előtöltheted, hogy megjelenéskor azonnal indulhasson – a játék mérete nagy lesz.'],
