@@ -86,12 +86,16 @@
     font-size:14px; font-weight:800; color:#fff; background:var(--grad); box-shadow:0 6px 18px rgba(255,45,149,.3)}
   .cta:active{transform:translateY(1px)}
   .cta.alt{background:rgba(0,229,255,.12); color:var(--cyan); border:1px solid rgba(0,229,255,.4); box-shadow:none; margin-top:9px}
-  .trailer{display:flex; gap:11px; align-items:center; background:rgba(0,0,0,.25); border:1px solid var(--line); border-radius:12px; padding:9px; margin-bottom:9px; cursor:pointer}
-  .trailer:active{transform:translateY(1px)}
-  .trailer .th{width:112px; height:63px; border-radius:9px; flex:none; position:relative; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#2a1550,#120a1f) center/cover}
-  .trailer .play{width:30px; height:30px; border-radius:50%; background:rgba(255,45,149,.9); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; box-shadow:0 0 12px rgba(255,45,149,.5)}
-  .trailer .tt{font-weight:800; font-size:14px}
-  .trailer .td{font-size:12px; color:var(--muted); margin-top:3px}
+  .tcard{background:rgba(0,0,0,.25); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:11px}
+  .tcard .th{position:relative; width:100%; aspect-ratio:16/9; background:linear-gradient(135deg,#2a1550,#120a1f); display:flex; align-items:center; justify-content:center; cursor:pointer}
+  .tcard .th .thimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover}
+  .tcard .th .play{position:relative; z-index:1; width:54px; height:54px; border-radius:50%; background:rgba(255,45,149,.92); color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 0 18px rgba(255,45,149,.6)}
+  .tcard .tbar{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px}
+  .tcard .tt{font-weight:800; font-size:14px}
+  .tcard .td{font-size:12px; color:var(--muted); margin-top:2px}
+  .tcard .yt{flex:none; border:1px solid var(--line); background:var(--bg2); color:var(--cyan); font-size:12px; font-weight:800; border-radius:9px; padding:7px 10px; cursor:pointer}
+  .tcard .embed:not(:empty){padding:0 0 0}
+  .tcard .embed iframe{width:100%; aspect-ratio:16/9; border:0; display:block}
   .newtag{display:inline-block; font-size:9px; font-weight:900; color:#fff; background:var(--pink); border-radius:5px; padding:1px 5px; margin-left:6px; vertical-align:middle}
   /* info/tips */
   .kv{display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px}
@@ -338,17 +342,27 @@ const NEWS=[
 $('#news').innerHTML=NEWS.map(n=>`<div class="tip"><span class="e">${n[0]}</span><div><div class="h">${n[1]}</div><div class="b">${n[2]}</div></div></div>`).join('');
 
 const TRAILERS=[
-  {t:'Trailer 1', d:'2023. december', yt:'QdBZY2fkU-0'},
-  {t:'Trailer 2', d:'2025. május – régiók & sztori', yt:'VQRLujxTm3c'},
-  {t:'Legújabb videók (launch / pre-load)', d:'2026 – a hivatalos Rockstar-csatornán', url:'https://www.rockstargames.com/videos'},
+  {t:'Trailer 1', d:'2023. december', yt:'QdBZY2fkU-0', q:'GTA VI Trailer 1 Rockstar Games'},
+  {t:'Trailer 2', d:'2025 – régiók & sztori', yt:'VQRLujxTm3c', q:'GTA VI Trailer 2 Rockstar Games'},
+  {t:'Legújabb videók (launch / pre-load)', d:'2026 – hivatalos Rockstar-videók', url:'https://www.rockstargames.com/videos', q:'GTA VI launch trailer Rockstar Games'},
 ];
 function openUrl(url){ const B=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser; if(B&&B.open)B.open({url}); else window.open(url,'_blank'); }
-$('#trailers').innerHTML=TRAILERS.map(tr=>{
-  const link=tr.url||('https://www.youtube.com/watch?v='+tr.yt);
-  const thumb=tr.yt?`https://img.youtube.com/vi/${tr.yt}/hqdefault.jpg`:'';
-  return `<div class="trailer" data-url="${link}"><div class="th" style="${thumb?`background-image:url('${thumb}')`:''}"><span class="play">▶</span></div><div><div class="tt">${tr.t}</div><div class="td">${tr.d}</div></div></div>`;
-}).join('');
-document.querySelectorAll('#trailers .trailer').forEach(el=>el.onclick=()=>openUrl(el.dataset.url));
+function ytThumb(id){ return 'https://img.youtube.com/vi/'+id+'/hqdefault.jpg'; }
+$('#trailers').innerHTML=TRAILERS.map((tr,i)=>`
+  <div class="tcard">
+    <div class="th" data-play="${i}">${tr.yt?`<img class="thimg" src="${ytThumb(tr.yt)}" onerror="this.remove()" alt="">`:''}<span class="play">▶</span></div>
+    <div class="tbar"><div><div class="tt">${esc(tr.t)}</div><div class="td">${esc(tr.d)}</div></div><button class="yt" data-ext="${i}">YouTube ↗</button></div>
+    <div class="embed" id="emb${i}"></div>
+  </div>`).join('');
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function playInline(i){ const tr=TRAILERS[i], emb=$('#emb'+i);
+  if(!tr.yt){ openUrl(tr.url); return; }
+  if(emb.innerHTML){ emb.innerHTML=''; return; }
+  emb.innerHTML=`<iframe src="https://www.youtube.com/embed/${tr.yt}?playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+}
+function extOpen(i){ const tr=TRAILERS[i]; openUrl(tr.url || ('https://www.youtube.com/results?search_query='+encodeURIComponent(tr.q))); }
+document.querySelectorAll('#trailers .th[data-play]').forEach(el=>el.onclick=()=>playInline(+el.dataset.play));
+document.querySelectorAll('#trailers .yt[data-ext]').forEach(el=>el.onclick=()=>extOpen(+el.dataset.ext));
 
 const TIPS=[
   ['⬇️','Töltsd előre (pre-load)','PS5-ön nov. 10-től előtöltheted, hogy megjelenéskor azonnal indulhasson – a játék mérete nagy lesz.'],
