@@ -78,10 +78,12 @@ async function fetchGenre(genre, adult, pages){
     // 2) Legkeményebbek: hentai (explicit, 18+)
     const hentai = await fetchGenre('Hentai', true, 4);
 
-    // Egyesítés, dedup id szerint, csak borítóval
+    // Egyesítés, dedup id szerint, csak borítóval, CSAK 2009-től (régebbit kihagyjuk)
+    const MIN_YEAR = 2009;
     const seen = new Set();
     const merged = [...uncensored, ...hentai].filter(a => {
       if (!a.cover) return false;
+      if (!a.year || a.year < MIN_YEAR) return false;   // 2009 előtti és ismeretlen évű kihagyva
       if (seen.has(a.id)) return false;
       seen.add(a.id); return true;
     });
