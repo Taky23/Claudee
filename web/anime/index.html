@@ -1933,11 +1933,12 @@ async function discFill() {
   try {
     const sorts = ['TRENDING_DESC', 'POPULARITY_DESC', 'SCORE_DESC'];
     const d = await gql(`query($p: Int, $s: [MediaSort]) { Page(page: $p, perPage: 50) {
-      media(type: ANIME, ${af()}, sort: $s, format_in: [TV, MOVIE, ONA, OVA], popularity_greater: 3000) { ${CARD} bannerImage description(asHtml: false) } } }`,
+      media(type: ANIME, ${af()}, sort: $s, format_in: [TV, MOVIE, ONA, OVA], popularity_greater: 3000, seasonYear_greater: 2008) { ${CARD} bannerImage description(asHtml: false) } } }`,
       { p: 1 + Math.floor(Math.random() * 8), s: [sorts[Math.floor(Math.random() * sorts.length)]] }, 60 * 60 * 1000);
     S.discSkip = S.discSkip || [];
     const skip = new Set(S.discSkip);
-    for (const m of d.Page.media) if (!S.list[m.id] && !skip.has(m.id) && !discPool.some(x => x.id === m.id)) discPool.push(m);
+    // Csak 2009-tol: a regebbi (es ismeretlen evu) cimeket nem dobjuk fel
+    for (const m of d.Page.media) if ((m.seasonYear || 0) >= 2009 && !S.list[m.id] && !skip.has(m.id) && !discPool.some(x => x.id === m.id)) discPool.push(m);
   } catch (e) { /* csendben: a meglévő poolból megy tovább */ }
   discLoading = false;
 }
