@@ -1,0 +1,7 @@
+{
+  "appId": "hu.taky.naptar",
+  "appName": "Naptár",
+  "webDir": "www",
+  "backgroundColor": "#0f1226ff",
+  "android": { "backgroundColor": "#0f1226ff", "allowMixedContent": false }
+}
