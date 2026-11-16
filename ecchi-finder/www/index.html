@@ -137,29 +137,54 @@ function mapHit(h){ const tags=tagsOf(h); return {
   desc:(h.description||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,700),
   url:'https://hanime.tv/videos/hentai/'+(h.slug||'') }; }
 
-async function hanimePage(page){
+// A hanime v8 "browse-trending" GET végpont létező és listát ad (hentai_videos, is_censored mezővel).
+async function trendingPage(time,page){
+  const res=await fetch(`https://hanime.tv/api/v8/browse-trending?time=${time}&page=${page}&order_by=views&ordering=desc`,{ headers:{'Accept':'application/json'} });
+  const txt=await res.text(); if(!res.ok) throw new Error('HTTP '+res.status);
+  let d; try{ d=JSON.parse(txt); }catch(e){ throw new Error('nem JSON'); }
+  let hits=d.hentai_videos; if(!Array.isArray(hits)) hits=[];
+  return { hits, nbPages:d.number_of_pages||d.nbPages||1 };
+}
+// Tartalék: régi search POST (ha a trending nem menne)
+async function searchPage(page){
   const res=await fetch('https://hanime.tv/api/v8/search',{ method:'POST',
     headers:{'Content-Type':'application/json;charset=UTF-8','Accept':'application/json'},
     body:JSON.stringify({search_text:'',tags:[],tags_mode:'AND',brands:[],blacklist:[],order_by:'views',ordering:'desc',page}) });
   const txt=await res.text(); if(!res.ok) throw new Error('HTTP '+res.status);
   let d; try{ d=JSON.parse(txt); }catch(e){ throw new Error('nem JSON'); }
   let hits=d.hentai_videos; if(!Array.isArray(hits)){ if(typeof d.hits==='string'){ try{hits=JSON.parse(d.hits||'[]');}catch(_){hits=[];} } else if(Array.isArray(d.hits)) hits=d.hits; else hits=[]; }
-  return { hits, nbPages:d.nbPages||d.number_of_pages||20 };
+  return { hits, nbPages:d.number_of_pages||d.nbPages||1 };
 }
 async function loadHanime(showStatus){
   if(showStatus) $('#pick').innerHTML='<div class="pick"><div class="body"><div class="t">Uncensored katalógus betöltése…</div><div class="desc">Lekérés a hanime.tv-ről (internet kell).</div></div></div>';
+  const all=[]; let lastErr='';
+  const consume=(hits)=>{ hits.forEach(h=>{ if(h.is_censored!==true && (h.poster_url||h.cover_url)) all.push(h); }); };
   try{
-    const all=[]; let nb=15;
-    for(let p=0;p<Math.min(nb,15);p++){
-      const {hits,nbPages}=await hanimePage(p); if(p===0)nb=nbPages;
-      hits.forEach(h=>{ if(h.is_censored!==true && (h.poster_url||h.cover_url)) all.push(h); });
-      if(!hits.length) break; if(all.length>=400) break;
+    // 1) Trending – több idő-sáv a változatosságért
+    for(const time of ['month','week','year','day']){
+      let nb=3;
+      for(let p=0;p<Math.min(nb,5);p++){
+        let r; try{ r=await trendingPage(time,p); }catch(e){ lastErr=e.message; break; }
+        if(p===0) nb=r.nbPages||1;
+        consume(r.hits);
+        if(!r.hits.length) break;
+      }
+      if(all.length>=350) break;
+    }
+    // 2) Ha a trending semmit sem adott, tartalék: search POST
+    if(!all.length){
+      for(let p=0;p<10;p++){
+        let r; try{ r=await searchPage(p); }catch(e){ lastErr=e.message; break; }
+        consume(r.hits);
+        if(!r.hits.length) break;
+        if(all.length>=300) break;
+      }
     }
     const seen=new Set();
     const list=all.filter(h=>{ if(seen.has(h.id))return false; seen.add(h.id); return true; }).map(mapHit).filter(x=>x.cover&&x.id!=null);
     if(list.length){ setData(list); try{ localStorage.setItem(CACHE_KEY,JSON.stringify({at:Date.now(),anime:list})); }catch(_){}
       if(showStatus) toast('✅ '+list.length+' uncensored cím betöltve'); }
-    else if(!DATA.length) loadError('A szerver üres listát adott.');
+    else if(!DATA.length) loadError(lastErr||'A szerver üres listát adott.');
   }catch(e){
     if(!DATA.length) loadError(e.message);
     else toast('Frissítés most nem sikerült – a mentett lista marad.');
@@ -168,7 +193,7 @@ async function loadHanime(showStatus){
 function loadError(msg){
   $('#pick').innerHTML=`<div class="pick"><div class="body">
     <div class="t">Nem sikerült betölteni 😕</div>
-    <div class="desc">A hanime.tv katalógus most nem elérhető (${esc(msg)}). Lehet, hogy nincs internet, vagy a szolgáltató/Cloudflare blokkol. Próbáld újra, vagy később.</div>
+    <div class="desc">A hanime.tv katalógus most nem elérhető (${esc(msg)}). Lehet, hogy nincs internet, vagy a szolgáltató blokkol. Próbáld újra, vagy később.</div>
     <div class="rowbtns"><button class="btn" id="retryBtn">🔄 Újrapróbálom</button></div>
   </div></div>`;
   const b=$('#retryBtn'); if(b) b.onclick=()=>loadHanime(true);
