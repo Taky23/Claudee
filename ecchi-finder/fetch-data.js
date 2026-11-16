@@ -1,115 +1,97 @@
 #!/usr/bin/env node
-// Build időben fut (GitHub Actions). Az AniList nyilvános GraphQL API-jából
-// CSAK uncensored HENTAI címeket tölt le (isAdult:true), kétféle jelből:
-//   1) ha létezik AniList "Uncensored" tag -> azzal szűrve,
-//   2) a legnépszerűbb hentai címek közül azok, amelyek címében/szinonimájában
-//      szerepel az "uncensored" (az AniList gyakran külön bejegyzésként viszi az
-//      uncensored vágást).
+// Build időben fut (GitHub Actions). A hanime.tv nyilvános kereső-API-jából tölt le
+// hentai címeket, és CSAK az uncensored (is_censored=false) címeket tartja meg.
 // www/data.json-be menti, hogy az app offline, azonnal betöltsön.
 const fs = require('fs');
 const path = require('path');
 const OUT = path.join(__dirname, 'www', 'data.json');
 
-const FIELDS = `id title{romaji english native} synonyms coverImage{large color} bannerImage averageScore seasonYear episodes format status genres tags{name rank} description(asHtml:false) siteUrl`;
+const API = 'https://search.htv-services.com/';
+const UA = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36';
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-async function gql(query, variables){
-  const r = await fetch('https://graphql.anilist.co', {
+async function searchPage(page, orderBy){
+  const r = await fetch(API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ query, variables }),
+    headers: { 'Content-Type': 'application/json;charset=UTF-8', 'Accept': 'application/json', 'User-Agent': UA, 'Origin': 'https://hanime.tv', 'Referer': 'https://hanime.tv/' },
+    body: JSON.stringify({
+      search_text: '', tags: [], tags_mode: 'AND', brands: [], blacklist: [],
+      order_by: orderBy, ordering: 'desc', page,
+    }),
   });
   if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()).slice(0, 160));
-  const j = await r.json();
-  if (j.errors) throw new Error('AniList: ' + JSON.stringify(j.errors).slice(0, 200));
-  return j.data;
+  const data = await r.json();
+  let hits = data.hits;
+  if (typeof hits === 'string') hits = JSON.parse(hits || '[]');
+  return { hits: hits || [], nbPages: data.nbPages || 1 };
 }
 
-function mapMedia(m){
-  const rawTags = m.tags || [];
+function yearOf(h){
+  const u = h.released_at_unix || h.created_at_unix;
+  if (u) return new Date(u * 1000).getFullYear();
+  const s = h.released_at || h.created_at;
+  const y = s && new Date(s).getFullYear();
+  return (y && !isNaN(y)) ? y : null;
+}
+function tagsOf(h){
+  if (Array.isArray(h.tags)) return h.tags.map(t => (typeof t === 'string' ? t : (t && t.text) || '')).filter(Boolean);
+  return [];
+}
+function mapHit(h){
+  const tags = tagsOf(h);
   return {
-    id: m.id,
-    title: (m.title.english || m.title.romaji),
-    rom: m.title.romaji,
-    cover: m.coverImage && m.coverImage.large,
-    color: (m.coverImage && m.coverImage.color) || '#ff4d8d',
-    banner: m.bannerImage || null,
-    score: m.averageScore || null,
-    year: m.seasonYear || null,
-    eps: m.episodes || null,
-    format: m.format || null,
-    status: m.status || null,
-    genres: m.genres || [],
-    tags: rawTags.slice(0, 14).map(t => t.name),
+    id: h.id,
+    title: h.name || (h.titles && h.titles[0]) || h.slug,
+    rom: (h.titles && h.titles[0]) || h.name || '',
+    cover: h.poster_url || h.cover_url,
+    color: '#ff2d95',
+    banner: h.cover_url || h.poster_url || null,
+    score: null,
+    views: h.views || null,
+    year: yearOf(h),
+    eps: null,
+    format: null,
+    status: null,
+    brand: h.brand || null,
+    genres: tags.slice(0, 6),
+    tags: tags.slice(0, 16),
     adult: true,
     unc: true,
-    desc: (m.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 700),
-    url: m.siteUrl,
+    desc: (h.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 700),
+    url: 'https://hanime.tv/videos/hentai/' + (h.slug || ''),
   };
-}
-
-// Van-e "uncensored" jel a címek/szinonimák közt?
-function looksUncensored(m){
-  const parts = [m.title && m.title.romaji, m.title && m.title.english, m.title && m.title.native, ...(m.synonyms || [])];
-  return parts.some(s => s && /uncensor/i.test(s));
-}
-
-// Hentai lekérés, opcionális tag-szűrővel
-async function fetchHentai(pages, tag){
-  const out = [];
-  const q = `query($page:Int){ Page(page:$page, perPage:50){ pageInfo{hasNextPage}
-    media(genre:"Hentai", type:ANIME, isAdult:true, ${tag ? `tag:"${tag}", ` : ''}sort:POPULARITY_DESC){ ${FIELDS} } } }`;
-  for (let p = 1; p <= pages; p++) {
-    const d = await gql(q, { page: p });
-    const media = (d.Page && d.Page.media) || [];
-    media.forEach(m => out.push(m));
-    console.log(`[hentai${tag ? ' tag:' + tag : ''}] oldal ${p} -> ${media.length} (összes ${out.length})`);
-    if (!d.Page.pageInfo.hasNextPage) break;
-    await sleep(900);
-  }
-  return out;
 }
 
 (async () => {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   try {
-    let tagged = [];
-    // 1) Próbáljuk a hivatalos "Uncensored" taget (ha nincs ilyen tag, AniList hibát dob -> csendben tovább)
-    try {
-      tagged = await fetchHentai(6, 'Uncensored');
-      console.log('  Uncensored tag találatok:', tagged.length);
-    } catch (e) {
-      console.log('  (nincs használható "Uncensored" tag:', e.message.slice(0, 80), ')');
+    const all = [];
+    let censoredSkipped = 0, noCover = 0;
+    // Több oldal, népszerűség (views) szerint; biztonsági felső korlát.
+    let nbPages = 25;
+    for (let p = 0; p < Math.min(nbPages, 25); p++) {
+      const { hits, nbPages: np } = await searchPage(p, 'views');
+      if (p === 0) { nbPages = np; console.log('nbPages:', np); }
+      for (const h of hits) {
+        if (h.is_censored === true) { censoredSkipped++; continue; }  // CSAK uncensored
+        if (!(h.poster_url || h.cover_url)) { noCover++; continue; }
+        all.push(h);
+      }
+      console.log(`oldal ${p} -> ${hits.length} hit (eddig uncensored: ${all.length}, censored kihagyva: ${censoredSkipped})`);
+      if (p + 1 >= np) break;
+      if (all.length >= 500) break;
+      await sleep(400);
     }
 
-    // 2) Népszerű hentai, cím/szinonima alapján uncensored szűrés
-    const popular = await fetchHentai(12);
-    const scanned = popular.filter(looksUncensored);
-    console.log('  cím alapján uncensored:', scanned.length, '/', popular.length);
-
-    // Egyesítés + dedup id szerint, csak borítóval
+    // dedup id szerint
     const seen = new Set();
-    let list = [...tagged, ...scanned]
-      .filter(m => m.coverImage && m.coverImage.large)
-      .filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; })
-      .map(mapMedia);
+    const list = all.filter(h => { if (seen.has(h.id)) return false; seen.add(h.id); return true; }).map(mapHit)
+      .filter(x => x.cover && x.id != null);
 
-    let note = 'uncensored';
-    // Ha túl kevés az egyértelműen uncensored, essünk vissza a legnépszerűbb hentaikra
-    if (list.length < 12) {
-      console.log('  ⚠️ Kevés egyértelmű uncensored (', list.length, ') – kiegészítés a legnépszerűbb hentaikkal.');
-      const seen2 = new Set(list.map(x => x.id));
-      const extra = popular
-        .filter(m => m.coverImage && m.coverImage.large && !seen2.has(m.id))
-        .map(mapMedia);
-      list = list.concat(extra);
-      note = 'hentai (uncensored jelölés korlátozott)';
-    }
-
-    if (!list.length) throw new Error('nincs hentai találat');
-    fs.writeFileSync(OUT, JSON.stringify({ at: Date.now(), anime: list, note }));
-    console.log(`\n✅ data.json kész: ${list.length} cím (${note})`);
+    if (!list.length) throw new Error('nincs uncensored találat (API válasz üres vagy megváltozott)');
+    fs.writeFileSync(OUT, JSON.stringify({ at: Date.now(), anime: list, note: 'uncensored', source: 'hanime.tv' }));
+    console.log(`\n✅ data.json kész: ${list.length} uncensored hentai cím (censored kihagyva: ${censoredSkipped}, borító nélkül: ${noCover})`);
   } catch (e) {
     console.error('\n⚠️ Nem sikerült:', e.message);
     fs.writeFileSync(OUT, JSON.stringify({ at: Date.now(), anime: [], error: e.message }));
