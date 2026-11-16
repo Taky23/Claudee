@@ -76,7 +76,7 @@
   <input class="search" id="search" placeholder="Keresés cím szerint…">
   <div class="grid" id="grid"></div>
 
-  <div class="note">Felnőtt (18+), fikciós anime-tartalom. Ez az app <b>kizárólag uncensored hentai</b> (🔞) címeket ajánl – az adatok, borítók és az uncensored jelölés a <b>hanime.tv</b> katalógusából származnak (csak a hivatalosan uncensored címek). Az app <b>nem</b> streamel és nem tárol semmit – a „🔗 Megnyitás" gomb a forrás oldalra visz.</div>
+  <div class="note">Felnőtt (18+), fikciós anime-tartalom. Ez az app <b>kizárólag uncensored hentai</b> (🔞) címeket ajánl – a lista élőben a <b>hanime.tv</b> katalógusából töltődik (csak a hivatalosan <b>uncensored</b> címek, is_censored=false). Az első betöltéshez <b>internet kell</b>; utána a lista elmentve offline is elérhető. Az app <b>nem</b> streamel – a „🔗 Megnyitás" gomb a forrás oldalra visz.</div>
 </main>
 
 <div id="sheet">
@@ -116,7 +116,63 @@ $('#gNo').onclick=()=>{ const Cap=window.Capacitor, A=Cap&&Cap.Plugins&&Cap.Plug
 try{ if(localStorage.getItem('ecchi18')==='1') $('#gate').style.display='none'; else openGate(); }catch(_){ openGate(); }
 
 let DATA=[]; let filtered=[];
-fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{ DATA=(j&&j.anime)||[]; filtered=DATA; renderGrid(); if(DATA.length) roll(); else toast('Nincs adat – frissíts később'); }).catch(()=>toast('Adat betöltési hiba'));
+const CACHE_KEY='ecchiHanimeCache';
+function setData(list){ DATA=list; filtered=DATA; renderGrid(); if(DATA.length) roll(); }
+
+function startup(){
+  // 1) Gyors indulás: korábban elmentett (offline) lista
+  try{ const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); if(c&&c.anime&&c.anime.length){ setData(c.anime); } }catch(_){}
+  // 2) Frissítés élőben a hanime.tv-ről (a telefon IP-jéről)
+  loadHanime(!DATA.length);
+}
+
+function yearOf(h){ const u=h.released_at_unix||h.created_at_unix; if(u) return new Date(u*1000).getFullYear(); const s=h.released_at||h.created_at; const y=s&&new Date(s).getFullYear(); return (y&&!isNaN(y))?y:null; }
+function tagsOf(h){ if(Array.isArray(h.tags)) return h.tags.map(t=>typeof t==='string'?t:(t&&(t.text||t.name))||'').filter(Boolean);
+  if(Array.isArray(h.hentai_tags)) return h.hentai_tags.map(t=>t&&(t.text||t.name)).filter(Boolean); return []; }
+function mapHit(h){ const tags=tagsOf(h); return {
+  id:h.id, title:h.name||(h.titles&&h.titles[0])||h.slug, rom:(h.titles&&h.titles[0])||h.name||'',
+  cover:h.poster_url||h.cover_url, color:'#ff2d95', banner:h.cover_url||h.poster_url||null,
+  score:null, views:h.views||null, year:yearOf(h), eps:null, format:null, status:null, brand:h.brand||null,
+  genres:tags.slice(0,6), tags:tags.slice(0,16), adult:true, unc:true,
+  desc:(h.description||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,700),
+  url:'https://hanime.tv/videos/hentai/'+(h.slug||'') }; }
+
+async function hanimePage(page){
+  const res=await fetch('https://hanime.tv/api/v8/search',{ method:'POST',
+    headers:{'Content-Type':'application/json;charset=UTF-8','Accept':'application/json'},
+    body:JSON.stringify({search_text:'',tags:[],tags_mode:'AND',brands:[],blacklist:[],order_by:'views',ordering:'desc',page}) });
+  const txt=await res.text(); if(!res.ok) throw new Error('HTTP '+res.status);
+  let d; try{ d=JSON.parse(txt); }catch(e){ throw new Error('nem JSON'); }
+  let hits=d.hentai_videos; if(!Array.isArray(hits)){ if(typeof d.hits==='string'){ try{hits=JSON.parse(d.hits||'[]');}catch(_){hits=[];} } else if(Array.isArray(d.hits)) hits=d.hits; else hits=[]; }
+  return { hits, nbPages:d.nbPages||d.number_of_pages||20 };
+}
+async function loadHanime(showStatus){
+  if(showStatus) $('#pick').innerHTML='<div class="pick"><div class="body"><div class="t">Uncensored katalógus betöltése…</div><div class="desc">Lekérés a hanime.tv-ről (internet kell).</div></div></div>';
+  try{
+    const all=[]; let nb=15;
+    for(let p=0;p<Math.min(nb,15);p++){
+      const {hits,nbPages}=await hanimePage(p); if(p===0)nb=nbPages;
+      hits.forEach(h=>{ if(h.is_censored!==true && (h.poster_url||h.cover_url)) all.push(h); });
+      if(!hits.length) break; if(all.length>=400) break;
+    }
+    const seen=new Set();
+    const list=all.filter(h=>{ if(seen.has(h.id))return false; seen.add(h.id); return true; }).map(mapHit).filter(x=>x.cover&&x.id!=null);
+    if(list.length){ setData(list); try{ localStorage.setItem(CACHE_KEY,JSON.stringify({at:Date.now(),anime:list})); }catch(_){}
+      if(showStatus) toast('✅ '+list.length+' uncensored cím betöltve'); }
+    else if(!DATA.length) loadError('A szerver üres listát adott.');
+  }catch(e){
+    if(!DATA.length) loadError(e.message);
+    else toast('Frissítés most nem sikerült – a mentett lista marad.');
+  }
+}
+function loadError(msg){
+  $('#pick').innerHTML=`<div class="pick"><div class="body">
+    <div class="t">Nem sikerült betölteni 😕</div>
+    <div class="desc">A hanime.tv katalógus most nem elérhető (${esc(msg)}). Lehet, hogy nincs internet, vagy a szolgáltató/Cloudflare blokkol. Próbáld újra, vagy később.</div>
+    <div class="rowbtns"><button class="btn" id="retryBtn">🔄 Újrapróbálom</button></div>
+  </div></div>`;
+  const b=$('#retryBtn'); if(b) b.onclick=()=>loadHanime(true);
+}
 
 const rand=a=>a[Math.floor(Math.random()*a.length)];
 function metaLine(a){ const bits=[]; if(a.year)bits.push(a.year); if(a.format)bits.push(a.format); if(a.eps)bits.push(a.eps+' rész'); if(a.score)bits.push('★ '+(a.score/10).toFixed(1)); return bits.join(' · '); }
@@ -169,6 +225,9 @@ function openDetail(a){
 $('#shClose').onclick=()=>$('#sheet').classList.remove('on');
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// Indítás – minden definíció után, hogy ne legyen TDZ (rand/roll stb.)
+startup();
 </script>
 </body>
 </html>

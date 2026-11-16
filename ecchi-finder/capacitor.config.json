@@ -3,5 +3,6 @@
   "appName": "Ecchi Finder",
   "webDir": "www",
   "backgroundColor": "#140a14ff",
-  "android": { "backgroundColor": "#140a14ff", "allowMixedContent": false }
+  "android": { "backgroundColor": "#140a14ff", "allowMixedContent": false },
+  "plugins": { "CapacitorHttp": { "enabled": true } }
 }
