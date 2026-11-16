@@ -23,12 +23,6 @@ jobs:
       - name: Függőségek telepítése
         working-directory: ecchi-finder
         run: npm install --no-audit --no-fund
-      - name: Adatok beépítése (uncensored hentai, offline)
-        working-directory: ecchi-finder
-        run: node fetch-data.js
-      - name: Adat ellenőrzése (ne építsünk üres listával)
-        working-directory: ecchi-finder
-        run: node -e "const d=require('./www/data.json'); if(!d.anime||!d.anime.length){console.error('ÜRES data.json – build leállítva. error:', d.error||'(nincs)'); process.exit(1)} else console.log('OK:', d.anime.length, 'cím');"
       - name: Android projekt létrehozása
         working-directory: ecchi-finder
         run: |
