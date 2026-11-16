@@ -1,0 +1,62 @@
+name: Naptár APK (Android)
+
+on:
+  push:
+    paths: ['naptar-apk/**', '.github/workflows/naptar-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Függőségek telepítése
+        working-directory: naptar-apk
+        run: npm install --no-audit --no-fund
+      - name: Android projekt létrehozása
+        working-directory: naptar-apk
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Ikon és indítókép generálása
+        working-directory: naptar-apk
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#4f46e5' --iconBackgroundColorDark '#4f46e5' --splashBackgroundColor '#0f1226' --splashBackgroundColorDark '#0f1226'
+      - name: Vissza gomb natív kezelő bemásolása
+        working-directory: naptar-apk
+        run: |
+          base=android/app/src/main
+          mkdir -p "$base/java/hu/taky/naptar"
+          cp native/java/MainActivity.java "$base/java/hu/taky/naptar/MainActivity.java"
+      - name: Állandó aláíró kulcs
+        run: mkdir -p ~/.android && cp naptar-apk/debug.keystore ~/.android/debug.keystore
+      - name: SDK útvonal
+        working-directory: naptar-apk/android
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: APK építése
+        working-directory: naptar-apk/android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: APK átnevezése
+        run: cp naptar-apk/android/app/build/outputs/apk/debug/app-debug.apk Naptar.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Naptar-apk
+          path: Naptar.apk
+      - name: Kiadás (csak a main ágon)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete naptar-apk --yes --cleanup-tag || true
+          gh release create naptar-apk Naptar.apk --target "${{ github.sha }}" \
+            --title "Naptár – Android (APK)" \
+            --notes "Naptár + emlékeztető: adj hozzá eseményt (pl. névnap, szülinap, fogorvos), válaszd ki a napot, és a telefon az adott napon ÉRTESÍT – internet nélkül is. A „minden évben” kapcsolóval a névnapok/szülinapok évről évre visszatérnek. Az első indításkor engedélyezd az értesítéseket. Minden adat a telefonon marad."

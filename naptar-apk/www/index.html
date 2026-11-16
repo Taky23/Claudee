@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Naptár</title>
+<style>
+  :root{
+    --bg:#0f1226; --bg2:#171a33; --card:#1d2140; --line:#2c3160;
+    --txt:#eef0ff; --muted:#9aa0cf; --accent:#6366f1; --accent2:#22d3ee;
+    --pink:#ec4899; --amber:#f59e0b; --green:#34d399; --red:#f87171;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%}
+  body{background:var(--bg); color:var(--txt); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex; flex-direction:column; min-height:100%; padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom)}
+  header{padding:16px 16px 10px; display:flex; align-items:center; gap:10px}
+  header .logo{font-size:20px; font-weight:900; letter-spacing:.3px}
+  header .logo b{color:var(--accent2)}
+  header .sp{flex:1}
+  main{flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:4px 16px 110px}
+
+  .perm{display:flex; gap:10px; align-items:center; background:var(--bg2); border:1px solid var(--line);
+    border-radius:14px; padding:11px 13px; margin:6px 0 14px; font-size:13px; color:var(--muted)}
+  .perm.ok{border-color:#2b6b4e; color:var(--green)}
+  .perm .pbtn{margin-left:auto; flex:none; border:0; border-radius:10px; padding:8px 12px; font-weight:800;
+    background:var(--accent); color:#fff; font-size:13px; cursor:pointer}
+
+  .sect{display:flex; align-items:center; justify-content:space-between; margin:16px 2px 8px}
+  .sect h2{font-size:14px; margin:0; color:var(--muted); font-weight:800; letter-spacing:.4px; text-transform:uppercase}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:11px}
+  .ev{display:flex; gap:12px; align-items:center}
+  .ev .cal{flex:none; width:52px; text-align:center; border-radius:12px; overflow:hidden; border:1px solid var(--line); background:var(--bg2)}
+  .ev .cal .m{background:var(--pink); color:#fff; font-size:10px; font-weight:800; padding:3px 0; text-transform:uppercase; letter-spacing:.5px}
+  .ev .cal .d{font-size:22px; font-weight:900; padding:4px 0 5px}
+  .ev .mid{flex:1; min-width:0}
+  .ev .t{font-weight:800; font-size:15.5px; word-break:break-word}
+  .ev .s{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .ev .s .pill{display:inline-block; background:var(--bg2); border:1px solid var(--line); border-radius:999px; padding:1px 8px; margin-right:5px; font-size:11px}
+  .ev .s .yr{color:var(--amber)}
+  .ev .del{flex:none; border:0; background:transparent; color:var(--muted); font-size:20px; padding:6px; cursor:pointer}
+  .ev .del:active{color:var(--red)}
+  .past{opacity:.5}
+  .empty{color:var(--muted); font-size:14px; text-align:center; padding:26px 10px}
+
+  /* Hozzáadás panel (lebegő) */
+  .fab{position:fixed; right:18px; bottom:calc(20px + env(safe-area-inset-bottom)); z-index:20;
+    width:60px; height:60px; border-radius:50%; border:0; background:var(--accent); color:#fff; font-size:30px; font-weight:400;
+    box-shadow:0 10px 26px rgba(99,102,241,.5); cursor:pointer}
+  .sheet{position:fixed; inset:0; z-index:40; background:rgba(0,0,0,.55); display:none; align-items:flex-end}
+  .sheet.on{display:flex}
+  .sheet .inner{width:100%; background:var(--bg2); border-top-left-radius:22px; border-top-right-radius:22px;
+    border-top:1px solid var(--line); padding:16px 16px calc(20px + env(safe-area-inset-bottom)); max-height:92vh; overflow:auto}
+  .sheet h3{margin:4px 0 14px; font-size:18px}
+  label.fl{display:block; font-size:12.5px; color:var(--muted); font-weight:700; margin:12px 2px 5px}
+  input[type=text], input[type=date], input[type=time]{
+    width:100%; background:var(--card); border:1px solid var(--line); color:var(--txt); border-radius:12px;
+    padding:13px; font-size:16px; font-family:inherit}
+  input::-webkit-calendar-picker-indicator{filter:invert(.8)}
+  .row2{display:flex; gap:10px}
+  .row2>div{flex:1}
+  .chk{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; padding:12px 13px; margin-top:12px; cursor:pointer}
+  .chk input{width:20px; height:20px; accent-color:var(--accent)}
+  .chk .cl{font-size:13.5px}
+  .chk .cl small{display:block; color:var(--muted); font-size:11.5px; margin-top:2px}
+  .sbtns{display:flex; gap:10px; margin-top:18px}
+  .btn{flex:1; border:0; border-radius:13px; padding:14px; font-size:15px; font-weight:800; cursor:pointer}
+  .btn.primary{background:var(--accent); color:#fff}
+  .btn.ghost{background:var(--card); color:var(--muted); border:1px solid var(--line)}
+
+  .toast{position:fixed; left:50%; bottom:92px; transform:translateX(-50%); background:#000d; color:#fff;
+    padding:11px 17px; border-radius:999px; font-size:13.5px; opacity:0; transition:opacity .2s; z-index:60; max-width:86vw; text-align:center}
+  .toast.on{opacity:1}
+  .note{color:var(--muted); font-size:12px; margin:18px 2px 0; line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📅 Nap<b>tár</b></div>
+  <div class="sp"></div>
+</header>
+
+<main>
+  <div id="perm" class="perm">
+    <span id="permTxt">Az értesítésekhez engedély kell.</span>
+    <button class="pbtn" id="permBtn">Engedélyezem</button>
+  </div>
+
+  <div class="sect"><h2>Közelgő események</h2></div>
+  <div id="upcoming"></div>
+
+  <div class="sect" id="pastSect" style="display:none"><h2>Elmúlt</h2></div>
+  <div id="past"></div>
+
+  <div class="note" id="hint">
+    💡 Nyomd meg a <b>+</b> gombot, írd be az eseményt (pl. „Nov 17 – névnap"), válaszd ki a dátumot, és a telefon az adott napon
+    értesít – <b>internet nélkül</b> is. A „minden évben" kapcsolóval a névnapok/szülinapok évről évre visszatérnek.
+  </div>
+</main>
+
+<button class="fab" id="fab" aria-label="Új esemény">+</button>
+
+<div class="sheet" id="sheet">
+  <div class="inner">
+    <h3 id="shTitle">Új esemény</h3>
+    <label class="fl">Mi az esemény?</label>
+    <input type="text" id="fTitle" placeholder="pl. Erzsébet névnap, szülinap, fogorvos…" maxlength="80">
+    <div class="row2">
+      <div>
+        <label class="fl">Dátum</label>
+        <input type="date" id="fDate">
+      </div>
+      <div>
+        <label class="fl">Időpont</label>
+        <input type="time" id="fTime" value="09:00">
+      </div>
+    </div>
+    <label class="chk" for="fYear">
+      <input type="checkbox" id="fYear">
+      <span class="cl">🔁 Minden évben<small>Névnap/szülinap – évente ugyanazon a napon újra szól</small></span>
+    </label>
+    <div class="sbtns">
+      <button class="btn ghost" id="cancelBtn">Mégse</button>
+      <button class="btn primary" id="saveBtn">Mentés</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const LN = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications;
+const HU_M=['jan','feb','márc','ápr','máj','jún','júl','aug','szept','okt','nov','dec'];
+const HU_MONTH=['január','február','március','április','május','június','július','augusztus','szeptember','október','november','december'];
+const HU_DAY=['vasárnap','hétfő','kedd','szerda','csütörtök','péntek','szombat'];
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2600);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+// ---- Tárolás ----
+let DB = load();
+function load(){ try{ return JSON.parse(localStorage.getItem('naptar')||'{"events":[],"seq":1}'); }catch(_){ return {events:[],seq:1}; } }
+function save(){ try{ localStorage.setItem('naptar', JSON.stringify(DB)); }catch(_){} }
+
+// ---- Engedély ----
+let granted=false;
+async function checkPerm(){
+  if(!LN){ $('#permTxt').textContent='Böngészőben az értesítés nem ütemezhető – telepítsd az appot.'; return; }
+  try{
+    const r = await LN.checkPermissions();
+    granted = r.display==='granted';
+    renderPerm();
+  }catch(_){}
+}
+function renderPerm(){
+  const p=$('#perm');
+  if(granted){ p.classList.add('ok'); $('#permTxt').textContent='✅ Értesítések engedélyezve – minden be van állítva.'; $('#permBtn').style.display='none'; }
+  else { p.classList.remove('ok'); $('#permTxt').textContent='Az értesítésekhez engedély kell.'; $('#permBtn').style.display=''; }
+}
+$('#permBtn').onclick=async()=>{
+  if(!LN){ toast('Csak a telepített appban működik'); return; }
+  try{
+    const r=await LN.requestPermissions();
+    granted = r.display==='granted';
+    renderPerm();
+    if(granted){ await rescheduleAll(); toast('Köszi! Mostantól szólok időben.'); }
+    else toast('Az értesítés ki van kapcsolva a beállításokban.');
+  }catch(e){ toast('Nem sikerült engedélyt kérni'); }
+};
+
+// ---- Ütemezés ----
+function partsOf(ev){
+  const [y,m,d]=ev.date.split('-').map(Number);
+  const [hh,mm]=(ev.time||'09:00').split(':').map(Number);
+  return {y,m,d,hh,mm};
+}
+function fireDate(ev){ const p=partsOf(ev); return new Date(p.y,p.m-1,p.d,p.hh,p.mm,0,0); }
+function notifFor(ev){
+  const p=partsOf(ev);
+  const body = ev.title;
+  if(ev.yearly){
+    return { id: ev.id, title: '🔁 '+ev.title, body,
+      schedule: { on:{ month:p.m, day:p.d, hour:p.hh, minute:p.mm }, allowWhileIdle:true } };
+  }
+  return { id: ev.id, title: '📅 '+ev.title, body,
+    schedule: { at: fireDate(ev), allowWhileIdle:true } };
+}
+async function scheduleOne(ev){
+  if(!LN || !granted) return;
+  try{ await LN.schedule({ notifications:[ notifFor(ev) ] }); }catch(e){}
+}
+async function cancelOne(id){ if(!LN) return; try{ await LN.cancel({ notifications:[{id}] }); }catch(e){} }
+async function rescheduleAll(){
+  if(!LN || !granted) return;
+  const list = DB.events.filter(ev=> ev.yearly || fireDate(ev).getTime() > Date.now() );
+  if(!list.length) return;
+  try{ await LN.schedule({ notifications: list.map(notifFor) }); }catch(e){}
+}
+
+// ---- Render ----
+function fmtWhen(ev){
+  const p=partsOf(ev); const dt=fireDate(ev);
+  const dayName = HU_DAY[dt.getDay()];
+  const base = `${HU_MONTH[p.m-1]} ${p.d}. (${dayName}) ${ev.time||'09:00'}`;
+  return ev.yearly ? base.replace(/^[^ ]+ /,'') : base; // évente: hónap nap elég
+}
+function render(){
+  const now=Date.now();
+  const evs = DB.events.slice().map(ev=>({ev, t: ev.yearly ? nextYearly(ev) : fireDate(ev).getTime()}));
+  const up = evs.filter(x=> x.ev.yearly || x.t>now ).sort((a,b)=>a.t-b.t);
+  const pa = evs.filter(x=> !x.ev.yearly && x.t<=now ).sort((a,b)=>b.t-a.t);
+
+  $('#hint').style.display = DB.events.length ? 'none':'';
+  $('#upcoming').innerHTML = up.length ? up.map(x=>evHtml(x.ev,false)).join('')
+    : '<div class="empty">Még nincs közelgő esemény.<br>Nyomd meg a + gombot!</div>';
+  $('#pastSect').style.display = pa.length ? 'flex':'none';
+  $('#past').innerHTML = pa.map(x=>evHtml(x.ev,true)).join('');
+
+  document.querySelectorAll('[data-del]').forEach(b=> b.onclick=()=>removeEv(+b.dataset.del));
+}
+function nextYearly(ev){ // következő előfordulás ideje (rendezéshez)
+  const p=partsOf(ev); const now=new Date();
+  let y=now.getFullYear();
+  let t=new Date(y,p.m-1,p.d,p.hh,p.mm).getTime();
+  if(t < Date.now()) t=new Date(y+1,p.m-1,p.d,p.hh,p.mm).getTime();
+  return t;
+}
+function evHtml(ev,isPast){
+  const p=partsOf(ev);
+  const pills = (ev.yearly?'<span class="pill yr">🔁 minden évben</span>':'')
+    + `<span class="pill">⏰ ${esc(ev.time||'09:00')}</span>`;
+  return `<div class="card"><div class="ev ${isPast?'past':''}">
+    <div class="cal"><div class="m">${HU_M[p.m-1]}</div><div class="d">${p.d}</div></div>
+    <div class="mid">
+      <div class="t">${esc(ev.title)}</div>
+      <div class="s">${pills}${esc(fmtWhen(ev))}</div>
+    </div>
+    <button class="del" data-del="${ev.id}" aria-label="Törlés">🗑️</button>
+  </div></div>`;
+}
+
+// ---- Hozzáadás / törlés ----
+function openSheet(){
+  $('#fTitle').value=''; $('#fYear').checked=false; $('#fTime').value='09:00';
+  const t=new Date(); t.setDate(t.getDate()); // ma alapértelmezett
+  $('#fDate').value = t.toISOString().slice(0,10);
+  $('#sheet').classList.add('on');
+  setTimeout(()=>$('#fTitle').focus(),120);
+}
+function closeSheet(){ $('#sheet').classList.remove('on'); }
+$('#fab').onclick=openSheet;
+$('#cancelBtn').onclick=closeSheet;
+$('#sheet').addEventListener('click',e=>{ if(e.target===$('#sheet')) closeSheet(); });
+
+$('#saveBtn').onclick=async()=>{
+  const title=$('#fTitle').value.trim();
+  const date=$('#fDate').value;
+  const time=$('#fTime').value||'09:00';
+  const yearly=$('#fYear').checked;
+  if(!title){ toast('Írd be, mi az esemény'); return; }
+  if(!date){ toast('Válassz dátumot'); return; }
+  const ev={ id: DB.seq++, title, date, time, yearly };
+  DB.events.push(ev); save();
+
+  if(LN && !granted){
+    try{ const r=await LN.requestPermissions(); granted=r.display==='granted'; renderPerm(); }catch(_){}
+  }
+  await scheduleOne(ev);
+  closeSheet(); render();
+
+  if(!ev.yearly && fireDate(ev).getTime() <= Date.now()){
+    toast('Mentve – de ez az időpont már elmúlt, nem fog szólni.');
+  } else if(granted){
+    toast('✅ Beállítva – szólok majd időben!');
+  } else {
+    toast('Mentve. Engedélyezd az értesítést, hogy szóljon.');
+  }
+};
+async function removeEv(id){
+  DB.events = DB.events.filter(e=>e.id!==id); save();
+  await cancelOne(id);
+  render();
+  toast('Törölve');
+}
+
+// ---- Indulás ----
+(async()=>{
+  render();
+  await checkPerm();
+  await rescheduleAll(); // app-frissítés/újraindítás után is biztos be legyen ütemezve
+})();
+</script>
+</body>
+</html>
